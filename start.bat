@@ -1,0 +1,16 @@
+@echo off
+echo Starting FemTracker Agent...
+
+echo Starting backend...
+start cmd /k "cd agent && venv\Scripts\activate && langgraph dev"
+
+echo Waiting for backend to start...
+timeout /t 5
+
+echo Starting frontend...
+start cmd /k "npm run dev"
+
+echo Both services are starting...
+echo Frontend: http://localhost:3000
+echo Backend: http://localhost:2024
+pause 
