@@ -23,8 +23,14 @@ export default function Home() {
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
           <Link
+            href="/menstrual-tracker"
+            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-gradient-to-r from-pink-500 to-purple-600 text-white gap-2 hover:from-pink-600 hover:to-purple-700 font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
+          >
+            🌸 Menstrual Tracker
+          </Link>
+          <Link
             href="/recipe"
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
+            className="rounded-full border border-solid border-gray-300 transition-colors flex items-center justify-center bg-white text-gray-800 gap-2 hover:bg-gray-50 font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
           >
             🍳 Recipe Assistant
           </Link>
@@ -41,6 +47,7 @@ export default function Home() {
         <div className="text-sm text-gray-500 text-center sm:text-left">
           <p>Features:</p>
           <ul className="list-disc list-inside mt-2 space-y-1">
+            <li>AI Menstrual Cycle Tracking & Insights</li>
             <li>AI Recipe Assistant with shared state</li>
             <li>Real-time collaboration</li>
             <li>LangGraph backend integration</li>

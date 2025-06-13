@@ -4,7 +4,8 @@
   "dependencies": ["."],
   "graphs": {
     "sample_agent": "./sample_agent/agent.py:graph",
-    "shared_state": "./recipe_agent/agent.py:graph"
+    "shared_state": "./recipe_agent/agent.py:graph",
+    "menstrual_tracker": "./menstrual_agent/agent.py:graph"
   },
   "env": ".env"
 }

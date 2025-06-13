@@ -1,0 +1,439 @@
+/* Menstrual Tracker Styles */
+
+/* Match Recipe page layout structure */
+.app-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  position: relative;
+  overflow: auto;
+}
+
+.menstrual-tracker-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  color: #333;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding: 30px 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 10px 0;
+}
+
+.header p {
+  font-size: 1.1rem;
+  color: #666;
+  margin: 0;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 25px;
+  margin-bottom: 30px;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.card h2 {
+  color: #333;
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+/* Current Cycle Overview */
+.cycle-overview {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+.cycle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.cycle-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+}
+
+.cycle-stat .label {
+  font-weight: 500;
+  color: #666;
+}
+
+.cycle-stat .value {
+  font-weight: 700;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+/* Period Days */
+.period-days {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.period-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.period-day {
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.period-day:hover {
+  transform: scale(1.05);
+}
+
+.day-date {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.day-intensity {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 5px;
+}
+
+.quick-add {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.quick-add input,
+.quick-add select {
+  padding: 8px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  transition: border-color 0.3s ease;
+}
+
+.quick-add input:focus,
+.quick-add select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Symptoms */
+.symptoms {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+.symptoms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.symptom-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.symptom-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.symptom-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.symptom-type {
+  font-weight: 600;
+  color: #333;
+}
+
+.symptom-date {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.severity-indicator {
+  padding: 4px 10px;
+  border-radius: 15px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  min-width: 50px;
+}
+
+/* Moods */
+.moods {
+  background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+}
+
+.moods-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mood-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.mood-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.mood-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mood-type {
+  font-weight: 600;
+  color: #333;
+}
+
+.mood-date {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.mood-intensity {
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  min-width: 50px;
+}
+
+/* Predictions */
+.predictions {
+  background: linear-gradient(135deg, #e0c3fc 0%, #9bb5ff 100%);
+  grid-column: span 2;
+}
+
+.predictions-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.prediction-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+}
+
+.prediction-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.prediction-value {
+  font-weight: 700;
+  color: #667eea;
+}
+
+.insights {
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
+}
+
+.insights p {
+  margin: 0;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* Notes */
+.notes {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note-item {
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.note-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.note-date {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.note-content {
+  color: #333;
+  line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .menstrual-tracker-container {
+    padding: 15px;
+  }
+  
+  .content-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .predictions {
+    grid-column: span 1;
+  }
+  
+  .header h1 {
+    font-size: 2rem;
+  }
+  
+  .card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .period-grid {
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 8px;
+  }
+  
+  .quick-add {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .quick-add input,
+  .quick-add select {
+    width: 100%;
+  }
+}
+
+/* Animation for loading states */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* CopilotKit Styles - Match Recipe page */
+.copilotKitWindow {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.copilotKitHeader {
+  border-top-left-radius: 5px !important;
+  background-color: #fff;
+  color: #000;
+  border-bottom: 0px;
+} 
