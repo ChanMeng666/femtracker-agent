@@ -56,6 +56,7 @@ class SymptomType(str, Enum):
     NAUSEA = "Nausea"
     ACNE = "Acne"
     FATIGUE = "Fatigue"
+    TIREDNESS = "Tiredness"
     MOOD_SWINGS = "Mood Swings"
     FOOD_CRAVINGS = "Food Cravings"
 
@@ -223,20 +224,53 @@ async def chat_node(state: Dict[str, Any], config: RunnableConfig):
     5. Providing insights and predictions about their cycle
     6. Answering questions about menstrual health
     
+    AVAILABLE SYMPTOM TYPES:
+    - Cramps
+    - Headache  
+    - Bloating
+    - Breast Tenderness
+    - Back Pain
+    - Nausea
+    - Acne
+    - Fatigue (use for tired/tiredness)
+    - Tiredness (alternative for tired)
+    - Mood Swings
+    - Food Cravings
+    
+    AVAILABLE MOOD TYPES:
+    - Happy
+    - Sad
+    - Anxious
+    - Irritable
+    - Calm
+    - Energetic
+    - Tired
+    - Emotional
+    
+    FLOW INTENSITY OPTIONS:
+    - Light
+    - Medium
+    - Heavy
+    - Spotting
+    
     IMPORTANT GUIDELINES:
     - Always be supportive and non-judgmental
     - Provide accurate health information but remind users to consult healthcare providers for medical concerns
     - Help users understand their cycle patterns
     - Suggest lifestyle tips that may help with symptoms
     - Be sensitive to the personal nature of this data
+    - When user mentions "tired" or "tiredness", use "Fatigue" as symptom type
+    - When user mentions "cramps", use "Cramps" as symptom type
     
     When updating data:
     - Preserve existing data and add new information
-    - Always provide complete data structures
+    - Always provide complete data structures with ALL existing data plus new entries
     - Generate helpful insights based on patterns
     - Predict next period and fertile windows when possible
     - Always use YYYY-MM-DD format for dates (e.g., "2025-06-13")
     - Ensure all dates are valid and properly formatted
+    - ALWAYS include symptoms, moods, and notes arrays even if empty
+    - When adding new symptoms/moods/notes, append to existing arrays
     
     If you've just updated the cycle data, briefly explain what you did without repeating all the details.
     """
@@ -298,43 +332,58 @@ async def chat_node(state: Dict[str, Any], config: RunnableConfig):
 
         if tool_call_name == "update_menstrual_data":
             # Update cycle data with new information
-            cycle_data = tool_call_args["cycle_data"]
+            new_cycle_data = tool_call_args["cycle_data"]
             
-            # If we have existing cycle data, merge it carefully
+            # Always merge with existing data since AI might not provide complete structures
             if "cycle_data" in state and state["cycle_data"] is not None:
                 existing_data = state["cycle_data"]
                 
-                # Update current cycle info
-                if "current_cycle" in cycle_data:
-                    existing_data["current_cycle"].update(cycle_data["current_cycle"])
+                # Create a complete structure with existing data as base
+                cycle_data = {
+                    "current_cycle": existing_data.get("current_cycle", {
+                        "start_date": None,
+                        "end_date": None,
+                        "cycle_length": None,
+                        "period_days": []
+                    }),
+                    "symptoms": existing_data.get("symptoms", []).copy(),
+                    "moods": existing_data.get("moods", []).copy(),
+                    "notes": existing_data.get("notes", []).copy(),
+                    "predictions": existing_data.get("predictions", {
+                        "next_period_date": None,
+                        "fertile_window": {"start": None, "end": None},
+                        "cycle_insights": "Welcome to your menstrual tracking journey! Start by recording your period data."
+                    })
+                }
                 
-                # Append new symptoms, moods, notes (avoid duplicates)
+                # Update with new data
+                if "current_cycle" in new_cycle_data:
+                    cycle_data["current_cycle"].update(new_cycle_data["current_cycle"])
+                
+                # For arrays, append new items (with basic deduplication)
                 for key in ["symptoms", "moods", "notes"]:
-                    if key in cycle_data and cycle_data[key]:
-                        existing_items = existing_data.get(key, [])
-                        new_items = cycle_data[key]
-                        
-                        # Simple deduplication based on date and type/content
-                        for new_item in new_items:
+                    if key in new_cycle_data and new_cycle_data[key]:
+                        for new_item in new_cycle_data[key]:
+                            # Simple deduplication - avoid exact duplicates on same date
                             is_duplicate = False
-                            for existing_item in existing_items:
+                            for existing_item in cycle_data[key]:
                                 if (new_item.get("date") == existing_item.get("date") and
-                                    (new_item.get("symptom_type") == existing_item.get("symptom_type") or
-                                     new_item.get("mood_type") == existing_item.get("mood_type") or
-                                     new_item.get("note") == existing_item.get("note"))):
+                                    ((key == "symptoms" and new_item.get("symptom_type") == existing_item.get("symptom_type")) or
+                                     (key == "moods" and new_item.get("mood_type") == existing_item.get("mood_type")) or
+                                     (key == "notes" and new_item.get("note") == existing_item.get("note")))):
                                     is_duplicate = True
                                     break
                             
                             if not is_duplicate:
-                                existing_items.append(new_item)
-                        
-                        existing_data[key] = existing_items
+                                cycle_data[key].append(new_item)
                 
                 # Update predictions
-                if "predictions" in cycle_data:
-                    existing_data["predictions"].update(cycle_data["predictions"])
-                
-                cycle_data = existing_data
+                if "predictions" in new_cycle_data:
+                    cycle_data["predictions"].update(new_cycle_data["predictions"])
+                    
+            else:
+                # No existing data, use new data as is
+                cycle_data = new_cycle_data
             
             # Add tool response to messages
             tool_response = {

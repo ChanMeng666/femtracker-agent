@@ -1,7 +1,7 @@
 "use client";
-import { CopilotKit, useCoAgent, useCopilotChat } from "@copilotkit/react-core";
+import { CopilotKit, useCoAgent } from "@copilotkit/react-core";
 import { CopilotSidebar, useCopilotChatSuggestions } from "@copilotkit/react-ui";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 // import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import "@copilotkit/react-ui/styles.css";
 import "./style.css";
@@ -33,6 +33,7 @@ enum SymptomType {
   NAUSEA = "Nausea",
   ACNE = "Acne",
   FATIGUE = "Fatigue",
+  TIREDNESS = "Tiredness",
   MOOD_SWINGS = "Mood Swings",
   FOOD_CRAVINGS = "Food Cravings",
 }
@@ -166,8 +167,16 @@ function MenstrualTracker() {
   });
 
   const [cycleData, setCycleData] = useState(INITIAL_STATE.cycle_data);
-  const { isLoading } = useCopilotChat();
   const [selectedDate, setSelectedDate] = useState(today);
+
+  // Debug logging - can be removed in production
+  useEffect(() => {
+    console.log("Agent State:", agentState);
+    console.log("Cycle Data:", cycleData);
+    console.log("Symptoms count:", cycleData.symptoms?.length || 0);
+    console.log("Moods count:", cycleData.moods?.length || 0);
+    console.log("Notes count:", cycleData.notes?.length || 0);
+  }, [agentState, cycleData]);
 
   // Remove the layout fix effect - let CopilotKit handle layout naturally
 
@@ -184,57 +193,14 @@ function MenstrualTracker() {
   };
 
   // Sync with agent state
-  const newCycleState = { ...cycleData };
-  const newChangedKeys = [];
-  const changedKeysRef = useRef<string[]>([]);
-
-  for (const key in cycleData) {
-    const cycleKey = key as keyof CycleData;
-    if (
-      agentState &&
-      agentState.cycle_data &&
-      agentState.cycle_data[cycleKey] !== undefined &&
-      agentState.cycle_data[cycleKey] !== null
-    ) {
-      const agentValue = agentState.cycle_data[cycleKey];
-      const cycleValue = cycleData[cycleKey];
-
-      if (JSON.stringify(agentValue) !== JSON.stringify(cycleValue)) {
-        (newCycleState as Record<keyof CycleData, unknown>)[cycleKey] = agentValue;
-        newChangedKeys.push(key);
-      }
-    }
-  }
-
-  if (newChangedKeys.length > 0) {
-    changedKeysRef.current = newChangedKeys;
-  } else if (!isLoading) {
-    changedKeysRef.current = [];
-  }
-
   useEffect(() => {
-    // Ensure we always have a valid cycle data structure
-    const validCycleData = {
-      current_cycle: {
-        start_date: newCycleState.current_cycle?.start_date || today,
-        end_date: newCycleState.current_cycle?.end_date || null,
-        cycle_length: newCycleState.current_cycle?.cycle_length || null,
-        period_days: newCycleState.current_cycle?.period_days || [],
-      },
-      symptoms: newCycleState.symptoms || [],
-      moods: newCycleState.moods || [],
-      notes: newCycleState.notes || [],
-      predictions: {
-        next_period_date: newCycleState.predictions?.next_period_date || null,
-        fertile_window: {
-          start: newCycleState.predictions?.fertile_window?.start || null,
-          end: newCycleState.predictions?.fertile_window?.end || null,
-        },
-        cycle_insights: newCycleState.predictions?.cycle_insights || "Welcome to your menstrual tracking journey! Start by recording your period data.",
-      },
-    };
-    setCycleData(validCycleData);
-  }, [JSON.stringify(newCycleState)]);
+    if (agentState && agentState.cycle_data) {
+      console.log("Syncing agent state to local state");
+      setCycleData(agentState.cycle_data);
+    }
+  }, [agentState]);
+
+  // Removed the complex useEffect - using direct sync with agent state instead
 
   const addPeriodDay = (date: string, intensity: FlowIntensity) => {
     const currentPeriodDays = cycleData.current_cycle?.period_days || [];
@@ -441,6 +407,8 @@ function MenstrualTracker() {
             )) || []}
           </div>
         </div>
+
+        {/* Debug Data - Removed for cleaner testing */}
       </div>
     </div>
   );
