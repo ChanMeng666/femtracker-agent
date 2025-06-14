@@ -21,8 +21,8 @@ interface CycleData {
 }
 
 // 计算周期阶段的函数
-function calculatePhase(dayInCycle: number): string {
-  if (dayInCycle <= 5) return "月经期";
+function calculatePhase(dayInCycle: number, periodLength: number = 5): string {
+  if (dayInCycle <= periodLength) return "月经期";
   if (dayInCycle <= 13) return "卵泡期";
   if (dayInCycle <= 16) return "排卵期";
   return "黄体期";
@@ -34,6 +34,130 @@ function calculateDays(currentDay: number, cycleLength: number) {
   const daysUntilOvulation = Math.max(0, ovulationDay - currentDay);
   const daysUntilNextPeriod = Math.max(0, cycleLength - currentDay);
   return { daysUntilOvulation, daysUntilNextPeriod };
+}
+
+// 生成个性化健康洞察
+function generateHealthInsights(cycleData: CycleData) {
+  const insights = [];
+  
+  // 基于当前周期阶段的洞察
+  if (cycleData.currentPhase === "月经期") {
+    if (cycleData.currentDay <= 2) {
+      insights.push({
+        icon: "🩸",
+        title: "月经期护理建议",
+        content: `您正处于月经期第${cycleData.currentDay}天，这是身体排毒的重要时期。建议多休息，避免剧烈运动，可以适当进行瑜伽或散步。${cycleData.mood ? `考虑到您当前的心情是${cycleData.mood}，` : ''}建议多摄入铁质丰富的食物如红肉、菠菜等。`
+      });
+    } else {
+      insights.push({
+        icon: "🌸",
+        title: "月经期中后段调理",
+        content: `月经期第${cycleData.currentDay}天，经血量通常开始减少。可以适当增加轻度运动，如散步或拉伸。${cycleData.periodLength > 7 ? '您的月经周期较长，建议关注是否有异常出血情况。' : ''}保持充足睡眠有助于身体恢复。`
+      });
+    }
+  } else if (cycleData.currentPhase === "卵泡期") {
+    insights.push({
+      icon: "🌱",
+      title: "卵泡期活力提升",
+      content: `卵泡期是身体能量逐渐恢复的时期。这个阶段雌激素水平上升，是进行较强度运动的好时机。建议增加蛋白质摄入，支持卵泡发育。距离排卵还有${cycleData.daysUntilOvulation}天，可以开始关注身体变化。`
+    });
+  } else if (cycleData.currentPhase === "排卵期") {
+    insights.push({
+      icon: "🥚",
+      title: "排卵期最佳状态",
+      content: `您正处于排卵期，这是女性一个月中精力最充沛的时期！雌激素水平达到峰值，适合进行重要决策和挑战性活动。如果有备孕计划，这是最佳受孕期。注意观察排卵症状如分泌物变化。`
+    });
+  } else if (cycleData.currentPhase === "黄体期") {
+    if (cycleData.daysUntilNextPeriod > 7) {
+      insights.push({
+        icon: "🌙",
+        title: "黄体期前期稳定",
+        content: `黄体期前期，孕激素开始上升。这个阶段情绪较为稳定，适合完成需要专注力的工作。建议增加复合碳水化合物摄入，如全谷类食物，有助于稳定血糖和情绪。`
+      });
+    } else {
+      insights.push({
+        icon: "🌊",
+        title: "经前期调理准备",
+        content: `距离下次月经还有${cycleData.daysUntilNextPeriod}天，进入经前期。可能会出现情绪波动、乳房胀痛等PMS症状。建议减少咖啡因摄入，增加镁元素补充，进行适度有氧运动缓解不适。`
+      });
+    }
+  }
+
+  // 基于心情的个性化建议
+  if (cycleData.mood) {
+    const moodLower = cycleData.mood.toLowerCase();
+    if (moodLower.includes('难过') || moodLower.includes('沮丧') || moodLower.includes('抑郁')) {
+      insights.push({
+        icon: "🤗",  
+        title: "情绪关怀建议",
+        content: `注意到您的心情是${cycleData.mood}，这在月经周期中是正常的。建议多进行深呼吸练习，听舒缓音乐，或者与朋友聊天。维生素B6和镁元素补充可能有助于改善情绪，但请咨询医生后使用。`
+      });
+    } else if (moodLower.includes('烦躁') || moodLower.includes('焦虑') || moodLower.includes('紧张')) {
+      insights.push({
+        icon: "🧘‍♀️",
+        title: "情绪平衡建议", 
+        content: `您目前感到${cycleData.mood}，这与激素波动有关。建议进行冥想或瑜伽练习，避免高糖高咖啡因食物。规律作息和适度运动能帮助平衡情绪。考虑尝试薰衣草精油或洋甘菊茶来放松心情。`
+      });
+    } else if (moodLower.includes('疲惫') || moodLower.includes('累') || moodLower.includes('疲劳')) {
+      insights.push({
+        icon: "😴",
+        title: "能量恢复建议",
+        content: `感受到${cycleData.mood}是身体的正常反应。建议确保每晚7-9小时充足睡眠，多摄入富含铁质的食物如瘦肉、豆类。避免过度劳累，给身体充分休息时间。适当的维生素B群补充可能有助于提升能量。`
+      });
+    } else if (moodLower.includes('开心') || moodLower.includes('愉快') || moodLower.includes('好')) {
+      insights.push({
+        icon: "✨",
+        title: "积极状态保持", 
+        content: `很高兴您的心情是${cycleData.mood}！保持这种积极状态有助于整体健康。这是进行新挑战或重要决策的好时机。继续保持规律作息和均衡饮食，让这种好状态持续更久。`
+      });
+    }
+  }
+
+  // 基于周期长度的建议
+  if (cycleData.cycleLength < 21) {
+    insights.push({
+      icon: "⚠️",
+      title: "周期偏短关注",
+      content: `您的周期长度为${cycleData.cycleLength}天，相对较短。虽然21-35天都属于正常范围，但如果持续出现短周期，建议咨询妇科医生，了解是否需要进一步检查激素水平。`
+    });
+  } else if (cycleData.cycleLength > 35) {
+    insights.push({
+      icon: "📊",
+      title: "周期偏长监测",
+      content: `您的周期长度为${cycleData.cycleLength}天，相对较长。这可能与生活压力、体重变化或激素水平有关。建议记录详细的周期数据，必要时咨询医生评估甲状腺功能和激素水平。`
+    });
+  }
+
+  // 基于月经持续时间的建议
+  if (cycleData.periodLength > 7) {
+    insights.push({
+      icon: "🏥",
+      title: "月经期时长关注",
+      content: `您的月经持续${cycleData.periodLength}天，时间相对较长。建议观察经血量是否过多，是否影响日常生活。如果伴有严重痛经或贫血症状，应及时就医。保持充足铁质摄入很重要。`
+    });
+  } else if (cycleData.periodLength < 3) {
+    insights.push({
+      icon: "📋",
+      title: "月经期时长监测",
+      content: `您的月经持续${cycleData.periodLength}天，时间相对较短。这可能是正常个体差异，但如果伴有其他症状或最近有变化，建议咨询医生了解是否需要进一步评估。`
+    });
+  }
+
+  // 营养和生活方式建议
+  const nutritionAdvice: Record<string, string> = {
+    "月经期": "多摄入铁质丰富的食物，如红肉、菠菜、豆类。避免过多冰冷食物，温开水有助于缓解痛经。",
+    "卵泡期": "增加蛋白质和维生素E摄入，支持卵泡发育。多吃新鲜蔬果，保持营养均衡。",
+    "排卵期": "保持均衡饮食，多喝水。避免过度节食，为身体提供充足能量。",
+    "黄体期": "增加复合碳水化合物摄入，如燕麦、全麦面包。适量补充镁元素和维生素B6。"
+  };
+
+  insights.push({
+    icon: "🥗",
+    title: "营养建议",
+    content: nutritionAdvice[cycleData.currentPhase] || "保持均衡饮食，多摄入新鲜蔬果和优质蛋白质。"
+  });
+
+  return insights.slice(0, 3); // 最多返回3个洞察
 }
 
 // 将CopilotKit相关的功能提取到一个单独的组件中
@@ -75,7 +199,7 @@ function CycleTrackerContent() {
       const daysDiff = Math.floor((today.getTime() - periodDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       
       const newCurrentDay = Math.max(1, daysDiff);
-      const newPhase = calculatePhase(newCurrentDay);
+      const newPhase = calculatePhase(newCurrentDay, cycleData.periodLength);
       const { daysUntilOvulation, daysUntilNextPeriod } = calculateDays(newCurrentDay, cycleData.cycleLength);
       
       setCycleData(prev => ({
@@ -176,6 +300,59 @@ function CycleTrackerContent() {
         daysUntilNextPeriod
       }));
       return `已更新周期长度为${length}天`;
+    },
+  });
+
+  // 更新当前周期天数的动作
+  useCopilotAction({
+    name: "updateCurrentDay",
+    description: "更新用户当前处于月经周期的第几天",
+    parameters: [
+      {
+        name: "day",
+        type: "number",
+        description: "当前周期的天数（1-28天）",
+        required: true,
+      },
+    ],
+    handler: async ({ day }) => {
+      const newPhase = calculatePhase(day, cycleData.periodLength);
+      const { daysUntilOvulation, daysUntilNextPeriod } = calculateDays(day, cycleData.cycleLength);
+      
+      setCycleData(prev => ({
+        ...prev,
+        currentDay: day,
+        currentPhase: newPhase,
+        daysUntilOvulation,
+        daysUntilNextPeriod
+      }));
+      
+      return `已更新为周期第${day}天，当前处于${newPhase}`;
+    },
+  });
+
+  // 更新月经持续天数的动作
+  useCopilotAction({
+    name: "updatePeriodLength",
+    description: "更新用户月经持续的天数",
+    parameters: [
+      {
+        name: "length",
+        type: "number",
+        description: "月经持续天数（通常3-7天）",
+        required: true,
+      },
+    ],
+    handler: async ({ length }) => {
+      setCycleData(prev => {
+        const newPhase = calculatePhase(prev.currentDay, length);
+        return {
+          ...prev,
+          periodLength: length,
+          currentPhase: newPhase
+        };
+      });
+      return `已更新月经持续天数为${length}天`;
     },
   });
 
@@ -284,7 +461,7 @@ function CycleTrackerContent() {
                       stroke="currentColor"
                       strokeWidth="8"
                       fill="transparent"
-                      strokeDasharray="39.6 180.4"
+                      strokeDasharray={`${(cycleData.periodLength / cycleData.cycleLength) * 220} ${220 - (cycleData.periodLength / cycleData.cycleLength) * 220}`}
                       strokeDashoffset="0"
                       className="text-red-400"
                     />
@@ -296,8 +473,8 @@ function CycleTrackerContent() {
                       stroke="currentColor"
                       strokeWidth="8"
                       fill="transparent"
-                      strokeDasharray="63.8 156.2"
-                      strokeDashoffset="-39.6"
+                      strokeDasharray={`${((13 - cycleData.periodLength) / cycleData.cycleLength) * 220} ${220 - ((13 - cycleData.periodLength) / cycleData.cycleLength) * 220}`}
+                      strokeDashoffset={`-${(cycleData.periodLength / cycleData.cycleLength) * 220}`}
                       className="text-pink-400"
                     />
                     {/* 排卵期 */}
@@ -308,8 +485,8 @@ function CycleTrackerContent() {
                       stroke="currentColor"
                       strokeWidth="8"
                       fill="transparent"
-                      strokeDasharray="24.2 195.8"
-                      strokeDashoffset="-103.4"
+                      strokeDasharray={`${(3 / cycleData.cycleLength) * 220} ${220 - (3 / cycleData.cycleLength) * 220}`}
+                      strokeDashoffset={`-${(13 / cycleData.cycleLength) * 220}`}
                       className="text-purple-400"
                     />
                     {/* 黄体期 */}
@@ -320,8 +497,8 @@ function CycleTrackerContent() {
                       stroke="currentColor"
                       strokeWidth="8"
                       fill="transparent"
-                      strokeDasharray="92.4 127.6"
-                      strokeDashoffset="-127.6"
+                      strokeDasharray={`${((cycleData.cycleLength - 16) / cycleData.cycleLength) * 220} ${220 - ((cycleData.cycleLength - 16) / cycleData.cycleLength) * 220}`}
+                      strokeDashoffset={`-${(16 / cycleData.cycleLength) * 220}`}
                       className="text-blue-400"
                     />
                     {/* 当前位置指示器 */}
@@ -346,11 +523,11 @@ function CycleTrackerContent() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-red-400 rounded-full"></div>
-                    <span className="text-sm text-gray-700">月经期 (1-5天)</span>
+                    <span className="text-sm text-gray-700">月经期 (1-{cycleData.periodLength}天)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-pink-400 rounded-full"></div>
-                    <span className="text-sm text-gray-700">卵泡期 (6-13天)</span>
+                    <span className="text-sm text-gray-700">卵泡期 ({cycleData.periodLength + 1}-13天)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-purple-400 rounded-full"></div>
@@ -358,7 +535,7 @@ function CycleTrackerContent() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-blue-400 rounded-full"></div>
-                    <span className="text-sm text-gray-700">黄体期 (17-28天)</span>
+                    <span className="text-sm text-gray-700">黄体期 (17-{cycleData.cycleLength}天)</span>
                   </div>
                 </div>
               </div>
@@ -372,7 +549,7 @@ function CycleTrackerContent() {
                   onClick={() => {
                     const today = new Date().toISOString().split('T')[0];
                     const newCurrentDay = 1;
-                    const newPhase = "月经期";
+                    const newPhase = calculatePhase(newCurrentDay, cycleData.periodLength);
                     const { daysUntilOvulation, daysUntilNextPeriod } = calculateDays(newCurrentDay, cycleData.cycleLength);
                     
                     setCycleData(prev => ({
@@ -411,27 +588,15 @@ function CycleTrackerContent() {
                 <h2 className="text-xl font-semibold text-gray-800">AI 健康洞察</h2>
               </div>
               <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg">
-                  <span className="text-lg">📊</span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">周期规律性分析</p>
-                    <p className="text-xs text-gray-600">
-                      您当前处于{cycleData.currentPhase}，周期第{cycleData.currentDay}天。
-                      {cycleData.mood && `心情状态：${cycleData.mood}。`}
-                      建议继续保持良好的生活习惯。
-                    </p>
+                {generateHealthInsights(cycleData).map((insight, index) => (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-white/60 rounded-lg">
+                    <span className="text-lg">{insight.icon}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{insight.title}</p>
+                      <p className="text-xs text-gray-600">{insight.content}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 bg-white/60 rounded-lg">
-                  <span className="text-lg">🎯</span>
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">排卵预测</p>
-                    <p className="text-xs text-gray-600">
-                      根据您的周期数据，预计在{cycleData.daysUntilOvulation}天后排卵，
-                      {cycleData.daysUntilNextPeriod}天后下次月经。可以开始监测排卵迹象。
-                    </p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -459,16 +624,25 @@ function CycleTrackerContent() {
 当前用户的周期信息：
 - 周期第${cycleData.currentDay}天，处于${cycleData.currentPhase}
 - 上次月经开始日期：${cycleData.lastPeriodDate || '未记录'}
+- 月经持续天数：${cycleData.periodLength}天
 - 预计${cycleData.daysUntilOvulation}天后排卵
 - 预计${cycleData.daysUntilNextPeriod}天后下次月经
 - 当前心情：${cycleData.mood || '未记录'}
 
-您可以：
-1. 使用recordPeriodStart记录月经开始日期
-2. 使用recordMood记录心情变化
-3. 使用recordSymptoms记录症状
-4. 使用addNote添加笔记
-5. 使用updateCycleLength更新周期长度
+您可以使用以下功能：
+1. recordPeriodStart - 记录月经开始日期
+2. updateCurrentDay - 更新当前周期天数（当用户说"我处于第X天"时使用）
+3. updatePeriodLength - 更新月经持续天数（当用户说"我月经持续X天"时使用）
+4. recordMood - 记录心情变化
+5. recordSymptoms - 记录症状
+6. addNote - 添加笔记
+7. updateCycleLength - 更新整个周期长度
+
+重要指导原则：
+- 当用户说"我处于月经第X天"或类似表达时，使用updateCurrentDay更新天数
+- 当用户说"我月经持续X天"或"一次月经大概X天"时，使用updatePeriodLength更新持续天数
+- 当用户提到心情时，使用recordMood记录
+- 始终确认操作结果并更新页面数据
 
 请用温和、专业的语气与用户交流，根据她们的数据提供个性化建议。`}
         labels={{
