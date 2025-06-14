@@ -12,7 +12,8 @@ import {
   TrendingUp,
   Calendar,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 
 interface NavItem {
@@ -35,7 +36,8 @@ const moreItems: NavItem[] = [
   { name: '运动', href: '/exercise', icon: Dumbbell, color: 'text-orange-600' },
   { name: '生活方式', href: '/lifestyle', icon: Moon, color: 'text-indigo-600' },
   { name: '健康洞察', href: '/insights', icon: TrendingUp, color: 'text-emerald-600' },
-  { name: '食谱助手', href: '/recipe', icon: Apple, color: 'text-yellow-600' }
+  { name: '食谱助手', href: '/recipe', icon: Apple, color: 'text-yellow-600' },
+  { name: '设置', href: '/settings', icon: Settings, color: 'text-gray-600' }
 ];
 
 export default function MobileNavigation() {

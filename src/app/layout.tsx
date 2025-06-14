@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MobileNavigation from "@/components/MobileNavigation";
-import { PerformancePanel } from "@/components/SimplePerformanceOptimizer";
+import { PerformancePanel } from "@/components/UnifiedPerformanceOptimizer";
+import { AccessibilityProvider } from "@/components/AccessibilityEnhancements";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -73,13 +74,15 @@ export default function RootLayout({
           role="status"
         />
         
-        <div className="min-h-screen bg-background">
-          <main id="main-content" role="main">
-            {children}
-          </main>
-          <MobileNavigation />
-          <PerformancePanel />
-        </div>
+        <AccessibilityProvider>
+          <div className="min-h-screen bg-background">
+            <main id="main-content" role="main">
+              {children}
+            </main>
+            <MobileNavigation />
+            <PerformancePanel />
+          </div>
+        </AccessibilityProvider>
       </body>
     </html>
   );

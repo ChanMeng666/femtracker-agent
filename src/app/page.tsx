@@ -107,6 +107,12 @@ export default function Home() {
             >
               📊 健康洞察
             </Link>
+            <Link
+              href="/settings"
+              className="rounded-full border border-solid border-emerald-300 transition-colors flex items-center justify-center bg-emerald-50 text-emerald-800 gap-2 hover:bg-emerald-100 font-medium text-sm h-10 px-5"
+            >
+              ⚙️ 设置
+            </Link>
             <a
               className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm h-10 px-5"
               href="https://github.com"

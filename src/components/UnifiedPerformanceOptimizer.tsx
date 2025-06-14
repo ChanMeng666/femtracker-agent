@@ -9,12 +9,27 @@ export function usePerformanceMonitor() {
     largestContentfulPaint: 0,
     firstInputDelay: 0,
     cumulativeLayoutShift: 0,
-    timeToInteractive: 0
+    loadTime: 0
   });
 
   useEffect(() => {
-    // 检测性能API支持
     if (typeof window === 'undefined' || !('performance' in window)) return;
+
+    const startTime = performance.now();
+
+    // 获取基本性能指标
+    const handleLoad = () => {
+      setMetrics(prev => ({
+        ...prev,
+        loadTime: performance.now() - startTime
+      }));
+    };
+
+    if (document.readyState === 'complete') {
+      handleLoad();
+    } else {
+      window.addEventListener('load', handleLoad);
+    }
 
     // 获取Web Vitals指标
     const observer = new PerformanceObserver((list) => {
@@ -28,26 +43,36 @@ export function usePerformanceMonitor() {
           setMetrics(prev => ({ ...prev, largestContentfulPaint: entry.startTime }));
         }
         if (entry.entryType === 'first-input') {
-          const firstInputEntry = entry as any;
-          setMetrics(prev => ({ ...prev, firstInputDelay: firstInputEntry.processingStart - firstInputEntry.startTime }));
+          const firstInputEntry = entry as PerformanceEntry & { processingStart: number };
+          setMetrics(prev => ({ 
+            ...prev, 
+            firstInputDelay: firstInputEntry.processingStart - firstInputEntry.startTime 
+          }));
         }
         if (entry.entryType === 'layout-shift') {
-          const layoutShiftEntry = entry as any;
+          const layoutShiftEntry = entry as PerformanceEntry & { hadRecentInput: boolean; value: number };
           if (!layoutShiftEntry.hadRecentInput) {
-            setMetrics(prev => ({ ...prev, cumulativeLayoutShift: prev.cumulativeLayoutShift + layoutShiftEntry.value }));
+            setMetrics(prev => ({ 
+              ...prev, 
+              cumulativeLayoutShift: prev.cumulativeLayoutShift + layoutShiftEntry.value 
+            }));
           }
         }
       }
     });
 
-    // 观察性能指标
     try {
-      observer.observe({ entryTypes: ['paint', 'largest-contentful-paint', 'first-input', 'layout-shift'] });
+      observer.observe({ 
+        entryTypes: ['paint', 'largest-contentful-paint', 'first-input', 'layout-shift'] 
+      });
     } catch (error) {
       console.warn('Performance observer not supported:', error);
     }
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('load', handleLoad);
+    };
   }, []);
 
   return metrics;
@@ -65,13 +90,16 @@ export function LazyImage({
   alt: string;
   className?: string;
   placeholder?: string;
-  [key: string]: any;
+  style?: React.CSSProperties;
+  onClick?: () => void;
 }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
+    if (!imgRef.current) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -82,10 +110,7 @@ export function LazyImage({
       { threshold: 0.1, rootMargin: '50px' }
     );
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-    }
-
+    observer.observe(imgRef.current);
     return () => observer.disconnect();
   }, []);
 
@@ -117,6 +142,31 @@ export function LazyImage({
   );
 }
 
+// 骨架屏组件
+export function ComponentSkeleton({ 
+  className = '',
+  lines = 3,
+  height = 'h-4'
+}: { 
+  className?: string;
+  lines?: number;
+  height?: string;
+}) {
+  return (
+    <div className={`animate-pulse space-y-3 ${className}`} role="status" aria-label="加载中">
+      {Array.from({ length: lines }).map((_, i) => (
+        <div
+          key={i}
+          className={`${height} bg-muted rounded ${
+            i === lines - 1 ? 'w-3/4' : 'w-full'
+          }`}
+        />
+      ))}
+      <span className="sr-only">内容加载中...</span>
+    </div>
+  );
+}
+
 // 懒加载组件包装器
 export function LazyComponent({ 
   children, 
@@ -131,6 +181,8 @@ export function LazyComponent({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!ref.current) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -141,10 +193,7 @@ export function LazyComponent({
       { threshold, rootMargin: '100px' }
     );
 
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
+    observer.observe(ref.current);
     return () => observer.disconnect();
   }, [threshold]);
 
@@ -155,25 +204,59 @@ export function LazyComponent({
   );
 }
 
-// 组件骨架屏
-export function ComponentSkeleton({ 
-  className = '',
-  lines = 3 
-}: { 
-  className?: string;
-  lines?: number;
+// 优化的动画组件
+export function OptimizedAnimation({
+  children,
+  animation = 'fadeIn',
+  duration = 300,
+  delay = 0
+}: {
+  children: React.ReactNode;
+  animation?: 'fadeIn' | 'slideUp' | 'slideDown' | 'scaleIn';
+  duration?: number;
+  delay?: number;
 }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // 检查用户是否偏好减少动画
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setIsVisible(true);
+      return;
+    }
+
+    if (!ref.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => setIsVisible(true), delay);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [delay]);
+
+  const animationClasses = {
+    fadeIn: isVisible ? 'opacity-100' : 'opacity-0',
+    slideUp: isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
+    slideDown: isVisible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0',
+    scaleIn: isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+  };
+
   return (
-    <div className={`animate-pulse space-y-3 ${className}`} role="status" aria-label="加载中">
-      {Array.from({ length: lines }).map((_, i) => (
-        <div
-          key={i}
-          className={`h-4 bg-muted rounded ${
-            i === lines - 1 ? 'w-3/4' : 'w-full'
-          }`}
-        />
-      ))}
-      <span className="sr-only">内容加载中...</span>
+    <div
+      ref={ref}
+      className={`transition-all ease-out ${animationClasses[animation]}`}
+      style={{ transitionDuration: `${duration}ms` }}
+    >
+      {children}
     </div>
   );
 }
@@ -192,66 +275,6 @@ export function createLazyComponent<T extends Record<string, unknown>>(
       </Suspense>
     );
   };
-}
-
-// 优化的动画组件
-export function OptimizedAnimation({
-  children,
-  animation = 'fadeIn',
-  duration = 300,
-  delay = 0,
-  disabled = false
-}: {
-  children: React.ReactNode;
-  animation?: 'fadeIn' | 'slideUp' | 'slideDown' | 'scaleIn';
-  duration?: number;
-  delay?: number;
-  disabled?: boolean;
-}) {
-  const [isVisible, setIsVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // 检查用户是否偏好减少动画
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion || disabled) {
-      setIsVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => setIsVisible(true), delay);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => observer.disconnect();
-  }, [delay, disabled]);
-
-  const animationClasses = {
-    fadeIn: isVisible ? 'opacity-100' : 'opacity-0',
-    slideUp: isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0',
-    slideDown: isVisible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0',
-    scaleIn: isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-  };
-
-  return (
-    <div
-      ref={ref}
-      className={`transition-all duration-${duration} ease-out ${animationClasses[animation]}`}
-      style={{ transitionDuration: `${duration}ms` }}
-    >
-      {children}
-    </div>
-  );
 }
 
 // 资源预加载Hook
@@ -287,59 +310,6 @@ export function useResourcePreloader() {
   return { preloadImage, preloadRoute, preloadComponent };
 }
 
-// 性能监控面板 (开发模式)
-export function PerformancePanel() {
-  const metrics = usePerformanceMonitor();
-  const [isVisible, setIsVisible] = useState(false);
-
-  // 只在开发环境显示
-  if (process.env.NODE_ENV !== 'development') return null;
-
-  return (
-    <div className="fixed bottom-20 right-4 z-50">
-      <button
-        onClick={() => setIsVisible(!isVisible)}
-        className="bg-yellow-500 text-white p-2 rounded-full shadow-lg hover:bg-yellow-600 transition-colors"
-        title="性能监控面板"
-      >
-        📊
-      </button>
-      
-      {isVisible && (
-        <div className="absolute bottom-12 right-0 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border min-w-64">
-          <h4 className="font-semibold mb-2">性能指标</h4>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>FCP:</span>
-              <span className={metrics.firstContentfulPaint > 1800 ? 'text-red-500' : 'text-green-500'}>
-                {Math.round(metrics.firstContentfulPaint)}ms
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>LCP:</span>
-              <span className={metrics.largestContentfulPaint > 2500 ? 'text-red-500' : 'text-green-500'}>
-                {Math.round(metrics.largestContentfulPaint)}ms
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>FID:</span>
-              <span className={metrics.firstInputDelay > 100 ? 'text-red-500' : 'text-green-500'}>
-                {Math.round(metrics.firstInputDelay)}ms
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>CLS:</span>
-              <span className={metrics.cumulativeLayoutShift > 0.1 ? 'text-red-500' : 'text-green-500'}>
-                {metrics.cumulativeLayoutShift.toFixed(3)}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // 虚拟滚动组件
 export function VirtualList<T>({
   items,
@@ -356,7 +326,7 @@ export function VirtualList<T>({
 }) {
   const [scrollTop, setScrollTop] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const visibleStart = Math.floor(scrollTop / itemHeight);
   const visibleEnd = Math.min(
@@ -453,4 +423,68 @@ export function useMemoryOptimization() {
   }, []);
 
   return { addCleanup, clearImageCache, optimizeMemory };
+}
+
+// 性能监控面板
+export function PerformancePanel() {
+  const metrics = usePerformanceMonitor();
+  const [isVisible, setIsVisible] = useState(false);
+
+  // 只在开发环境显示
+  if (process.env.NODE_ENV !== 'development') return null;
+
+  return (
+    <div className="fixed bottom-20 right-4 z-50">
+      <button
+        onClick={() => setIsVisible(!isVisible)}
+        className="bg-yellow-500 text-white p-2 rounded-full shadow-lg hover:bg-yellow-600 transition-colors"
+        title="性能监控面板"
+        aria-label="性能监控面板"
+      >
+        📊
+      </button>
+      
+      {isVisible && (
+        <div className="absolute bottom-12 right-0 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border min-w-64">
+          <h4 className="font-semibold mb-2">性能指标</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span>FCP:</span>
+              <span className={metrics.firstContentfulPaint > 1800 ? 'text-red-500' : 'text-green-500'}>
+                {Math.round(metrics.firstContentfulPaint)}ms
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>LCP:</span>
+              <span className={metrics.largestContentfulPaint > 2500 ? 'text-red-500' : 'text-green-500'}>
+                {Math.round(metrics.largestContentfulPaint)}ms
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>FID:</span>
+              <span className={metrics.firstInputDelay > 100 ? 'text-red-500' : 'text-green-500'}>
+                {Math.round(metrics.firstInputDelay)}ms
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>CLS:</span>
+              <span className={metrics.cumulativeLayoutShift > 0.1 ? 'text-red-500' : 'text-green-500'}>
+                {metrics.cumulativeLayoutShift.toFixed(3)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>页面加载:</span>
+              <span className={metrics.loadTime > 3000 ? 'text-red-500' : 'text-green-500'}>
+                {Math.round(metrics.loadTime)}ms
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>内存使用:</span>
+              <span className="text-blue-500">N/A</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 } 
