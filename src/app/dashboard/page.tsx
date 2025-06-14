@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 interface HealthScore {
@@ -22,7 +22,7 @@ interface HealthInsight {
 }
 
 export default function HealthDashboard() {
-  const [healthScore, setHealthScore] = useState<HealthScore>({
+  const [healthScore] = useState<HealthScore>({
     overall: 78,
     cycle: 82,
     nutrition: 75,
@@ -32,26 +32,26 @@ export default function HealthDashboard() {
     symptoms: 76
   });
 
-  const [insights, setInsights] = useState<HealthInsight[]>([
+  const [insights] = useState<HealthInsight[]>([
     {
       type: 'positive',
-      category: '生育健康',
-      message: '您的基础体温趋势显示排卵期正常，生育健康状况良好',
-      action: '查看详情',
+      category: 'Fertility Health',
+      message: 'Your basal body temperature trend shows normal ovulation period, fertility health is good',
+      action: 'View Details',
       actionLink: '/fertility'
     },
     {
       type: 'warning',
-      category: '运动健康',
-      message: '本周运动时间不足，建议增加轻度运动',
-      action: '制定计划',
+      category: 'Exercise Health',
+      message: 'Insufficient exercise time this week, recommend increasing light exercise',
+      action: 'Make Plan',
       actionLink: '/exercise'
     },
     {
       type: 'info',
-      category: '营养指导',
-      message: '根据您的月经周期，建议补充铁质和维生素B',
-      action: '营养建议',
+      category: 'Nutrition Guidance',
+      message: 'Based on your menstrual cycle, recommend supplementing iron and vitamin B',
+      action: 'Nutrition Advice',
       actionLink: '/nutrition'
     }
   ]);
@@ -89,24 +89,24 @@ export default function HealthDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-red-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* 头部 */}
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 健康仪表盘</h1>
-            <p className="text-gray-600">全面了解您的健康状况</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">📊 Health Dashboard</h1>
+            <p className="text-gray-600">Comprehensive overview of your health status</p>
           </div>
           <Link
             href="/"
             className="px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors font-medium"
           >
-            ← 返回首页
+            ← Back to Home
           </Link>
         </div>
 
-        {/* 总体健康评分 */}
+        {/* Overall Health Score */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">总体健康评分</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Overall Health Score</h2>
             <div className="relative w-32 h-32 mx-auto mb-4">
               <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
                 <circle
@@ -133,17 +133,17 @@ export default function HealthDashboard() {
                 <span className="text-3xl font-bold text-purple-600">{healthScore.overall}</span>
               </div>
             </div>
-            <p className="text-gray-600">您的健康状况整体良好！</p>
+            <p className="text-gray-600">Your overall health status is good!</p>
           </div>
         </div>
 
-        {/* 各项健康指标 */}
+        {/* Health Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🩸</span>
-                <span className="font-semibold text-gray-800">周期健康</span>
+                <span className="font-semibold text-gray-800">Cycle Health</span>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(healthScore.cycle)}`}>
                 {healthScore.cycle}
@@ -159,7 +159,7 @@ export default function HealthDashboard() {
               href="/cycle-tracker"
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
-              查看详情 →
+              View Details →
             </Link>
           </div>
 
@@ -167,7 +167,7 @@ export default function HealthDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🥗</span>
-                <span className="font-semibold text-gray-800">营养状况</span>
+                <span className="font-semibold text-gray-800">Nutrition Status</span>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(healthScore.nutrition)}`}>
                 {healthScore.nutrition}
@@ -183,7 +183,7 @@ export default function HealthDashboard() {
               href="/nutrition"
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
-              查看详情 →
+              View Details →
             </Link>
           </div>
 
@@ -191,7 +191,7 @@ export default function HealthDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🏃‍♀️</span>
-                <span className="font-semibold text-gray-800">运动健康</span>
+                <span className="font-semibold text-gray-800">Exercise Health</span>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(healthScore.exercise)}`}>
                 {healthScore.exercise}
@@ -207,7 +207,7 @@ export default function HealthDashboard() {
               href="/exercise"
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
-              查看详情 →
+              View Details →
             </Link>
           </div>
 
@@ -215,7 +215,7 @@ export default function HealthDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🤰</span>
-                <span className="font-semibold text-gray-800">生育健康</span>
+                <span className="font-semibold text-gray-800">Fertility Health</span>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(healthScore.fertility)}`}>
                 {healthScore.fertility}
@@ -231,7 +231,7 @@ export default function HealthDashboard() {
               href="/fertility"
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
-              查看详情 →
+              View Details →
             </Link>
           </div>
 
@@ -239,7 +239,7 @@ export default function HealthDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">😴</span>
-                <span className="font-semibold text-gray-800">生活方式</span>
+                <span className="font-semibold text-gray-800">Lifestyle</span>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(healthScore.lifestyle)}`}>
                 {healthScore.lifestyle}
@@ -255,7 +255,7 @@ export default function HealthDashboard() {
               href="/lifestyle"
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
-              查看详情 →
+              View Details →
             </Link>
           </div>
 
@@ -263,7 +263,7 @@ export default function HealthDashboard() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">😰</span>
-                <span className="font-semibold text-gray-800">症状情绪</span>
+                <span className="font-semibold text-gray-800">Symptoms & Mood</span>
               </div>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(healthScore.symptoms)}`}>
                 {healthScore.symptoms}
@@ -279,14 +279,14 @@ export default function HealthDashboard() {
               href="/symptom-mood"
               className="text-sm text-purple-600 hover:text-purple-700 font-medium"
             >
-              查看详情 →
+              View Details →
             </Link>
           </div>
         </div>
 
-        {/* 健康洞察 */}
+        {/* Health Insights */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">🔍 智能健康洞察</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">🔍 Smart Health Insights</h2>
           <div className="space-y-4">
             {insights.map((insight, index) => (
               <div key={index} className={`border rounded-lg p-4 ${getInsightColor(insight.type)}`}>
@@ -314,37 +314,37 @@ export default function HealthDashboard() {
           </div>
         </div>
 
-        {/* 快速操作 */}
+        {/* Quick Actions */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">⚡ 快速操作</h2>
+          <h2 className="text-xl font-semibold text-gray-800 mb-6">⚡ Quick Actions</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Link
               href="/cycle-tracker"
               className="flex flex-col items-center gap-2 p-4 bg-pink-50 hover:bg-pink-100 rounded-lg border border-pink-200 transition-colors"
             >
               <span className="text-2xl">🩸</span>
-              <span className="text-sm font-medium text-gray-800">记录周期</span>
+              <span className="text-sm font-medium text-gray-800">Record Cycle</span>
             </Link>
             <Link
               href="/symptom-mood"
               className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
             >
               <span className="text-2xl">😰</span>
-              <span className="text-sm font-medium text-gray-800">记录症状</span>
+              <span className="text-sm font-medium text-gray-800">Record Symptoms</span>
             </Link>
             <Link
               href="/nutrition"
               className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors"
             >
               <span className="text-2xl">🥗</span>
-              <span className="text-sm font-medium text-gray-800">营养追踪</span>
+              <span className="text-sm font-medium text-gray-800">Track Nutrition</span>
             </Link>
             <Link
               href="/exercise"
               className="flex flex-col items-center gap-2 p-4 bg-teal-50 hover:bg-teal-100 rounded-lg border border-teal-200 transition-colors"
             >
               <span className="text-2xl">🏃‍♀️</span>
-              <span className="text-sm font-medium text-gray-800">记录运动</span>
+              <span className="text-sm font-medium text-gray-800">Record Exercise</span>
             </Link>
           </div>
         </div>

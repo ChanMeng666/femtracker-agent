@@ -10,19 +10,19 @@ export default function HealthInsights() {
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("month");
 
   const timeRanges = [
-    { value: "week", label: "本周" },
-    { value: "month", label: "本月" },
-    { value: "quarter", label: "本季度" },
-    { value: "year", label: "本年" }
+    { value: "week", label: "This Week" },
+    { value: "month", label: "This Month" },
+    { value: "quarter", label: "This Quarter" },
+    { value: "year", label: "This Year" }
   ];
 
   const healthMetrics = [
-    { category: "周期健康", score: 82, trend: "up", color: "text-pink-600 bg-pink-100" },
-    { category: "营养状况", score: 75, trend: "stable", color: "text-orange-600 bg-orange-100" },
-    { category: "运动健康", score: 68, trend: "up", color: "text-teal-600 bg-teal-100" },
-    { category: "生育健康", score: 85, trend: "up", color: "text-green-600 bg-green-100" },
-    { category: "生活方式", score: 72, trend: "down", color: "text-indigo-600 bg-indigo-100" },
-    { category: "症状情绪", score: 76, trend: "stable", color: "text-purple-600 bg-purple-100" }
+    { category: "Cycle Health", score: 82, trend: "up", color: "text-pink-600 bg-pink-100" },
+    { category: "Nutrition Status", score: 75, trend: "stable", color: "text-orange-600 bg-orange-100" },
+    { category: "Exercise Health", score: 68, trend: "up", color: "text-teal-600 bg-teal-100" },
+    { category: "Fertility Health", score: 85, trend: "up", color: "text-green-600 bg-green-100" },
+    { category: "Lifestyle", score: 72, trend: "down", color: "text-indigo-600 bg-indigo-100" },
+    { category: "Symptoms & Mood", score: 76, trend: "stable", color: "text-purple-600 bg-purple-100" }
   ];
 
   const overallScore = Math.round(healthMetrics.reduce((sum, metric) => sum + metric.score, 0) / healthMetrics.length);
@@ -30,52 +30,52 @@ export default function HealthInsights() {
   const insights = [
     {
       type: "positive",
-      category: "生育健康",
-      title: "排卵规律性良好",
-      description: "您的基础体温变化显示排卵周期规律，生育健康状况优秀。继续保持健康的生活方式。",
-      recommendation: "建议继续监测基础体温，保持营养均衡"
+      category: "Fertility Health",
+      title: "Ovulation Regularity Good",
+      description: "Your basal body temperature change shows regular ovulation cycles, with excellent fertility health status. Continue to maintain a healthy lifestyle.",
+      recommendation: "Suggestion to continue monitoring basal body temperature and maintaining balanced nutrition"
     },
     {
       type: "improvement",
-      category: "运动健康",
-      title: "运动量需要增加",
-      description: "本月运动时间较上月减少15%，建议增加日常活动量以维持健康体重和心血管健康。",
-      recommendation: "制定每周150分钟中等强度运动计划"
+      category: "Exercise Health",
+      title: "Exercise Needs to Increase",
+      description: "This month's exercise time decreased by 15% compared to last month. It's recommended to increase daily activity to maintain healthy weight and cardiovascular health.",
+      recommendation: "Develop a weekly 150 minutes moderate intensity exercise plan"
     },
     {
       type: "warning",
-      category: "睡眠质量",
-      title: "睡眠质量下降",
-      description: "最近一周睡眠质量评分下降，可能与压力增加有关。建议调整作息时间。",
-      recommendation: "建立规律睡前仪式，减少睡前屏幕时间"
+      category: "Sleep Quality",
+      title: "Sleep Quality Decreased",
+      description: "The sleep quality score decreased last week, possibly related to increased stress. Suggestion to adjust sleep schedule.",
+      recommendation: "Establish a regular sleep ritual, reduce screen time before bed"
     },
     {
       type: "neutral",
-      category: "营养状况",
-      title: "营养摄入基本均衡",
-      description: "整体营养摄入均衡，但铁质摄入略显不足，建议在月经期特别关注铁质补充。",
-      recommendation: "增加富含铁质的食物，如瘦肉、菠菜等"
+      category: "Nutrition Status",
+      title: "Nutrition Intake Basic Balance",
+      description: "Overall nutrition intake is balanced, but iron intake is slightly insufficient. Suggestion to pay special attention to iron supplementation during menstruation.",
+      recommendation: "Increase iron-rich foods, such as lean meat and spinach"
     }
   ];
 
   const correlationAnalyses = [
     {
-      title: "月经周期与情绪波动",
-      description: "数据显示您在月经前5-7天情绪波动较大，这是正常的PMS表现",
+      title: "Menstrual Cycle and Mood Fluctuation",
+      description: "Data shows that you have a larger mood fluctuation 5-7 days before menstruation, which is normal PMS manifestation",
       correlation: 0.78,
-      suggestion: "可考虑在此期间增加放松活动"
+      suggestion: "You can consider increasing relaxation activities during this period"
     },
     {
-      title: "运动与睡眠质量",
-      description: "运动日的睡眠质量平均比非运动日高23%",
+      title: "Exercise and Sleep Quality",
+      description: "Sleep quality on exercise days is 23% higher than non-exercise days",
       correlation: 0.65,
-      suggestion: "建议保持规律运动以改善睡眠"
+      suggestion: "Suggestion to maintain regular exercise for improved sleep"
     },
     {
-      title: "压力水平与症状强度",
-      description: "高压力期间PMS症状明显加重",
+      title: "Stress Level and Symptom Intensity",
+      description: "PMS symptoms significantly worsened during high-stress periods",
       correlation: 0.72,
-      suggestion: "学习压力管理技巧可缓解症状"
+      suggestion: "Learning stress management techniques can alleviate symptoms"
     }
   ];
 
@@ -121,13 +121,13 @@ export default function HealthInsights() {
                   href="/dashboard"
                   className="px-3 py-2 text-gray-600 hover:text-gray-800 font-medium text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                 >
-                  ← 仪表盘
+                  ← Dashboard
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    📊 健康洞察助手
+                    📊 Health Insights Assistant
                   </h1>
-                  <p className="text-sm text-gray-600">综合健康分析与智能建议</p>
+                  <p className="text-sm text-gray-600">Comprehensive Health Analysis and Intelligent Suggestions</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -143,7 +143,7 @@ export default function HealthInsights() {
                   ))}
                 </select>
                 <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                  综合评分: {overallScore}分
+                  Overall Score: {overallScore} points
                 </span>
               </div>
             </div>
@@ -155,7 +155,7 @@ export default function HealthInsights() {
               
               {/* 健康评分概览 */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">健康评分概览</h2>
+                <h2 className="text-xl font-semibold text-gray-800 mb-6">Health Score Overview</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {healthMetrics.map((metric, index) => (
                     <div key={index} className="relative p-4 bg-gray-50 rounded-xl">
@@ -185,9 +185,9 @@ export default function HealthInsights() {
                   <div className="inline-flex items-center gap-4 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200">
                     <div className="text-4xl font-bold text-purple-600">{overallScore}</div>
                     <div className="text-left">
-                      <div className="font-semibold text-gray-800">综合健康评分</div>
+                      <div className="font-semibold text-gray-800">Overall Health Score</div>
                       <div className="text-sm text-gray-600">
-                        {overallScore >= 80 ? "优秀" : overallScore >= 70 ? "良好" : overallScore >= 60 ? "一般" : "需改善"}
+                        {overallScore >= 80 ? "Excellent" : overallScore >= 70 ? "Good" : overallScore >= 60 ? "Average" : "Needs Improvement"}
                       </div>
                     </div>
                   </div>
@@ -198,7 +198,7 @@ export default function HealthInsights() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <span className="text-2xl">🤖</span>
-                  <h2 className="text-xl font-semibold text-gray-800">AI 智能洞察</h2>
+                  <h2 className="text-xl font-semibold text-gray-800">AI Intelligent Insights</h2>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {insights.map((insight, index) => (
@@ -215,7 +215,7 @@ export default function HealthInsights() {
                           <p className="text-sm text-gray-600 mb-3">{insight.description}</p>
                           <div className="bg-white/80 rounded-lg p-2">
                             <p className="text-xs text-gray-700">
-                              <strong>建议：</strong> {insight.recommendation}
+                              <strong>Suggestion:</strong> {insight.recommendation}
                             </p>
                           </div>
                         </div>
@@ -227,14 +227,14 @@ export default function HealthInsights() {
 
               {/* 数据关联分析 */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">🔗 数据关联分析</h2>
+                <h2 className="text-xl font-semibold text-gray-800 mb-6">🔗 Data Correlation Analysis</h2>
                 <div className="space-y-6">
                   {correlationAnalyses.map((analysis, index) => (
                     <div key={index} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-medium text-gray-800">{analysis.title}</h3>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">相关性</span>
+                          <span className="text-sm text-gray-600">Correlation</span>
                           <div className={`px-2 py-1 rounded-full text-xs font-medium ${
                             analysis.correlation >= 0.7 ? 'bg-red-100 text-red-800' :
                             analysis.correlation >= 0.5 ? 'bg-yellow-100 text-yellow-800' :
@@ -247,7 +247,7 @@ export default function HealthInsights() {
                       <p className="text-sm text-gray-600 mb-2">{analysis.description}</p>
                       <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
                         <p className="text-xs text-blue-800">
-                          <strong>💡 建议：</strong> {analysis.suggestion}
+                          <strong>💡 Suggestion:</strong> {analysis.suggestion}
                         </p>
                       </div>
                     </div>
@@ -257,12 +257,12 @@ export default function HealthInsights() {
 
               {/* 健康趋势图表 */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="text-xl font-semibold text-gray-800 mb-6">📈 健康趋势分析</h2>
+                <h2 className="text-xl font-semibold text-gray-800 mb-6">📈 Health Trend Analysis</h2>
                 
                 {/* 简化的趋势图 */}
                 <div className="h-64 bg-gray-50 rounded-lg p-4 mb-6">
                   <div className="h-full flex items-end justify-between">
-                    {['1周前', '6天前', '5天前', '4天前', '3天前', '2天前', '1天前', '今天'].map((day, index) => {
+                    {['1 week ago', '6 days ago', '5 days ago', '4 days ago', '3 days ago', '2 days ago', '1 day ago', 'Today'].map((day, index) => {
                       const scores = [72, 75, 78, 74, 76, 79, 77, 78]; // 示例数据
                       const normalizedHeight = (scores[index] / 100) * 100;
                       return (
@@ -283,15 +283,15 @@ export default function HealthInsights() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="text-2xl font-bold text-green-600 mb-1">+6%</div>
-                    <div className="text-sm text-gray-600">本周改善</div>
+                    <div className="text-sm text-gray-600">This Week Improvement</div>
                   </div>
                   <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="text-2xl font-bold text-blue-600 mb-1">3项</div>
-                    <div className="text-sm text-gray-600">上升指标</div>
+                    <div className="text-2xl font-bold text-blue-600 mb-1">3 items</div>
+                    <div className="text-sm text-gray-600">Rising Indicators</div>
                   </div>
                   <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="text-2xl font-bold text-purple-600 mb-1">稳定</div>
-                    <div className="text-sm text-gray-600">整体趋势</div>
+                    <div className="text-2xl font-bold text-purple-600 mb-1">Stable</div>
+                    <div className="text-sm text-gray-600">Overall Trend</div>
                   </div>
                 </div>
               </div>
@@ -300,42 +300,42 @@ export default function HealthInsights() {
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-sm border border-purple-200 p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <span className="text-2xl">💝</span>
-                  <h2 className="text-xl font-semibold text-gray-800">个性化改善计划</h2>
+                  <h2 className="text-xl font-semibold text-gray-800">Personalized Improvement Plan</h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="p-4 bg-white/60 rounded-lg">
-                      <h3 className="font-medium text-gray-800 mb-2">🎯 短期目标（本周）</h3>
+                      <h3 className="font-medium text-gray-800 mb-2">🎯 Short-term Goal (This Week)</h3>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• 增加30分钟日常运动</li>
-                        <li>• 每晚10点前开始睡前仪式</li>
-                        <li>• 补充富含铁质的食物</li>
+                        <li>• Increase 30 minutes of daily exercise</li>
+                        <li>• Start bedtime ritual 10pm before bed</li>
+                        <li>• Supplement with iron-rich foods</li>
                       </ul>
                     </div>
                     <div className="p-4 bg-white/60 rounded-lg">
-                      <h3 className="font-medium text-gray-800 mb-2">🏆 中期目标（本月）</h3>
+                      <h3 className="font-medium text-gray-800 mb-2">🏆 Mid-term Goal (This Month)</h3>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• 建立规律运动习惯</li>
-                        <li>• 优化睡眠环境</li>
-                        <li>• 学习压力管理技巧</li>
+                        <li>• Establish regular exercise habits</li>
+                        <li>• Optimize sleep environment</li>
+                        <li>• Learn stress management techniques</li>
                       </ul>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div className="p-4 bg-white/60 rounded-lg">
-                      <h3 className="font-medium text-gray-800 mb-2">📱 智能提醒</h3>
+                      <h3 className="font-medium text-gray-800 mb-2">📱 Intelligent Reminder</h3>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• 每日基础体温测量</li>
-                        <li>• 睡前1小时放松提醒</li>
-                        <li>• 营养补充时间提醒</li>
+                        <li>• Daily basal body temperature measurement</li>
+                        <li>• Relaxation reminder 1 hour before bed</li>
+                        <li>• Nutrition supplement reminder</li>
                       </ul>
                     </div>
                     <div className="p-4 bg-white/60 rounded-lg">
-                      <h3 className="font-medium text-gray-800 mb-2">📊 追踪重点</h3>
+                      <h3 className="font-medium text-gray-800 mb-2">📊 Track Focus</h3>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• 睡眠质量变化</li>
-                        <li>• 运动对情绪的影响</li>
-                        <li>• PMS症状强度</li>
+                        <li>• Sleep quality change</li>
+                        <li>• Exercise impact on mood</li>
+                        <li>• PMS symptom intensity</li>
                       </ul>
                     </div>
                   </div>
@@ -347,10 +347,10 @@ export default function HealthInsights() {
 
         {/* CopilotKit 侧边栏 */}
         <CopilotSidebar
-          instructions="您是一个专业的健康洞察分析师，拥有综合分析各种健康数据的能力。您可以解读健康趋势、发现数据关联性、提供个性化改善建议。请用专业、洞察力强的语气与用户交流，帮助用户理解复杂的健康数据并制定改善计划。"
+          instructions="You are a professional health insights analyst, with the ability to interpret health trends, discover data correlations, and provide personalized improvement suggestions. Please communicate with the user in a professional and insightful manner, helping them understand complex health data and develop improvement plans."
           labels={{
-            title: "📊 健康洞察助手",
-            initial: "您好！我是您的专属健康洞察分析师。我可以帮助您深入理解健康数据，发现隐藏的健康模式，并提供科学的改善建议。\n\n我能帮您：\n• 分析健康数据趋势\n• 发现各项指标关联性\n• 识别健康改善机会\n• 制定个性化健康计划\n• 预测健康风险\n\n想了解哪方面的健康洞察呢？",
+            title: "📊 Health Insights Assistant",
+            initial: "Hello! I'm your dedicated health insights analyst. I can help you deeply understand health data, discover hidden health patterns, and provide scientific improvement suggestions.\n\nI can help you:\n• Analyze health data trends\n• Discover correlations between indicators\n• Identify health improvement opportunities\n• Develop personalized health plans\n• Predict health risks\n\nWhich aspect of health insights would you like to learn about?",
           }}
           defaultOpen={false}
         />

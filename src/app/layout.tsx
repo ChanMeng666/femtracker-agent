@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "女性健康助手 - FemTracker",
-  description: "专业的女性健康追踪和管理应用，提供周期跟踪、症状记录、营养指导、运动建议和健康洞察",
-  keywords: "女性健康,月经周期,症状追踪,营养指导,运动建议,健康管理",
+  title: "Women's Health Assistant - FemTracker",
+  description: "Professional women's health tracking and management app, providing cycle tracking, symptom recording, nutrition guidance, exercise advice and health insights",
+  keywords: "women's health,menstrual cycle,symptom tracking,nutrition guidance,exercise advice,health management",
   authors: [{ name: "FemTracker Team" }],
   manifest: "/manifest.json",
 };
@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="theme-color" content="#ec4899" />
@@ -49,23 +49,23 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased mobile-optimized pwa-app`}
       >
-        {/* 跳转链接 */}
+        {/* Skip links */}
         <div className="skip-links">
           <a
             href="#main-content"
             className="skip-link"
           >
-            跳转到主要内容
+            Skip to main content
           </a>
           <a
             href="#navigation"
             className="skip-link"
           >
-            跳转到导航菜单
+            Skip to navigation menu
           </a>
         </div>
         
-        {/* 实时通知区域 */}
+        {/* Live notification area */}
         <div
           id="live-region"
           aria-live="polite"

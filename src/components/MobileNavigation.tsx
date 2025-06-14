@@ -24,20 +24,20 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { name: '主页', href: '/dashboard', icon: Home, color: 'text-blue-600' },
-  { name: '周期', href: '/cycle-tracker', icon: Calendar, color: 'text-pink-600' },
-  { name: '症状', href: '/symptom-mood', icon: Heart, color: 'text-red-600' },
-  { name: '营养', href: '/nutrition', icon: Apple, color: 'text-green-600' },
-  { name: '更多', href: '#', icon: Menu, color: 'text-gray-600' }
+  { name: 'Home', href: '/dashboard', icon: Home, color: 'text-blue-600' },
+  { name: 'Cycle', href: '/cycle-tracker', icon: Calendar, color: 'text-pink-600' },
+  { name: 'Symptoms', href: '/symptom-mood', icon: Heart, color: 'text-red-600' },
+  { name: 'Nutrition', href: '/nutrition', icon: Apple, color: 'text-green-600' },
+  { name: 'More', href: '#', icon: Menu, color: 'text-gray-600' }
 ];
 
 const moreItems: NavItem[] = [
-  { name: '生育健康', href: '/fertility', icon: Heart, color: 'text-purple-600' },
-  { name: '运动', href: '/exercise', icon: Dumbbell, color: 'text-orange-600' },
-  { name: '生活方式', href: '/lifestyle', icon: Moon, color: 'text-indigo-600' },
-  { name: '健康洞察', href: '/insights', icon: TrendingUp, color: 'text-emerald-600' },
-  { name: '食谱助手', href: '/recipe', icon: Apple, color: 'text-yellow-600' },
-  { name: '设置', href: '/settings', icon: Settings, color: 'text-gray-600' }
+  { name: 'Fertility Health', href: '/fertility', icon: Heart, color: 'text-purple-600' },
+  { name: 'Exercise', href: '/exercise', icon: Dumbbell, color: 'text-orange-600' },
+  { name: 'Lifestyle', href: '/lifestyle', icon: Moon, color: 'text-indigo-600' },
+  { name: 'Health Insights', href: '/insights', icon: TrendingUp, color: 'text-emerald-600' },
+  { name: 'Recipe Helper', href: '/recipe', icon: Apple, color: 'text-yellow-600' },
+  { name: 'Settings', href: '/settings', icon: Settings, color: 'text-gray-600' }
 ];
 
 export default function MobileNavigation() {
@@ -46,7 +46,7 @@ export default function MobileNavigation() {
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  // 滚动隐藏导航栏
+  // Auto-hide navigation on scroll
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -62,7 +62,7 @@ export default function MobileNavigation() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  // 检测设备是否支持触觉反馈
+  // Detect device haptic feedback support
   const hapticFeedback = () => {
     if ('vibrate' in navigator) {
       navigator.vibrate(50);
@@ -85,7 +85,7 @@ export default function MobileNavigation() {
 
   return (
     <>
-      {/* 更多选项模态框 */}
+      {/* More options modal */}
       {showMore && (
         <div 
           className="mobile-modal flex items-end justify-center"
@@ -96,7 +96,7 @@ export default function MobileNavigation() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">更多功能</h3>
+              <h3 className="text-lg font-semibold">More Features</h3>
               <button
                 onClick={() => setShowMore(false)}
                 className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors"
@@ -131,22 +131,22 @@ export default function MobileNavigation() {
                   </Link>
                 );
               })}
-            </div>
+            </div>  
           </div>
         </div>
       )}
 
-      {/* 底部导航栏 */}
+      {/* Bottom navigation bar */}
       <nav 
         id="navigation"
         role="navigation"
-        aria-label="主要导航"
+        aria-label="Main navigation"
         className={`
           mobile-nav transition-transform duration-300 ease-in-out
           ${isVisible ? 'translate-y-0' : 'translate-y-full'}
           md:hidden
         `}
-      >
+      >       
         <div className="flex items-center justify-around py-2 px-4" role="menubar">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -156,7 +156,7 @@ export default function MobileNavigation() {
               <button
                 key={item.name}
                 role="menuitem"
-                aria-label={`${item.name}${isActive ? ' (当前页面)' : ''}`}
+                aria-label={`${item.name}${isActive ? ' (current page)' : ''}`}
                 aria-current={isActive && item.href !== '#' ? 'page' : undefined}
                 aria-expanded={item.href === '#' ? showMore : undefined}
                 onClick={() => handleNavClick(item.href)}
@@ -194,7 +194,7 @@ export default function MobileNavigation() {
         </div>
       </nav>
 
-      {/* 底部安全区域占位 */}
+      {/* Bottom safe area spacer */}
       <div className="h-20 md:hidden" />
     </>
   );
