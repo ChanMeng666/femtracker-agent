@@ -436,4 +436,415 @@
   background-color: #fff;
   color: #000;
   border-bottom: 0px;
+}
+
+/* Health Score Card */
+.health-score {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.health-score-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.score-display {
+  text-align: center;
+}
+
+.score-badge {
+  display: inline-block;
+  padding: 15px 25px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.score-badge.excellent { background: linear-gradient(135deg, #4ade80, #22c55e); }
+.score-badge.good { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.score-badge.moderate { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.score-badge.poor { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.score-badge.needs_attention { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+
+.recommended-actions h4 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.recommended-actions ul {
+  list-style: none;
+  padding: 0;
+}
+
+.recommended-actions li {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border-left: 4px solid #4facfe;
+}
+
+/* AI Health Insights */
+.health-insights {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.insights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.insight-item {
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+  transition: transform 0.3s ease;
+}
+
+.insight-item:hover {
+  transform: translateX(5px);
+}
+
+.insight-item.warning { border-left-color: #ef4444; }
+.insight-item.tip { border-left-color: #3b82f6; }
+.insight-item.achievement { border-left-color: #10b981; }
+.insight-item.medical_advice { border-left-color: #8b5cf6; }
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.insight-icon {
+  font-size: 1.2rem;
+}
+
+.insight-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.insight-description {
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.action-required {
+  margin-top: 10px;
+  padding: 4px 8px;
+  background: #ef4444;
+  color: white;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* Exercise Tracking */
+.exercise-tracking {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.exercise-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.exercise-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+}
+
+.exercise-type {
+  font-weight: 600;
+  color: #333;
+}
+
+.exercise-details {
+  display: flex;
+  gap: 15px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.cycle-exercise-recommendations h4 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recommendation {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+}
+
+.phase {
+  font-weight: 600;
+  color: #333;
+}
+
+.suggestion {
+  color: #666;
+  font-style: italic;
+}
+
+/* Nutrition Guidance */
+.nutrition-guidance {
+  background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 100%);
+}
+
+.nutrition-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.focus-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.focus-tag {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #333;
+  border: 2px solid rgba(168, 230, 207, 0.5);
+}
+
+.nutrition-recommendations h4 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.nutrition-recommendations ul {
+  list-style: none;
+  padding: 0;
+}
+
+.nutrition-recommendations li {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  margin-bottom: 10px;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.hydration-tracker {
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+}
+
+.water-intake {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.water-intake span:first-child {
+  color: #666;
+}
+
+.water-intake span:last-child {
+  font-weight: 700;
+  color: #333;
+}
+
+/* Fertility Health */
+.fertility-health {
+  background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+}
+
+.fertility-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fertility-goal {
+  text-align: center;
+}
+
+.goal-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-top: 10px;
+}
+
+.fertility-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+}
+
+.metric .label {
+  font-weight: 500;
+  color: #666;
+}
+
+.metric .value {
+  font-weight: 700;
+  color: #333;
+}
+
+/* Premium Features */
+.premium-teaser {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid #f59e0b;
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-teaser::before {
+  content: "✨";
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 2rem;
+  opacity: 0.3;
+}
+
+.premium-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.premium-features-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.feature:hover {
+  transform: scale(1.02);
+}
+
+.feature-icon {
+  font-size: 1.2rem;
+}
+
+.feature-text {
+  font-weight: 500;
+  color: #333;
+}
+
+.upgrade-button {
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+}
+
+.upgrade-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(245, 158, 11, 0.4);
+}
+
+/* Enhanced responsive design */
+@media (max-width: 768px) {
+  .premium-features-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .exercise-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .recommendation {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .metric {
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
+  }
+  
+  .water-intake {
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .focus-tags {
+    justify-content: center;
+  }
+  
+  .score-badge {
+    font-size: 1rem;
+    padding: 12px 20px;
+  }
+  
+  .upgrade-button {
+    font-size: 1rem;
+    padding: 12px 24px;
+  }
 } 
