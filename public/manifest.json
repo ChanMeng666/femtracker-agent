@@ -1,0 +1,113 @@
+{
+  "name": "FemTracker - 女性健康助手",
+  "short_name": "FemTracker",
+  "description": "专业的女性健康追踪和管理应用，提供周期跟踪、症状记录、营养指导、运动建议和健康洞察",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ec4899",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["health", "lifestyle", "medical"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-180x180.png",
+      "sizes": "180x180", 
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile-1.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "主页面 - 健康概览"
+    },
+    {
+      "src": "/screenshot-mobile-2.png", 
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "周期追踪界面"
+    },
+    {
+      "src": "/screenshot-desktop-1.png",
+      "sizes": "1920x1080", 
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "桌面端健康仪表板"
+    }
+  ],
+  "features": [
+    "cross-platform",
+    "offline-capable", 
+    "responsive-design",
+    "ai-powered",
+    "data-export"
+  ],
+  "shortcuts": [
+    {
+      "name": "记录症状",
+      "short_name": "症状记录",
+      "description": "快速记录今天的症状和情绪",
+      "url": "/symptom-mood",
+      "icons": [
+        {
+          "src": "/icon-shortcut-symptoms.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "周期追踪",
+      "short_name": "周期",
+      "description": "查看和记录月经周期",
+      "url": "/cycle-tracker",
+      "icons": [
+        {
+          "src": "/icon-shortcut-cycle.png", 
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "健康洞察",
+      "short_name": "洞察",
+      "description": "查看个性化健康分析",
+      "url": "/insights",
+      "icons": [
+        {
+          "src": "/icon-shortcut-insights.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 480
+  },
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "protocol_handlers": [
+    {
+      "protocol": "web+femtracker",
+      "url": "/?action=%s"
+    }
+  ]
+} 

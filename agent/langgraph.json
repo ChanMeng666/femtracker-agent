@@ -5,7 +5,15 @@
   "graphs": {
     "sample_agent": "./sample_agent/agent.py:graph",
     "shared_state": "./recipe_agent/agent.py:graph",
-    "menstrual_tracker": "./menstrual_agent/agent.py:graph"
+    "menstrual_tracker": "./menstrual_agent/agent.py:graph",
+    "main_coordinator": "./main_coordinator/agent.py:graph",
+    "cycle_tracker": "./cycle_tracker_agent/agent.py:graph",
+    "symptom_mood": "./symptom_mood_agent/agent.py:graph",
+    "fertility_tracker": "./fertility_agent/agent.py:graph",
+    "nutrition_guide": "./nutrition_agent/agent.py:graph",
+    "exercise_coach": "./exercise_agent/agent.py:graph",
+    "health_insights": "./health_insights_agent/agent.py:graph",
+    "lifestyle_manager": "./lifestyle_agent/agent.py:graph"
   },
   "env": ".env"
 }

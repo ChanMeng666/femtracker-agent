@@ -120,3 +120,257 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Phase 5: 移动端优化样式 */
+@layer components {
+  /* 触摸友好的按钮样式 */
+  .touch-button {
+    @apply min-h-12 min-w-12 p-3 rounded-lg transition-all duration-200;
+    @apply active:scale-95 active:opacity-80;
+    touch-action: manipulation;
+  }
+
+  /* 移动端卡片优化 */
+  .mobile-card {
+    @apply rounded-2xl p-4 mb-4 shadow-sm border;
+    @apply hover:shadow-md transition-shadow duration-200;
+  }
+
+  /* 滑动手势支持 */
+  .swipeable {
+    @apply touch-pan-x;
+    overscroll-behavior-x: contain;
+  }
+
+  /* 移动端表单优化 */
+  .mobile-input {
+    @apply text-base rounded-lg p-4 border-2 focus:border-primary;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/20;
+    /* 防止移动端缩放 */
+    font-size: 16px;
+  }
+
+  /* 底部安全区域适配 */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* 移动端导航栏 */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm;
+    @apply border-t border-border/50;
+    z-index: 50;
+  }
+
+  /* 移动端模态框 */
+  .mobile-modal {
+    @apply fixed inset-0 z-50 bg-background/95 backdrop-blur-sm;
+    @apply animate-in fade-in-0 duration-300;
+  }
+
+  /* 触觉反馈动画 */
+  .haptic-feedback {
+    @apply transition-transform duration-75;
+  }
+  
+  .haptic-feedback:active {
+    @apply scale-95;
+  }
+
+  /* 可访问性优化 */
+  .focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* 高对比度模式支持 */
+  @media (prefers-contrast: high) {
+    .high-contrast {
+      @apply border-2 border-foreground;
+    }
+  }
+
+  /* 减少动画模式支持 */
+  @media (prefers-reduced-motion: reduce) {
+    .reduced-motion {
+      @apply transition-none animate-none;
+    }
+  }
+
+  /* 移动端网格优化 */
+  .mobile-grid {
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  /* 移动端文字优化 */
+  .mobile-text {
+    line-height: 1.6;
+    word-break: break-word;
+    hyphens: auto;
+  }
+}
+
+/* 移动端媒体查询优化 */
+@media (max-width: 768px) {
+  .mobile-optimized {
+    font-size: 16px; /* 防止iOS Safari缩放 */
+  }
+  
+  /* 移动端间距调整 */
+  .mobile-spacing {
+    @apply px-4 py-6;
+  }
+
+  /* 移动端卡片间距 */
+  .mobile-card-spacing {
+    @apply mx-4 mb-4;
+  }
+}
+
+/* PWA支持 */
+@media (display-mode: standalone) {
+  .pwa-app {
+    @apply select-none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* 可访问性增强样式 */
+@layer accessibility {
+  /* 跳转链接样式 */
+  .skip-links {
+    position: absolute;
+    top: -100px;
+    left: 0;
+    z-index: 1000;
+  }
+  
+  .skip-link {
+    @apply bg-primary text-primary-foreground px-4 py-2 rounded-md;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translateY(-100%);
+    transition: transform 0.2s ease-in-out;
+  }
+  
+  .skip-link:focus,
+  .skip-link.focused {
+    transform: translateY(100px);
+  }
+
+  /* 屏幕阅读器专用样式 */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* 焦点增强 */
+  .focus-enhanced:focus-visible {
+    @apply outline-4 outline-offset-4 outline-primary;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+  }
+
+  /* 高对比度模式增强 */
+  .high-contrast {
+    --color-background: #000000;
+    --color-foreground: #ffffff;
+    --color-primary: #ffff00;
+    --color-border: #ffffff;
+  }
+
+  .high-contrast * {
+    border-color: currentColor !important;
+  }
+
+  .high-contrast .mobile-card {
+    @apply border-2 border-white;
+  }
+
+  /* 大字体模式 */
+  .large-text {
+    font-size: 120% !important;
+    line-height: 1.8 !important;
+  }
+
+  .large-text .text-sm {
+    @apply text-base;
+  }
+
+  .large-text .text-xs {
+    @apply text-sm;
+  }
+
+  /* 动画减少模式 */
+  .reduce-motion * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0.001ms !important;
+  }
+
+  /* 触摸目标增强 */
+  .touch-enhanced {
+    min-width: 48px !important;
+    min-height: 48px !important;
+    padding: 12px !important;
+  }
+
+  /* aria状态样式 */
+  [aria-pressed="true"] {
+    @apply bg-primary/20 border-primary;
+  }
+
+  [aria-expanded="true"] {
+    @apply bg-muted;
+  }
+
+  [aria-selected="true"] {
+    @apply bg-primary/10 ring-2 ring-primary;
+  }
+
+  [aria-invalid="true"] {
+    @apply border-red-500 ring-2 ring-red-200;
+  }
+
+  /* 表单错误状态 */
+  .form-error input {
+    @apply border-red-500 bg-red-50;
+  }
+
+  .form-error label {
+    @apply text-red-700;
+  }
+
+  /* 键盘导航增强 */
+  .keyboard-navigation *:focus {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+
+  /* 语音控制支持 */
+  [data-voice-command] {
+    position: relative;
+  }
+
+  [data-voice-command]::after {
+    content: attr(data-voice-command);
+    position: absolute;
+    top: -20px;
+    left: 0;
+    @apply text-xs bg-gray-800 text-white px-2 py-1 rounded;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  [data-voice-command]:focus::after {
+    opacity: 1;
+  }
+}

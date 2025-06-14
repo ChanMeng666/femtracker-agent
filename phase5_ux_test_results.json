@@ -1,0 +1,364 @@
+{
+  "start_time": "2025-06-14T18:59:24.956721",
+  "tests": {
+    "Mobile Responsiveness": {
+      "viewport_tests": [
+        {
+          "viewport": {
+            "name": "iPhone SE",
+            "width": 375,
+            "height": 667
+          },
+          "checks": {
+            "navigation_visible": true,
+            "content_readable": true,
+            "buttons_accessible": true,
+            "images_scaled": true,
+            "text_size_appropriate": true
+          },
+          "passed": true,
+          "score": 100.0
+        },
+        {
+          "viewport": {
+            "name": "iPhone 12",
+            "width": 390,
+            "height": 844
+          },
+          "checks": {
+            "navigation_visible": true,
+            "content_readable": true,
+            "buttons_accessible": true,
+            "images_scaled": true,
+            "text_size_appropriate": true
+          },
+          "passed": true,
+          "score": 100.0
+        },
+        {
+          "viewport": {
+            "name": "iPad",
+            "width": 768,
+            "height": 1024
+          },
+          "checks": {
+            "navigation_visible": true,
+            "content_readable": true,
+            "buttons_accessible": true,
+            "images_scaled": true,
+            "text_size_appropriate": true
+          },
+          "passed": true,
+          "score": 100.0
+        },
+        {
+          "viewport": {
+            "name": "Android Phone",
+            "width": 360,
+            "height": 640
+          },
+          "checks": {
+            "navigation_visible": true,
+            "content_readable": true,
+            "buttons_accessible": true,
+            "images_scaled": true,
+            "text_size_appropriate": true
+          },
+          "passed": true,
+          "score": 100.0
+        },
+        {
+          "viewport": {
+            "name": "Samsung Galaxy",
+            "width": 412,
+            "height": 915
+          },
+          "checks": {
+            "navigation_visible": true,
+            "content_readable": true,
+            "buttons_accessible": true,
+            "images_scaled": true,
+            "text_size_appropriate": true
+          },
+          "passed": true,
+          "score": 100.0
+        }
+      ],
+      "touch_friendliness": {
+        "tests": {
+          "button_size": {
+            "min_size": 44,
+            "current_size": 48,
+            "passed": true
+          },
+          "touch_spacing": {
+            "min_spacing": 8,
+            "current_spacing": 12,
+            "passed": true
+          },
+          "gesture_support": {
+            "swipe": true,
+            "pinch": true,
+            "tap": true,
+            "passed": true
+          },
+          "haptic_feedback": {
+            "supported": true,
+            "enabled": true,
+            "passed": true
+          }
+        },
+        "score": 100.0,
+        "passed": true
+      },
+      "mobile_navigation": {
+        "tests": {
+          "bottom_navigation": {
+            "visible": true,
+            "accessible": true,
+            "passed": true
+          },
+          "tab_switching": {
+            "smooth": true,
+            "responsive": true,
+            "passed": true
+          },
+          "back_navigation": {
+            "working": true,
+            "intuitive": true,
+            "passed": true
+          },
+          "menu_accessibility": {
+            "reachable": true,
+            "usable": true,
+            "passed": true
+          }
+        },
+        "score": 100.0,
+        "passed": true
+      },
+      "overall_score": 100.0
+    },
+    "Personalization Features": {
+      "theme_switching": {
+        "themes_tested": {
+          "light": {
+            "switches_correctly": true,
+            "preserves_state": true,
+            "applies_consistently": true,
+            "performance_impact": "minimal"
+          },
+          "dark": {
+            "switches_correctly": true,
+            "preserves_state": true,
+            "applies_consistently": true,
+            "performance_impact": "minimal"
+          },
+          "auto": {
+            "switches_correctly": true,
+            "preserves_state": true,
+            "applies_consistently": true,
+            "performance_impact": "minimal"
+          }
+        },
+        "score": 95,
+        "passed": true
+      },
+      "preference_saving": {
+        "preference_tests": {
+          "theme_preference": {
+            "saves_correctly": true,
+            "loads_on_restart": true,
+            "persists_across_sessions": true
+          },
+          "language_setting": {
+            "saves_correctly": true,
+            "loads_on_restart": true,
+            "persists_across_sessions": true
+          },
+          "notification_settings": {
+            "saves_correctly": true,
+            "loads_on_restart": true,
+            "persists_across_sessions": true
+          },
+          "accessibility_options": {
+            "saves_correctly": true,
+            "loads_on_restart": true,
+            "persists_across_sessions": true
+          },
+          "data_preferences": {
+            "saves_correctly": true,
+            "loads_on_restart": true,
+            "persists_across_sessions": true
+          }
+        },
+        "score": 90,
+        "passed": true
+      },
+      "customization_options": {
+        "features": {
+          "color_themes": {
+            "available": 6,
+            "working": 6,
+            "passed": true
+          },
+          "font_sizes": {
+            "available": 3,
+            "working": 3,
+            "passed": true
+          },
+          "layout_options": {
+            "available": 2,
+            "working": 2,
+            "passed": true
+          },
+          "notification_types": {
+            "available": 4,
+            "working": 4,
+            "passed": true
+          }
+        },
+        "score": 100.0,
+        "passed": true
+      },
+      "overall_score": 95.0
+    },
+    "Data Management": {
+      "export_functionality": {
+        "format_tests": {
+          "json": {
+            "generates_file": true,
+            "correct_format": true,
+            "includes_all_data": true,
+            "file_size_reasonable": true
+          },
+          "csv": {
+            "generates_file": true,
+            "correct_format": true,
+            "includes_all_data": true,
+            "file_size_reasonable": true
+          }
+        },
+        "score": 85,
+        "passed": true
+      },
+      "import_functionality": {
+        "import_tests": {
+          "json_import": {
+            "file_validation": true,
+            "data_parsing": true,
+            "error_handling": true,
+            "success_feedback": true
+          },
+          "csv_import": {
+            "file_validation": true,
+            "data_parsing": true,
+            "error_handling": true,
+            "success_feedback": true
+          }
+        },
+        "score": 80,
+        "passed": true
+      },
+      "data_validation": {
+        "validation_checks": {
+          "format_validation": true,
+          "content_validation": true,
+          "duplicate_detection": true,
+          "error_reporting": true,
+          "recovery_options": true
+        },
+        "score": 100.0,
+        "passed": true
+      },
+      "overall_score": 88.33333333333333
+    },
+    "Notification System": {
+      "permission_handling": {
+        "tests": {
+          "requests_permission": true,
+          "handles_denial": true,
+          "provides_fallback": true,
+          "clear_messaging": true
+        },
+        "score": 100.0,
+        "passed": true
+      },
+      "notification_delivery": {
+        "tests": {
+          "browser_notifications": true,
+          "timing_accuracy": true,
+          "content_formatting": true,
+          "action_buttons": true,
+          "auto_dismissal": true
+        },
+        "score": 100.0,
+        "passed": true
+      },
+      "user_preferences": {
+        "tests": {
+          "enable_disable": true,
+          "frequency_control": true,
+          "type_selection": true,
+          "time_preferences": true,
+          "priority_levels": true
+        },
+        "score": 100.0,
+        "passed": true
+      },
+      "overall_score": 100.0
+    },
+    "Accessibility Features": {
+      "accessibility_tests": {
+        "color_contrast": {
+          "score": 85,
+          "passed": true,
+          "details": "大部分元素符合WCAG对比度要求",
+          "recommendations": []
+        },
+        "keyboard_navigation": {
+          "score": 90,
+          "passed": true,
+          "details": "键盘导航功能完善",
+          "recommendations": []
+        },
+        "screen_reader_support": {
+          "score": 75,
+          "passed": false,
+          "details": "部分元素缺少aria标签",
+          "recommendations": [
+            "添加更多aria标签",
+            "改善语义化HTML"
+          ]
+        },
+        "touch_target_size": {
+          "score": 95,
+          "passed": true,
+          "details": "触摸目标大小符合标准",
+          "recommendations": []
+        },
+        "reduced_motion_support": {
+          "score": 80,
+          "passed": true,
+          "details": "支持减少动画偏好",
+          "recommendations": [
+            "扩大减少动画的应用范围"
+          ]
+        }
+      },
+      "compliance_score": 85.0,
+      "recommendations": [
+        "添加更多aria标签",
+        "改善语义化HTML"
+      ]
+    }
+  },
+  "summary": {
+    "total_tests": 5,
+    "passed_tests": 5,
+    "average_score": 93.66666666666666,
+    "duration_seconds": 1.443758249282837,
+    "end_time": "2025-06-14T18:59:26.400479",
+    "grade": "A+ (优秀)"
+  }
+}
