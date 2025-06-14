@@ -21,25 +21,40 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
   });
 
   useEffect(() => {
-    // 检测系统偏好设置
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const prefersHighContrast = window.matchMedia('(prefers-contrast: high)').matches;
-    
+    // Detect system preference settings
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setFeatures(prev => ({
       ...prev,
-      reducedMotion: prefersReducedMotion,
-      highContrast: prefersHighContrast
+      reducedMotion: mediaQuery.matches
     }));
 
-    // 应用可访问性样式
-    if (prefersReducedMotion) {
-      document.documentElement.style.setProperty('--animation-duration', '0ms');
-    }
-    
-    if (prefersHighContrast) {
-      document.documentElement.classList.add('high-contrast');
-    }
+    const handleChange = (e: MediaQueryListEvent) => {
+      setFeatures(prev => ({
+        ...prev,
+        reducedMotion: e.matches
+      }));
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
+
+  useEffect(() => {
+    // Apply accessibility styles
+    const root = document.documentElement;
+    
+    if (features.highContrast) {
+      root.classList.add('high-contrast');
+    } else {
+      root.classList.remove('high-contrast');
+    }
+
+    if (features.reducedMotion) {
+      root.classList.add('reduced-motion');
+    } else {
+      root.classList.remove('reduced-motion');
+    }
+  }, [features.highContrast, features.reducedMotion]);
 
   return (
     <div className="accessibility-enhanced">
@@ -50,8 +65,8 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
   );
 }
 
-// 实时通知区域，用于屏幕阅读器
-function LiveRegion() {
+// Live notification area for screen readers
+export function LiveRegion() {
   return (
     <div
       id="live-region"
@@ -63,8 +78,8 @@ function LiveRegion() {
   );
 }
 
-// 跳转链接，用于键盘导航
-function SkipLinks() {
+// Skip links for keyboard navigation
+export function SkipLinks() {
   return (
     <div className="skip-links">
       <a
@@ -73,7 +88,7 @@ function SkipLinks() {
         onFocus={(e) => e.target.classList.add('focused')}
         onBlur={(e) => e.target.classList.remove('focused')}
       >
-        跳转到主要内容
+        Skip to main content
       </a>
       <a
         href="#navigation"
@@ -81,13 +96,13 @@ function SkipLinks() {
         onFocus={(e) => e.target.classList.add('focused')}
         onBlur={(e) => e.target.classList.remove('focused')}
       >
-        跳转到导航菜单
+        Skip to navigation menu
       </a>
     </div>
   );
 }
 
-// 可访问性工具提示
+// Accessible tooltip
 export function AccessibilityTooltip({ 
   children, 
   tooltip, 
@@ -97,14 +112,18 @@ export function AccessibilityTooltip({
   tooltip: string; 
   id: string;
 }) {
+  const [isVisible, setIsVisible] = useState(false);
+
   return (
     <div className="relative group">
       {children}
       <div
         id={`tooltip-${id}`}
         role="tooltip"
-        aria-hidden="true"
+        aria-hidden={!isVisible}
         className="absolute invisible group-hover:visible group-focus:visible bg-gray-900 text-white text-sm rounded px-2 py-1 -top-8 left-1/2 transform -translate-x-1/2 z-50"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
       >
         {tooltip}
       </div>
@@ -112,7 +131,7 @@ export function AccessibilityTooltip({
   );
 }
 
-// 可访问的按钮组件
+// Accessible button component
 export function AccessibleButton({
   children,
   onClick,
@@ -146,7 +165,7 @@ export function AccessibleButton({
     if (onClick && !disabled) {
       onClick();
       if (ariaLabel) {
-        announce(`${ariaLabel} 已激活`);
+        announce(`${ariaLabel} activated`);
       }
     }
   };
@@ -182,7 +201,7 @@ export function AccessibleButton({
   );
 }
 
-// 可访问的表单输入组件
+// Accessible form input component
 export function AccessibleInput({
   label,
   id,
@@ -216,7 +235,7 @@ export function AccessibleInput({
         className="block text-sm font-medium text-foreground"
       >
         {label}
-        {required && <span aria-label="必填" className="text-red-500 ml-1">*</span>}
+        {required && <span aria-label="Required" className="text-red-500 ml-1">*</span>}
       </label>
       
       <input
@@ -251,7 +270,7 @@ export function AccessibleInput({
   );
 }
 
-// 可访问的卡片组件
+// Accessible card component
 export function AccessibleCard({
   children,
   title,
@@ -299,11 +318,11 @@ export function AccessibleCard({
   );
 }
 
-// 可访问的导航组件
+// Accessible navigation component
 export function AccessibleNavigation({
   items,
   currentPath,
-  ariaLabel = '主导航'
+  ariaLabel = 'Main Navigation'
 }: {
   items: Array<{
     href: string;
@@ -347,7 +366,7 @@ export function AccessibleNavigation({
   );
 }
 
-// 可访问性状态检查器
+// Accessibility status checker
 export function AccessibilityStatus() {
   const [status, setStatus] = useState({
     keyboardNavigation: false,
@@ -357,7 +376,7 @@ export function AccessibilityStatus() {
   });
 
   useEffect(() => {
-    // 检查各种可访问性特性
+    // Check various accessibility features
     const checkAccessibility = () => {
       setStatus({
         keyboardNavigation: document.activeElement !== document.body,
@@ -374,13 +393,13 @@ export function AccessibilityStatus() {
 
   return (
     <div className="space-y-2">
-      <h3 className="font-semibold">可访问性状态</h3>
+      <h3 className="font-semibold">Accessibility Status</h3>
       <div className="grid grid-cols-2 gap-2 text-sm">
         {[
-          { key: 'keyboardNavigation', label: '键盘导航', icon: Keyboard },
-          { key: 'screenReader', label: '屏幕阅读器', icon: Headphones },
-          { key: 'colorContrast', label: '高对比度', icon: Eye },
-          { key: 'textSize', label: '大字体', icon: CheckCircle }
+          { key: 'keyboardNavigation', label: 'Keyboard Navigation', icon: Keyboard },
+          { key: 'screenReader', label: 'Screen Reader', icon: Headphones },
+          { key: 'colorContrast', label: 'High Contrast', icon: Eye },
+          { key: 'textSize', label: 'Text Size', icon: CheckCircle }
         ].map(({ key, label, icon: Icon }) => (
           <div key={key} className="flex items-center gap-2">
             <Icon size={16} />

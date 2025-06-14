@@ -40,40 +40,40 @@ interface ExportOption {
 const exportOptions: ExportOption[] = [
   {
     id: 'cycle',
-    name: '周期数据',
-    description: '月经周期、流量、持续时间等',
+    name: 'Cycle Data',
+    description: 'Menstrual cycles, flow, duration, etc.',
     icon: Calendar,
     dataType: 'cycleData',
     color: 'text-pink-600'
   },
   {
     id: 'symptoms',
-    name: '症状情绪',
-    description: '症状记录、情绪变化、疼痛等级',
+    name: 'Symptoms & Mood',
+    description: 'Symptom records, mood changes, pain levels',
     icon: Heart,
     dataType: 'symptomData',
     color: 'text-red-600'
   },
   {
     id: 'nutrition',
-    name: '营养数据',
-    description: '饮食记录、营养摄入、补充剂',
+    name: 'Nutrition Data',
+    description: 'Diet records, nutrition intake, supplements',
     icon: Apple,
     dataType: 'nutritionData',
     color: 'text-green-600'
   },
   {
     id: 'exercise',
-    name: '运动数据',
-    description: '运动记录、运动类型、运动时长',
+    name: 'Exercise Data',
+    description: 'Exercise records, activity types, duration',
     icon: Dumbbell,
     dataType: 'exerciseData',
     color: 'text-orange-600'
   },
   {
     id: 'lifestyle',
-    name: '生活方式',
-    description: '睡眠质量、压力水平、生活习惯',
+    name: 'Lifestyle Data',
+    description: 'Sleep quality, stress levels, daily habits',
     icon: Moon,
     dataType: 'lifestyleData',
     color: 'text-indigo-600'
@@ -90,7 +90,7 @@ export default function DataExportImport() {
   const [importMessage, setImportMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 生成模拟健康数据
+  // Generate mock health data
   const generateMockData = (): HealthData => {
     const mockData: HealthData = {
       exportDate: new Date().toISOString(),
@@ -104,7 +104,7 @@ export default function DataExportImport() {
       fertilityData: []
     };
 
-    // 生成过去6个月的周期数据
+    // Generate cycle data for the past 6 months
     if (selectedOptions.includes('cycle')) {
       for (let i = 0; i < 6; i++) {
         const date = new Date();
@@ -115,50 +115,80 @@ export default function DataExportImport() {
           cycleDay: Math.floor(Math.random() * 28) + 1,
           flow: ['light', 'medium', 'heavy'][Math.floor(Math.random() * 3)],
           duration: Math.floor(Math.random() * 3) + 4,
-          notes: `第${i + 1}个月的周期记录`
+          notes: `Cycle record for month ${i + 1}`
         });
       }
     }
 
-    // 生成症状数据
+    // Generate symptom data
     if (selectedOptions.includes('symptoms')) {
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 15; i++) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         mockData.symptomData.push({
           id: `symptom_${i}`,
           date: date.toISOString().split('T')[0],
-          mood: ['happy', 'neutral', 'sad', 'anxious'][Math.floor(Math.random() * 4)],
-          symptoms: ['cramping', 'bloating', 'headache', 'fatigue'].filter(() => Math.random() > 0.5),
-          painLevel: Math.floor(Math.random() * 10) + 1,
-          notes: `第${i + 1}天的症状记录`
+          symptoms: ['cramping', 'headache', 'bloating'][Math.floor(Math.random() * 3)],
+          mood: ['happy', 'calm', 'irritable'][Math.floor(Math.random() * 3)],
+          painLevel: Math.floor(Math.random() * 5) + 1,
+          notes: `Symptom record for day ${i + 1}`
         });
       }
     }
 
-    // 生成营养数据
+    // Generate nutrition data
     if (selectedOptions.includes('nutrition')) {
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 10; i++) {
         const date = new Date();
         date.setDate(date.getDate() - i);
         mockData.nutritionData.push({
           id: `nutrition_${i}`,
           date: date.toISOString().split('T')[0],
-          waterIntake: Math.floor(Math.random() * 1000) + 1500,
-          calories: Math.floor(Math.random() * 500) + 1200,
-          meals: Math.floor(Math.random() * 2) + 2,
-          supplements: ['iron', 'vitamin_d', 'omega3'].filter(() => Math.random() > 0.6),
-          notes: `第${i + 1}天的营养记录`
+          meals: ['breakfast', 'lunch', 'dinner'],
+          calories: Math.floor(Math.random() * 500) + 1500,
+          water: Math.floor(Math.random() * 4) + 6,
+          supplements: ['vitamin_d', 'iron'],
+          notes: `Nutrition record for day ${i + 1}`
         });
       }
     }
 
-    // 其他数据类型类似处理...
+    // Generate exercise data
+    if (selectedOptions.includes('exercise')) {
+      for (let i = 0; i < 8; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        mockData.exerciseData.push({
+          id: `exercise_${i}`,
+          date: date.toISOString().split('T')[0],
+          type: ['cardio', 'strength', 'yoga'][Math.floor(Math.random() * 3)],
+          duration: Math.floor(Math.random() * 60) + 15,
+          intensity: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)],
+          notes: `Exercise record for day ${i + 1}`
+        });
+      }
+    }
+
+    // Generate lifestyle data
+    if (selectedOptions.includes('lifestyle')) {
+      for (let i = 0; i < 12; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        mockData.lifestyleData.push({
+          id: `lifestyle_${i}`,
+          date: date.toISOString().split('T')[0],
+          sleepHours: Math.floor(Math.random() * 4) + 6,
+          sleepQuality: ['poor', 'fair', 'good', 'excellent'][Math.floor(Math.random() * 4)],
+          stressLevel: Math.floor(Math.random() * 5) + 1,
+          notes: `Lifestyle record for day ${i + 1}`
+        });
+      }
+    }
 
     return mockData;
   };
 
-  // 导出为JSON格式
+  // Export as JSON format
   const exportAsJSON = (data: HealthData) => {
     const jsonString = JSON.stringify(data, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -172,7 +202,7 @@ export default function DataExportImport() {
     URL.revokeObjectURL(url);
   };
 
-  // 导出为CSV格式
+  // Export as CSV format
   const exportAsCSV = (data: HealthData) => {
     let csvContent = '';
     
@@ -185,11 +215,11 @@ export default function DataExportImport() {
       
       csvContent += `\n# ${optionData.name}\n`;
       
-      // 添加表头
+      // Add headers
       const headers = Object.keys(dataArray[0]);
       csvContent += headers.join(',') + '\n';
       
-      // 添加数据行
+      // Add data rows
       dataArray.forEach(row => {
         const values = headers.map(header => {
           const value = row[header];
@@ -213,7 +243,7 @@ export default function DataExportImport() {
     URL.revokeObjectURL(url);
   };
 
-  // 处理数据导出
+  // Handle data export
   const handleExport = async () => {
     if (selectedOptions.length === 0) {
       setExportStatus('error');
@@ -224,7 +254,7 @@ export default function DataExportImport() {
     setExportStatus('idle');
 
     try {
-      // 模拟导出处理时间
+      // Simulate export processing time
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const data = generateMockData();
@@ -235,15 +265,15 @@ export default function DataExportImport() {
         exportAsCSV(data);
       }
       
-             setExportStatus('success');
-     } catch {
-       setExportStatus('error');
-     } finally {
+      setExportStatus('success');
+    } catch {
+      setExportStatus('error');
+    } finally {
       setIsExporting(false);
     }
   };
 
-  // 处理文件导入
+  // Handle file import
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -258,32 +288,32 @@ export default function DataExportImport() {
       if (file.name.endsWith('.json')) {
         const data = JSON.parse(text) as HealthData;
         
-        // 验证数据格式
+        // Validate data format
         if (!data.version || !data.exportDate) {
-          throw new Error('无效的数据格式');
+          throw new Error('Invalid data format');
         }
         
-        // 模拟导入处理
+        // Simulate import processing
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         setImportStatus('success');
-        setImportMessage(`成功导入 ${Object.keys(data).length - 3} 个数据类型`);
+        setImportMessage(`Successfully imported ${Object.keys(data).length - 3} data types`);
         
       } else if (file.name.endsWith('.csv')) {
-        // CSV导入处理逻辑
+        // CSV import processing logic
         await new Promise(resolve => setTimeout(resolve, 1500));
         setImportStatus('success');
-        setImportMessage('CSV数据导入成功');
+        setImportMessage('CSV data imported successfully');
       } else {
-        throw new Error('不支持的文件格式');
+        throw new Error('Unsupported file format');
       }
       
     } catch (error) {
       setImportStatus('error');
-      setImportMessage(error instanceof Error ? error.message : '导入失败');
+      setImportMessage(error instanceof Error ? error.message : 'Import failed');
     } finally {
       setIsImporting(false);
-      // 清除文件选择
+      // Clear file selection
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -300,80 +330,77 @@ export default function DataExportImport() {
 
   return (
     <div className="space-y-6">
-      {/* 数据导出部分 */}
+      {/* Data Export Section */}
       <div className="mobile-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-blue-100 rounded-lg">
             <Download className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">数据导出</h3>
-            <p className="text-sm text-muted-foreground">备份您的健康数据</p>
+            <h3 className="text-lg font-semibold">Data Export</h3>
+            <p className="text-sm text-muted-foreground">Backup your health data</p>
           </div>
         </div>
 
-        {/* 导出选项 */}
-        <div className="space-y-3 mb-4">
-          <p className="text-sm font-medium">选择要导出的数据类型:</p>
-          <div className="grid grid-cols-1 gap-2">
-            {exportOptions.map((option) => {
-              const Icon = option.icon;
-              const isSelected = selectedOptions.includes(option.id);
-              
-              return (
+        <div className="space-y-4">
+          {/* Data Type Selection */}
+          <div>
+            <p className="text-sm font-medium mb-3">Select data to export:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {exportOptions.map((option) => {
+                const Icon = option.icon;
+                const isSelected = selectedOptions.includes(option.id);
+                
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => toggleOption(option.id)}
+                    className={`
+                      flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left
+                      ${isSelected 
+                        ? 'border-primary bg-primary/5 text-primary' 
+                        : 'border-border hover:border-primary/50'
+                      }
+                    `}
+                  >
+                    <Icon size={20} className={isSelected ? 'text-primary' : option.color} />
+                    <div>
+                      <p className="font-medium text-sm">{option.name}</p>
+                      <p className="text-xs text-muted-foreground">{option.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Export Format Selection */}
+          <div className="space-y-3 mb-4">
+            <p className="text-sm font-medium">Export format:</p>
+            <div className="flex gap-2">
+              {[
+                { value: 'json', label: 'JSON', icon: Database },
+                { value: 'csv', label: 'CSV', icon: FileText }
+              ].map(({ value, label, icon: Icon }) => (
                 <button
-                  key={option.id}
-                  onClick={() => toggleOption(option.id)}
+                  key={value}
+                  onClick={() => setExportFormat(value as 'json' | 'csv')}
                   className={`
-                    flex items-center gap-3 p-3 rounded-lg border-2 transition-all
-                    ${isSelected 
-                      ? 'border-primary bg-primary/5' 
+                    flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all
+                    ${exportFormat === value 
+                      ? 'border-primary bg-primary/5 text-primary' 
                       : 'border-border hover:border-primary/50'
                     }
                   `}
                 >
-                  <Icon size={20} className={option.color} />
-                  <div className="flex-1 text-left">
-                    <p className="font-medium">{option.name}</p>
-                    <p className="text-xs text-muted-foreground">{option.description}</p>
-                  </div>
-                  {isSelected && (
-                    <CheckCircle size={20} className="text-primary" />
-                  )}
+                  <Icon size={16} />
+                  {label}
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* 导出格式选择 */}
-        <div className="space-y-3 mb-4">
-          <p className="text-sm font-medium">导出格式:</p>
-          <div className="flex gap-2">
-            {[
-              { value: 'json', label: 'JSON', icon: Database },
-              { value: 'csv', label: 'CSV', icon: FileText }
-            ].map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setExportFormat(value as 'json' | 'csv')}
-                className={`
-                  flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all
-                  ${exportFormat === value 
-                    ? 'border-primary bg-primary/5 text-primary' 
-                    : 'border-border hover:border-primary/50'
-                  }
-                `}
-              >
-                <Icon size={16} />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 导出按钮和状态 */}
-        <div className="space-y-3">
+          {/* Export Button and Status */}
           <button
             onClick={handleExport}
             disabled={isExporting || selectedOptions.length === 0}
@@ -382,12 +409,12 @@ export default function DataExportImport() {
             {isExporting ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                导出中...
+                Exporting...
               </>
             ) : (
               <>
                 <Download size={18} />
-                导出数据
+                Export Data
               </>
             )}
           </button>
@@ -395,38 +422,38 @@ export default function DataExportImport() {
           {exportStatus === 'success' && (
             <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-lg">
               <CheckCircle size={18} />
-              <span className="text-sm">数据导出成功！</span>
+              <span className="text-sm">Data exported successfully!</span>
             </div>
           )}
 
           {exportStatus === 'error' && (
             <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg">
               <AlertCircle size={18} />
-              <span className="text-sm">请至少选择一个数据类型</span>
+              <span className="text-sm">Please select at least one data type</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* 数据导入部分 */}
+      {/* Data Import Section */}
       <div className="mobile-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-green-100 rounded-lg">
             <Upload className="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">数据导入</h3>
-            <p className="text-sm text-muted-foreground">恢复之前备份的数据</p>
+            <h3 className="text-lg font-semibold">Data Import</h3>
+            <p className="text-sm text-muted-foreground">Restore your backed up data</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="p-4 bg-muted/30 rounded-lg">
             <p className="text-sm text-muted-foreground mb-2">
-              支持的格式: JSON (.json), CSV (.csv)
+              Supported formats: JSON (.json), CSV (.csv)
             </p>
             <p className="text-xs text-muted-foreground">
-              导入数据将与现有数据合并，不会覆盖现有记录
+              Imported data will be merged with existing data, won&apos;t overwrite existing records
             </p>
           </div>
 
@@ -446,12 +473,12 @@ export default function DataExportImport() {
             {isImporting ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                导入中...
+                Importing...
               </>
             ) : (
               <>
                 <Upload size={18} />
-                选择文件导入
+                Select File to Import
               </>
             )}
           </button>

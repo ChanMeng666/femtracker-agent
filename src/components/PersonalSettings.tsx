@@ -6,33 +6,28 @@ import {
   User, 
   Palette, 
   Bell, 
-  Globe, 
   Eye,
   Moon,
   Sun,
   Smartphone,
   Monitor,
-  Volume2,
-  VolumeX,
-  ToggleLeft,
-  ToggleRight,
   ChevronRight,
   Save,
   RotateCcw
 } from 'lucide-react';
 
 interface UserPreferences {
-  // 个人信息
+  // Personal Information
   name: string;
   age: number;
   location: string;
   
-  // 主题设置
+  // Theme Settings
   theme: 'light' | 'dark' | 'auto';
   primaryColor: string;
   fontSize: 'small' | 'medium' | 'large';
   
-  // 通知设置
+  // Notification Settings
   notifications: {
     cycleReminders: boolean;
     healthTips: boolean;
@@ -40,19 +35,19 @@ interface UserPreferences {
     appUpdates: boolean;
   };
   
-  // 语言和地区
+  // Language and Region
   language: 'zh-CN' | 'en-US';
   timezone: string;
   dateFormat: 'MM/dd/yyyy' | 'dd/MM/yyyy' | 'yyyy-MM-dd';
   
-  // 隐私设置
+  // Privacy Settings
   privacy: {
     dataCollection: boolean;
     analytics: boolean;
     crashReports: boolean;
   };
   
-  // 辅助功能
+  // Accessibility Features
   accessibility: {
     highContrast: boolean;
     reduceMotion: boolean;
@@ -60,7 +55,7 @@ interface UserPreferences {
     largeButtons: boolean;
   };
   
-  // 应用行为
+  // App Behavior
   behavior: {
     autoSave: boolean;
     hapticFeedback: boolean;
@@ -82,9 +77,9 @@ const defaultPreferences: UserPreferences = {
     dataBackup: false,
     appUpdates: true
   },
-  language: 'zh-CN',
-  timezone: 'Asia/Shanghai',
-  dateFormat: 'yyyy-MM-dd',
+  language: 'en-US',
+  timezone: 'America/New_York',
+  dateFormat: 'MM/dd/yyyy',
   privacy: {
     dataCollection: true,
     analytics: false,
@@ -128,10 +123,9 @@ const fontSizeOptions = [
 export default function PersonalSettings() {
   const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
   const [hasChanges, setHasChanges] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 从本地存储加载设置
+  // Load settings from local storage
   useEffect(() => {
     const savedPreferences = localStorage.getItem('femtracker-preferences');
     if (savedPreferences) {
@@ -144,7 +138,7 @@ export default function PersonalSettings() {
     }
   }, []);
 
-  // 检测设置变化
+  // Detect setting changes
   useEffect(() => {
     const savedPreferences = localStorage.getItem('femtracker-preferences');
     const currentPreferences = JSON.stringify(preferences);
@@ -152,7 +146,7 @@ export default function PersonalSettings() {
     setHasChanges(currentPreferences !== savedString);
   }, [preferences]);
 
-  // 更新设置
+  // Update settings
   const updatePreference = <T extends keyof UserPreferences>(
     section: T,
     key: keyof UserPreferences[T],
@@ -167,7 +161,7 @@ export default function PersonalSettings() {
     }));
   };
 
-  // 更新基本设置
+  // Update basic settings
   const updateBasicSetting = <T extends keyof UserPreferences>(
     key: T,
     value: UserPreferences[T]
@@ -178,23 +172,23 @@ export default function PersonalSettings() {
     }));
   };
 
-  // 保存设置
+  // Save settings
   const savePreferences = async () => {
     setIsSaving(true);
     try {
-      // 模拟保存延迟
+      // Simulate save delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       localStorage.setItem('femtracker-preferences', JSON.stringify(preferences));
       setHasChanges(false);
       
-      // 应用主题设置
+      // Apply theme settings
       if (preferences.theme === 'dark') {
         document.documentElement.classList.add('dark');
       } else if (preferences.theme === 'light') {
         document.documentElement.classList.remove('dark');
       } else {
-        // 跟随系统
+        // Follow system
         const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (isDarkMode) {
           document.documentElement.classList.add('dark');
@@ -202,7 +196,6 @@ export default function PersonalSettings() {
           document.documentElement.classList.remove('dark');
         }
       }
-      
     } catch (error) {
       console.error('Failed to save preferences:', error);
     } finally {
@@ -210,12 +203,12 @@ export default function PersonalSettings() {
     }
   };
 
-  // 重置设置
+  // Reset settings
   const resetPreferences = () => {
     setPreferences(defaultPreferences);
   };
 
-  // 切换开关组件
+  // Toggle switch component
   const ToggleSwitch = ({ 
     enabled, 
     onChange, 
@@ -229,25 +222,27 @@ export default function PersonalSettings() {
   }) => (
     <div className="flex items-center justify-between py-3">
       <div className="flex-1">
-        <p className="font-medium">{label}</p>
+        <p className="font-medium text-gray-800">{label}</p>
         {description && (
           <p className="text-sm text-muted-foreground">{description}</p>
         )}
       </div>
       <button
         onClick={() => onChange(!enabled)}
-        className="ml-4 touch-button p-1"
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          enabled ? 'bg-primary' : 'bg-gray-200'
+        }`}
       >
-        {enabled ? (
-          <ToggleRight className="w-6 h-6 text-primary" />
-        ) : (
-          <ToggleLeft className="w-6 h-6 text-muted-foreground" />
-        )}
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            enabled ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
       </button>
     </div>
   );
 
-  // 设置项组件
+  // Setting item component
   const SettingItem = ({ 
     icon: Icon, 
     title, 
@@ -263,24 +258,20 @@ export default function PersonalSettings() {
   }) => (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 p-4 rounded-lg hover:bg-muted/50 transition-colors text-left"
+      className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors text-left"
     >
-      <div className="p-2 bg-primary/10 rounded-lg">
-        <Icon size={20} className="text-primary" />
-      </div>
+      <Icon size={20} className="text-muted-foreground" />
       <div className="flex-1">
         <p className="font-medium">{title}</p>
-        {subtitle && (
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
-        )}
+        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
       </div>
-      {rightElement || <ChevronRight size={20} className="text-muted-foreground" />}
+      {rightElement || <ChevronRight size={16} className="text-muted-foreground" />}
     </button>
   );
 
   return (
     <div className="space-y-6 pb-20">
-      {/* 个人信息 */}
+      {/* Personal Information */}
       <div className="mobile-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-blue-100 rounded-lg">
@@ -328,7 +319,7 @@ export default function PersonalSettings() {
         </div>
       </div>
 
-      {/* 主题和外观 */}
+      {/* Theme and Appearance */}
       <div className="mobile-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-purple-100 rounded-lg">
@@ -338,7 +329,7 @@ export default function PersonalSettings() {
         </div>
 
         <div className="space-y-4">
-          {/* 主题模式 */}
+          {/* Theme Mode */}
           <div>
             <p className="text-sm font-medium mb-2">Theme Mode</p>
             <div className="grid grid-cols-3 gap-2">
@@ -361,7 +352,7 @@ export default function PersonalSettings() {
             </div>
           </div>
 
-          {/* 主色调 */}
+          {/* Primary Color */}
           <div>
             <p className="text-sm font-medium mb-2">Primary Color</p>
             <div className="grid grid-cols-6 gap-2">
@@ -382,7 +373,7 @@ export default function PersonalSettings() {
             </div>
           </div>
 
-          {/* 字体大小 */}
+          {/* Font Size */}
           <div>
             <p className="text-sm font-medium mb-2">Font Size</p>
             <div className="grid grid-cols-3 gap-2">
@@ -406,7 +397,7 @@ export default function PersonalSettings() {
         </div>
       </div>
 
-      {/* 通知设置 */}
+      {/* Notification Settings */}
       <div className="mobile-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-yellow-100 rounded-lg">
@@ -443,7 +434,7 @@ export default function PersonalSettings() {
         </div>
       </div>
 
-      {/* 辅助功能 */}
+      {/* Accessibility */}
       <div className="mobile-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-green-100 rounded-lg">
@@ -474,7 +465,7 @@ export default function PersonalSettings() {
         </div>
       </div>
 
-      {/* 应用行为 */}
+      {/* App Behavior */}
       <div className="mobile-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-orange-100 rounded-lg">
@@ -511,7 +502,7 @@ export default function PersonalSettings() {
         </div>
       </div>
 
-      {/* 保存按钮 */}
+      {/* Save Button */}
       {hasChanges && (
         <div className="sticky bottom-24 left-0 right-0 px-4">
           <div className="flex gap-3">

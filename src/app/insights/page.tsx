@@ -111,9 +111,9 @@ export default function HealthInsights() {
   return (
     <CopilotKit runtimeUrl="/api/copilotkit">
       <div className="flex h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-        {/* 主内容区域 */}
+        {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* 头部导航 */}
+          {/* Header Navigation */}
           <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -149,11 +149,11 @@ export default function HealthInsights() {
             </div>
           </header>
 
-          {/* 主要内容 */}
+          {/* Main Content */}
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-6xl mx-auto space-y-6">
               
-              {/* 健康评分概览 */}
+              {/* Health Score Overview */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">Health Score Overview</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -180,7 +180,7 @@ export default function HealthInsights() {
                   ))}
                 </div>
 
-                {/* 总体评分 */}
+                {/* Overall Score */}
                 <div className="mt-8 text-center">
                   <div className="inline-flex items-center gap-4 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200">
                     <div className="text-4xl font-bold text-purple-600">{overallScore}</div>
@@ -194,7 +194,7 @@ export default function HealthInsights() {
                 </div>
               </div>
 
-              {/* AI智能洞察 */}
+              {/* AI Intelligent Insights */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <span className="text-2xl">🤖</span>
@@ -225,7 +225,7 @@ export default function HealthInsights() {
                 </div>
               </div>
 
-              {/* 数据关联分析 */}
+              {/* Data Correlation Analysis */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">🔗 Data Correlation Analysis</h2>
                 <div className="space-y-6">
@@ -255,15 +255,15 @@ export default function HealthInsights() {
                 </div>
               </div>
 
-              {/* 健康趋势图表 */}
+              {/* Health Trend Chart */}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="text-xl font-semibold text-gray-800 mb-6">📈 Health Trend Analysis</h2>
                 
-                {/* 简化的趋势图 */}
+                {/* Simplified Trend Chart */}
                 <div className="h-64 bg-gray-50 rounded-lg p-4 mb-6">
                   <div className="h-full flex items-end justify-between">
                     {['1 week ago', '6 days ago', '5 days ago', '4 days ago', '3 days ago', '2 days ago', '1 day ago', 'Today'].map((day, index) => {
-                      const scores = [72, 75, 78, 74, 76, 79, 77, 78]; // 示例数据
+                      const scores = [72, 75, 78, 74, 76, 79, 77, 78]; // Sample data
                       const normalizedHeight = (scores[index] / 100) * 100;
                       return (
                         <div key={day} className="flex flex-col items-center gap-2">
@@ -279,7 +279,7 @@ export default function HealthInsights() {
                   </div>
                 </div>
 
-                {/* 趋势总结 */}
+                {/* Trend Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
                     <div className="text-2xl font-bold text-green-600 mb-1">+6%</div>
@@ -296,7 +296,7 @@ export default function HealthInsights() {
                 </div>
               </div>
 
-              {/* 个性化建议 */}
+              {/* Personalized Recommendations */}
               <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-sm border border-purple-200 p-6">
                 <div className="flex items-center gap-3 mb-6">
                   <span className="text-2xl">💝</span>
@@ -307,36 +307,39 @@ export default function HealthInsights() {
                     <div className="p-4 bg-white/60 rounded-lg">
                       <h3 className="font-medium text-gray-800 mb-2">🎯 Short-term Goal (This Week)</h3>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• Increase 30 minutes of daily exercise</li>
-                        <li>• Start bedtime ritual 10pm before bed</li>
-                        <li>• Supplement with iron-rich foods</li>
+                        <li>• Maintain regular sleep schedule (7-8 hours)</li>
+                        <li>• Record symptoms daily for better tracking</li>
+                        <li>• Increase water intake to 8 glasses per day</li>
                       </ul>
                     </div>
                     <div className="p-4 bg-white/60 rounded-lg">
-                      <h3 className="font-medium text-gray-800 mb-2">🏆 Mid-term Goal (This Month)</h3>
+                      <h3 className="font-medium text-gray-800 mb-2">🌟 Long-term Goal (This Month)</h3>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• Establish regular exercise habits</li>
-                        <li>• Optimize sleep environment</li>
-                        <li>• Learn stress management techniques</li>
+                        <li>• Establish consistent exercise routine</li>
+                        <li>• Optimize nutrition based on cycle phases</li>
+                        <li>• Improve stress management techniques</li>
                       </ul>
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div className="p-4 bg-white/60 rounded-lg">
-                      <h3 className="font-medium text-gray-800 mb-2">📱 Intelligent Reminder</h3>
+                      <h3 className="font-medium text-gray-800 mb-2">📚 Recommended Resources</h3>
                       <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• Daily basal body temperature measurement</li>
-                        <li>• Relaxation reminder 1 hour before bed</li>
-                        <li>• Nutrition supplement reminder</li>
+                        <li>• <a href="#" className="text-purple-600 hover:underline">Cycle-based Nutrition Guide</a></li>
+                        <li>• <a href="#" className="text-purple-600 hover:underline">Mindfulness and Stress Relief</a></li>
+                        <li>• <a href="#" className="text-purple-600 hover:underline">Exercise During Different Phases</a></li>
                       </ul>
                     </div>
                     <div className="p-4 bg-white/60 rounded-lg">
-                      <h3 className="font-medium text-gray-800 mb-2">📊 Track Focus</h3>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• Sleep quality change</li>
-                        <li>• Exercise impact on mood</li>
-                        <li>• PMS symptom intensity</li>
-                      </ul>
+                      <h3 className="font-medium text-gray-800 mb-2">🔔 Reminder Settings</h3>
+                      <div className="space-y-2">
+                        <button className="w-full text-left px-3 py-2 bg-purple-100 text-purple-800 rounded-lg text-sm hover:bg-purple-200 transition-colors">
+                          Set Daily Health Check Reminder
+                        </button>
+                        <button className="w-full text-left px-3 py-2 bg-pink-100 text-pink-800 rounded-lg text-sm hover:bg-pink-200 transition-colors">
+                          Enable Weekly Progress Review
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -345,12 +348,12 @@ export default function HealthInsights() {
           </main>
         </div>
 
-        {/* CopilotKit 侧边栏 */}
+        {/* CopilotKit Sidebar */}
         <CopilotSidebar
-          instructions="You are a professional health insights analyst, with the ability to interpret health trends, discover data correlations, and provide personalized improvement suggestions. Please communicate with the user in a professional and insightful manner, helping them understand complex health data and develop improvement plans."
+          instructions="You are a professional health data analyst, dedicated to helping users understand their health data and trends. You need to: 1. Analyze health data patterns 2. Provide personalized health insights 3. Suggest improvement plans 4. Answer questions about health trends. Please answer in a professional and caring manner."
           labels={{
             title: "📊 Health Insights Assistant",
-            initial: "Hello! I'm your dedicated health insights analyst. I can help you deeply understand health data, discover hidden health patterns, and provide scientific improvement suggestions.\n\nI can help you:\n• Analyze health data trends\n• Discover correlations between indicators\n• Identify health improvement opportunities\n• Develop personalized health plans\n• Predict health risks\n\nWhich aspect of health insights would you like to learn about?",
+            initial: "Hello! I'm your health insights assistant. I can help you: \n\n• Analyze your health data trends \n• Provide personalized health insights \n• Create improvement plans \n• Answer questions about your health patterns \n\nWhat would you like to explore about your health data?",
           }}
           defaultOpen={false}
         />

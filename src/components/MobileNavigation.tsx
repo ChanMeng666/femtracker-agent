@@ -200,35 +200,35 @@ export default function MobileNavigation() {
   );
 }
 
-// 移动端检测Hook
+// Mobile device detection Hook
 export function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const checkIsMobile = () => {
+    const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
 
-    checkIsMobile();
-    window.addEventListener('resize', checkIsMobile);
-    return () => window.removeEventListener('resize', checkIsMobile);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   return isMobile;
 }
 
-// 触觉反馈Hook
+// Haptic feedback Hook
 export function useHapticFeedback() {
-  const hapticFeedback = (intensity: 'light' | 'medium' | 'heavy' = 'light') => {
+  const triggerHaptic = (type: 'light' | 'medium' | 'heavy' = 'light') => {
     if ('vibrate' in navigator) {
       const patterns = {
-        light: 25,
-        medium: 50,
-        heavy: 100
+        light: [10],
+        medium: [20],
+        heavy: [30]
       };
-      navigator.vibrate(patterns[intensity]);
+      navigator.vibrate(patterns[type]);
     }
   };
 
-  return hapticFeedback;
+  return { triggerHaptic };
 } 

@@ -9,13 +9,10 @@ import {
   Clock, 
   X,
   Check,
-  Settings,
   Plus,
   Edit,
   Trash2,
-  AlertCircle,
-  Moon,
-  Sun
+  AlertCircle
 } from 'lucide-react';
 
 interface Notification {
@@ -51,41 +48,41 @@ const defaultNotifications: Notification[] = [
   {
     id: '1',
     type: 'cycle',
-    title: '月经期预测',
-    message: '根据您的周期数据，预计月经将在3天后开始。记得准备必需用品！',
+    title: 'Menstrual Period Prediction',
+    message: 'Based on your cycle data, your period is expected to start in 3 days. Remember to prepare your supplies!',
     time: '2025-06-14 09:00',
     isRead: false,
     priority: 'high',
-    actionLabel: '查看周期',
+    actionLabel: 'View Cycle',
     actionUrl: '/cycle-tracker'
   },
   {
     id: '2',
     type: 'health',
-    title: '健康建议',
-    message: '今天是您周期的第14天，建议多摄入富含铁元素的食物，如菠菜、瘦肉等。',
+    title: 'Health Recommendation',
+    message: 'Today is day 14 of your cycle. It\'s recommended to consume iron-rich foods like spinach and lean meat.',
     time: '2025-06-14 08:30',
     isRead: false,
     priority: 'medium',
-    actionLabel: '查看营养',
+    actionLabel: 'View Nutrition',
     actionUrl: '/nutrition'
   },
   {
     id: '3',
     type: 'reminder',
-    title: '记录提醒',
-    message: '今天还没有记录您的症状和情绪，花1分钟完成记录吧！',
+    title: 'Recording Reminder',
+    message: 'You haven\'t recorded your symptoms and mood today yet. Take 1 minute to complete your record!',
     time: '2025-06-14 20:00',
     isRead: true,
     priority: 'low',
-    actionLabel: '立即记录',
+    actionLabel: 'Record Now',
     actionUrl: '/symptom-mood'
   },
   {
     id: '4',
     type: 'tip',
-    title: '健康小贴士',
-    message: '规律的睡眠有助于调节荷尔蒙水平，建议每晚保持7-8小时的睡眠。',
+    title: 'Health Tip',
+    message: 'Regular sleep helps regulate hormone levels. It\'s recommended to maintain 7-8 hours of sleep each night.',
     time: '2025-06-14 07:00',
     isRead: true,
     priority: 'low'
@@ -95,7 +92,7 @@ const defaultNotifications: Notification[] = [
 const defaultRules: NotificationRule[] = [
   {
     id: 'rule_1',
-    name: '月经期提醒',
+    name: 'Menstrual Period Reminder',
     type: 'cycle',
     enabled: true,
     schedule: {
@@ -103,14 +100,14 @@ const defaultRules: NotificationRule[] = [
       days: [],
       frequency: 'cycle-based'
     },
-    message: '您的月经期预计将在{days}天后开始',
+    message: 'Your menstrual period is expected to start in {days} days',
     conditions: {
-      cycleDay: 25 // 周期第25天提醒
+      cycleDay: 25 // Remind on cycle day 25
     }
   },
   {
     id: 'rule_2',
-    name: '排卵期提醒',
+    name: 'Ovulation Reminder',
     type: 'cycle',
     enabled: true,
     schedule: {
@@ -118,34 +115,34 @@ const defaultRules: NotificationRule[] = [
       days: [],
       frequency: 'cycle-based'
     },
-    message: '今天是您的排卵期，如果有备孕计划，这是最佳时机！',
+    message: 'Today is your ovulation period. If you\'re trying to conceive, this is the best time!',
     conditions: {
       phase: 'ovulation'
     }
   },
   {
     id: 'rule_3',
-    name: '晚间记录提醒',
+    name: 'Evening Recording Reminder',
     type: 'custom',
     enabled: true,
     schedule: {
       time: '20:00',
-      days: [1, 2, 3, 4, 5, 6, 0], // 每天
+      days: [1, 2, 3, 4, 5, 6, 0], // Every day
       frequency: 'daily'
     },
-    message: '记得记录今天的症状和情绪哦！'
+    message: 'Remember to record your symptoms and mood for today!'
   },
   {
     id: 'rule_4',
-    name: '健康小贴士',
+    name: 'Health Tips',
     type: 'health',
     enabled: false,
     schedule: {
       time: '07:00',
-      days: [1, 3, 5], // 周一、周三、周五
+      days: [1, 3, 5], // Monday, Wednesday, Friday
       frequency: 'weekly'
     },
-    message: '每日健康小贴士：{tip}'
+    message: 'Daily health tip: {tip}'
   }
 ];
 
@@ -156,17 +153,17 @@ export default function NotificationSystem() {
   const [activeTab, setActiveTab] = useState<'notifications' | 'rules'>('notifications');
   const [editingRule, setEditingRule] = useState<NotificationRule | null>(null);
 
-  // 权限请求状态
+  // Permission request status
   const [permissionStatus, setPermissionStatus] = useState<'default' | 'granted' | 'denied'>('default');
 
   useEffect(() => {
-    // 检查通知权限
+    // Check notification permission
     if ('Notification' in window) {
       setPermissionStatus(Notification.permission);
     }
   }, []);
 
-  // 请求通知权限
+  // Request notification permission
   const requestNotificationPermission = async () => {
     if ('Notification' in window) {
       const permission = await Notification.requestPermission();
@@ -176,7 +173,7 @@ export default function NotificationSystem() {
     return false;
   };
 
-  // 发送浏览器通知
+  // Send browser notification
   const sendBrowserNotification = (notification: Notification) => {
     if ('Notification' in window && Notification.permission === 'granted') {
       const browserNotification = new Notification(notification.title, {
@@ -184,13 +181,7 @@ export default function NotificationSystem() {
         icon: '/icon-192x192.png',
         badge: '/icon-192x192.png',
         tag: notification.id,
-        requireInteraction: notification.priority === 'high',
-        actions: notification.actionLabel ? [
-          {
-            action: 'view',
-            title: notification.actionLabel
-          }
-        ] : undefined
+        requireInteraction: notification.priority === 'high'
       });
 
       browserNotification.onclick = () => {
@@ -200,7 +191,7 @@ export default function NotificationSystem() {
         browserNotification.close();
       };
 
-      // 自动关闭低优先级通知
+      // Auto-close low priority notifications
       if (notification.priority === 'low') {
         setTimeout(() => {
           browserNotification.close();
@@ -209,7 +200,7 @@ export default function NotificationSystem() {
     }
   };
 
-  // 标记通知为已读
+  // Mark notification as read
   const markAsRead = (notificationId: string) => {
     setNotifications(prev => 
       prev.map(notif => 
@@ -220,24 +211,24 @@ export default function NotificationSystem() {
     );
   };
 
-  // 删除通知
+  // Delete notification
   const deleteNotification = (notificationId: string) => {
     setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
   };
 
-  // 清空所有通知
+  // Clear all notifications
   const clearAllNotifications = () => {
     setNotifications([]);
   };
 
-  // 标记所有为已读
+  // Mark all as read
   const markAllAsRead = () => {
     setNotifications(prev => 
       prev.map(notif => ({ ...notif, isRead: true }))
     );
   };
 
-  // 切换规则启用状态
+  // Toggle rule enabled status
   const toggleRule = (ruleId: string) => {
     setRules(prev => 
       prev.map(rule => 
@@ -248,18 +239,18 @@ export default function NotificationSystem() {
     );
   };
 
-  // 删除规则
+  // Delete rule
   const deleteRule = (ruleId: string) => {
     setRules(prev => prev.filter(rule => rule.id !== ruleId));
   };
 
-  // 测试通知
+  // Test notification
   const testNotification = () => {
     const testNotif: Notification = {
       id: `test_${Date.now()}`,
       type: 'reminder',
-      title: '测试通知',
-      message: '这是一条测试通知，用于验证通知功能是否正常工作。',
+      title: 'Test Notification',
+      message: 'This is a test notification to verify that the notification function is working properly.',
       time: new Date().toISOString(),
       isRead: false,
       priority: 'medium'
@@ -305,26 +296,26 @@ export default function NotificationSystem() {
 
   return (
     <div className="space-y-6">
-      {/* 权限请求 */}
+      {/* Permission Request */}
       {permissionStatus !== 'granted' && (
         <div className="mobile-card border-orange-200 bg-orange-50">
           <div className="flex items-center gap-3 mb-3">
             <AlertCircle className="w-5 h-5 text-orange-600" />
-            <h3 className="font-semibold text-orange-800">开启通知权限</h3>
+            <h3 className="font-semibold text-orange-800">Enable Notification Permission</h3>
           </div>
           <p className="text-sm text-orange-700 mb-4">
-            为了及时提醒您重要的健康信息，请允许我们发送通知。
+            To receive timely reminders about important health information, please allow us to send notifications.
           </p>
           <button
             onClick={requestNotificationPermission}
             className="w-full touch-button bg-orange-600 text-white hover:bg-orange-700"
           >
-            开启通知权限
+            Enable Notification Permission
           </button>
         </div>
       )}
 
-      {/* 标签导航 */}
+      {/* Tab Navigation */}
       <div className="flex bg-muted/50 rounded-lg p-1">
         <button
           onClick={() => setActiveTab('notifications')}
@@ -334,7 +325,7 @@ export default function NotificationSystem() {
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          通知消息 {unreadCount > 0 && (
+          Notifications {unreadCount > 0 && (
             <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">
               {unreadCount}
             </span>
@@ -348,13 +339,13 @@ export default function NotificationSystem() {
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          提醒设置
+          Reminder Settings
         </button>
       </div>
 
       {activeTab === 'notifications' ? (
         <>
-          {/* 通知控制栏 */}
+          {/* Notification Control Bar */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <button
@@ -365,7 +356,7 @@ export default function NotificationSystem() {
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
                 }`}
               >
-                {showUnreadOnly ? '显示全部' : '仅未读'}
+                {showUnreadOnly ? 'Show All' : 'Unread Only'}
               </button>
             </div>
 
@@ -375,7 +366,7 @@ export default function NotificationSystem() {
                   onClick={testNotification}
                   className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
                 >
-                  测试通知
+                  Test Notification
                 </button>
               )}
               
@@ -384,7 +375,7 @@ export default function NotificationSystem() {
                   onClick={markAllAsRead}
                   className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors"
                 >
-                  全部已读
+                  Mark All Read
                 </button>
               )}
 
@@ -393,22 +384,22 @@ export default function NotificationSystem() {
                   onClick={clearAllNotifications}
                   className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
                 >
-                  清空全部
+                  Clear All
                 </button>
               )}
             </div>
           </div>
 
-          {/* 通知列表 */}
+          {/* Notification List */}
           <div className="space-y-3">
             {filteredNotifications.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Bell className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium mb-1">
-                  {showUnreadOnly ? '没有未读通知' : '暂无通知'}
+                  {showUnreadOnly ? 'No Unread Notifications' : 'No Notifications'}
                 </p>
                 <p className="text-sm">
-                  {showUnreadOnly ? '所有通知都已读取' : '开启提醒设置，及时获取健康建议'}
+                  {showUnreadOnly ? 'All notifications have been read' : 'Enable reminder settings to receive timely health advice'}
                 </p>
               </div>
             ) : (
@@ -436,7 +427,7 @@ export default function NotificationSystem() {
                               <button
                                 onClick={() => markAsRead(notification.id)}
                                 className="p-1 hover:bg-white/50 rounded transition-colors"
-                                title="标记为已读"
+                                title="Mark as Read"
                               >
                                 <Check size={16} />
                               </button>
@@ -444,7 +435,7 @@ export default function NotificationSystem() {
                             <button
                               onClick={() => deleteNotification(notification.id)}
                               className="p-1 hover:bg-white/50 rounded transition-colors"
-                              title="删除通知"
+                              title="Delete Notification"
                             >
                               <X size={16} />
                             </button>
@@ -453,9 +444,9 @@ export default function NotificationSystem() {
                         
                         <p className="text-sm mt-1 text-gray-700">{notification.message}</p>
                         
-                        <div className="flex items-center justify-between mt-3">
+                        <div className="flex items-center justify-between mt-2">
                           <span className="text-xs text-gray-500">
-                            {new Date(notification.time).toLocaleString('zh-CN')}
+                            {new Date(notification.time).toLocaleString('en-US')}
                           </span>
                           
                           {notification.actionLabel && notification.actionUrl && (
@@ -477,13 +468,13 @@ export default function NotificationSystem() {
         </>
       ) : (
         <>
-          {/* 提醒规则管理 */}
+          {/* Reminder Rules Management */}
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">提醒规则</h3>
+            <h3 className="text-lg font-semibold">Reminder Rules</h3>
             <button
               onClick={() => setEditingRule({
                 id: `rule_${Date.now()}`,
-                name: '新提醒',
+                name: 'New Reminder',
                 type: 'custom',
                 enabled: true,
                 schedule: {
@@ -491,12 +482,12 @@ export default function NotificationSystem() {
                   days: [1, 2, 3, 4, 5],
                   frequency: 'weekly'
                 },
-                message: '自定义提醒消息'
+                message: 'Custom reminder message'
               })}
               className="flex items-center gap-2 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               <Plus size={16} />
-              新建规则
+              New Rule
             </button>
           </div>
 
@@ -524,8 +515,8 @@ export default function NotificationSystem() {
                       <h4 className="font-medium">{rule.name}</h4>
                       <p className="text-sm text-muted-foreground">
                         {rule.schedule.time} • {
-                          rule.schedule.frequency === 'daily' ? '每天' :
-                          rule.schedule.frequency === 'weekly' ? '每周' : '周期相关'
+                          rule.schedule.frequency === 'daily' ? 'Daily' :
+                          rule.schedule.frequency === 'weekly' ? 'Weekly' : 'Cycle-based'
                         }
                       </p>
                     </div>
@@ -534,38 +525,126 @@ export default function NotificationSystem() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setEditingRule(rule)}
-                      className="p-2 hover:bg-muted/50 rounded-lg transition-colors"
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Edit Rule"
                     >
-                      <Edit size={16} />
+                      <Edit size={16} className="text-gray-600" />
                     </button>
+                    
                     <button
                       onClick={() => deleteRule(rule.id)}
-                      className="p-2 hover:bg-muted/50 rounded-lg transition-colors text-red-600"
+                      className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                      title="Delete Rule"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={16} className="text-red-600" />
                     </button>
+                    
                     <button
                       onClick={() => toggleRule(rule.id)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        rule.enabled ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        rule.enabled ? 'bg-primary' : 'bg-gray-200'
                       }`}
                     >
-                      <Bell size={16} />
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          rule.enabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
                     </button>
                   </div>
                 </div>
                 
-                <p className="text-sm text-muted-foreground">{rule.message}</p>
-                
-                {rule.conditions && (
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    条件: {rule.conditions.phase || `周期第${rule.conditions.cycleDay}天`}
-                  </div>
-                )}
+                <div className="pl-11">
+                  <p className="text-sm text-gray-600 mb-2">{rule.message}</p>
+                  
+                  {rule.conditions && (
+                    <div className="text-xs text-muted-foreground">
+                      {rule.conditions.cycleDay && (
+                        <span>Trigger on cycle day {rule.conditions.cycleDay}</span>
+                      )}
+                      {rule.conditions.phase && (
+                        <span>Trigger during {rule.conditions.phase} phase</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </>
+      )}
+
+      {/* Rule Editing Modal (if needed) */}
+      {editingRule && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Edit Reminder Rule</h3>
+              <button
+                onClick={() => setEditingRule(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Rule Name</label>
+                <input
+                  type="text"
+                  value={editingRule.name}
+                  onChange={(e) => setEditingRule({...editingRule, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Message</label>
+                <textarea
+                  value={editingRule.message}
+                  onChange={(e) => setEditingRule({...editingRule, message: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent h-20"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Time</label>
+                <input
+                  type="time"
+                  value={editingRule.schedule.time}
+                  onChange={(e) => setEditingRule({
+                    ...editingRule, 
+                    schedule: {...editingRule.schedule, time: e.target.value}
+                  })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditingRule(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setRules(prev => 
+                    prev.map(rule => 
+                      rule.id === editingRule.id ? editingRule : rule
+                    )
+                  );
+                  setEditingRule(null);
+                }}
+                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

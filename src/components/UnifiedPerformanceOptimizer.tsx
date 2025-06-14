@@ -2,83 +2,76 @@
 
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 
-// 性能监控Hook
+// Performance monitoring Hook
 export function usePerformanceMonitor() {
   const [metrics, setMetrics] = useState({
-    firstContentfulPaint: 0,
-    largestContentfulPaint: 0,
-    firstInputDelay: 0,
-    cumulativeLayoutShift: 0,
-    loadTime: 0
+    loadTime: 0,
+    renderTime: 0,
+    memoryUsage: 0,
+    fps: 0
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('performance' in window)) return;
+    let animationId: number;
+    let lastTime = performance.now();
+    let frameCount = 0;
 
-    const startTime = performance.now();
+    // Get basic performance metrics
+    const updateMetrics = () => {
+      const now = performance.now();
+      frameCount++;
 
-    // 获取基本性能指标
-    const handleLoad = () => {
-      setMetrics(prev => ({
-        ...prev,
-        loadTime: performance.now() - startTime
-      }));
+      if (now - lastTime >= 1000) {
+        const fps = Math.round((frameCount * 1000) / (now - lastTime));
+        frameCount = 0;
+        lastTime = now;
+
+        setMetrics(prev => ({ ...prev, fps }));
+      }
+
+      animationId = requestAnimationFrame(updateMetrics);
     };
 
-    if (document.readyState === 'complete') {
-      handleLoad();
-    } else {
-      window.addEventListener('load', handleLoad);
-    }
-
-    // 获取Web Vitals指标
-    const observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        if (entry.entryType === 'paint') {
-          if (entry.name === 'first-contentful-paint') {
-            setMetrics(prev => ({ ...prev, firstContentfulPaint: entry.startTime }));
-          }
-        }
-        if (entry.entryType === 'largest-contentful-paint') {
-          setMetrics(prev => ({ ...prev, largestContentfulPaint: entry.startTime }));
-        }
-        if (entry.entryType === 'first-input') {
-          const firstInputEntry = entry as PerformanceEntry & { processingStart: number };
-          setMetrics(prev => ({ 
-            ...prev, 
-            firstInputDelay: firstInputEntry.processingStart - firstInputEntry.startTime 
-          }));
-        }
-        if (entry.entryType === 'layout-shift') {
-          const layoutShiftEntry = entry as PerformanceEntry & { hadRecentInput: boolean; value: number };
-          if (!layoutShiftEntry.hadRecentInput) {
-            setMetrics(prev => ({ 
-              ...prev, 
-              cumulativeLayoutShift: prev.cumulativeLayoutShift + layoutShiftEntry.value 
+    // Get Web Vitals metrics
+    if ('performance' in window) {
+      const observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.entryType === 'navigation') {
+            const navEntry = entry as PerformanceNavigationTiming;
+            setMetrics(prev => ({
+              ...prev,
+              loadTime: navEntry.loadEventEnd - navEntry.loadEventStart,
+              renderTime: navEntry.domContentLoadedEventEnd - navEntry.domContentLoadedEventStart
             }));
           }
         }
-      }
-    });
-
-    try {
-      observer.observe({ 
-        entryTypes: ['paint', 'largest-contentful-paint', 'first-input', 'layout-shift'] 
       });
-    } catch (error) {
-      console.warn('Performance observer not supported:', error);
+
+      observer.observe({ entryTypes: ['navigation'] });
     }
 
+    // Memory usage monitoring
+    if ('memory' in performance) {
+      const memoryInfo = (performance as unknown as { memory: { usedJSHeapSize: number } }).memory;
+      setMetrics(prev => ({
+        ...prev,
+        memoryUsage: Math.round(memoryInfo.usedJSHeapSize / 1024 / 1024)
+      }));
+    }
+
+    updateMetrics();
+
     return () => {
-      observer.disconnect();
-      window.removeEventListener('load', handleLoad);
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
     };
   }, []);
 
   return metrics;
 }
 
-// 懒加载图片组件
+// Lazy loading image component
 export function LazyImage({
   src,
   alt,
@@ -107,42 +100,47 @@ export function LazyImage({
           observer.disconnect();
         }
       },
-      { threshold: 0.1, rootMargin: '50px' }
+      { threshold: 0.1, rootMargin: '100px' }
     );
 
     observer.observe(imgRef.current);
     return () => observer.disconnect();
   }, []);
 
+  const handleLoad = () => {
+    setIsLoaded(true);
+  };
+
+  const handleError = () => {
+    console.warn(`Failed to load image: ${src}`);
+  };
+
   return (
     <div className={`relative overflow-hidden ${className}`} ref={imgRef}>
+      {!isLoaded && (
+        <img
+          src={placeholder}
+          alt="Loading..."
+          className="absolute inset-0 w-full h-full object-cover blur-sm"
+        />
+      )}
       {isInView && (
-        <>
-          <img
-            src={placeholder}
-            alt=""
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-              isLoaded ? 'opacity-0' : 'opacity-100'
-            }`}
-            aria-hidden="true"
-          />
-          <img
-            src={src}
-            alt={alt}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
-              isLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoad={() => setIsLoaded(true)}
-            loading="lazy"
-            {...props}
-          />
-        </>
+        <img
+          src={src}
+          alt={alt}
+          onLoad={handleLoad}
+          onError={handleError}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          {...props}
+        />
       )}
     </div>
   );
 }
 
-// 骨架屏组件
+// Skeleton screen component
 export function ComponentSkeleton({ 
   className = '',
   lines = 3,
@@ -153,7 +151,7 @@ export function ComponentSkeleton({
   height?: string;
 }) {
   return (
-    <div className={`animate-pulse space-y-3 ${className}`} role="status" aria-label="加载中">
+    <div className={`animate-pulse space-y-3 ${className}`} role="status" aria-label="Loading">
       {Array.from({ length: lines }).map((_, i) => (
         <div
           key={i}
@@ -162,12 +160,12 @@ export function ComponentSkeleton({
           }`}
         />
       ))}
-      <span className="sr-only">内容加载中...</span>
+      <span className="sr-only">Content loading...</span>
     </div>
   );
 }
 
-// 懒加载组件包装器
+// Lazy loading component wrapper
 export function LazyComponent({ 
   children, 
   fallback,
@@ -204,7 +202,7 @@ export function LazyComponent({
   );
 }
 
-// 优化的动画组件
+// Optimized animation component
 export function OptimizedAnimation({
   children,
   animation = 'fadeIn',
@@ -220,7 +218,7 @@ export function OptimizedAnimation({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 检查用户是否偏好减少动画
+    // Check if user prefers reduced motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
       setIsVisible(true);
@@ -261,7 +259,7 @@ export function OptimizedAnimation({
   );
 }
 
-// 代码分割的组件加载器
+// Code-split component loader
 export function createLazyComponent<T extends Record<string, unknown>>(
   importFunc: () => Promise<{ default: React.ComponentType<T> }>,
   fallback?: React.ReactNode
@@ -277,7 +275,7 @@ export function createLazyComponent<T extends Record<string, unknown>>(
   };
 }
 
-// 资源预加载Hook
+// Resource preloader Hook
 export function useResourcePreloader() {
   const preloadedResources = useRef(new Set<string>());
 
@@ -310,7 +308,7 @@ export function useResourcePreloader() {
   return { preloadImage, preloadRoute, preloadComponent };
 }
 
-// 虚拟滚动组件
+// Virtual scrolling component
 export function VirtualList<T>({
   items,
   itemHeight,
@@ -356,81 +354,78 @@ export function VirtualList<T>({
       className={`overflow-auto ${className}`}
       style={{ height: containerHeight }}
       onScroll={handleScroll}
-      role="listbox"
-      aria-label="虚拟列表"
+      aria-label="Virtual list"
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         <div style={{ transform: `translateY(${offsetY}px)` }}>
           {visibleItems.map((item, index) => (
-            <div
-              key={visibleStart + index}
-              style={{ height: itemHeight }}
-              role="option"
-            >
+            <div key={visibleStart + index} style={{ height: itemHeight }}>
               {renderItem(item, visibleStart + index)}
             </div>
           ))}
         </div>
+        {isScrolling && (
+          <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-sm">
+            Scrolling...
+          </div>
+        )}
       </div>
-      {isScrolling && (
-        <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 rounded text-sm">
-          滚动中...
-        </div>
-      )}
     </div>
   );
 }
 
-// 内存优化Hook
+// Memory optimization Hook
 export function useMemoryOptimization() {
-  const cleanup = useRef<(() => void)[]>([]);
+  const cleanupFunctions = useRef<(() => void)[]>([]);
 
   const addCleanup = (fn: () => void) => {
-    cleanup.current.push(fn);
+    cleanupFunctions.current.push(fn);
   };
 
+  // Clear image cache
   const clearImageCache = () => {
-    // 清理图片缓存
-    const images = document.querySelectorAll('img[data-cached]');
+    const images = document.querySelectorAll('img');
     images.forEach(img => {
-      if (img instanceof HTMLImageElement) {
-        img.src = '';
-        img.removeAttribute('data-cached');
+      if (img.src.startsWith('blob:')) {
+        URL.revokeObjectURL(img.src);
       }
     });
   };
 
   const optimizeMemory = () => {
-    // 强制垃圾回收 (仅在支持的浏览器中)
-    if ('gc' in window && typeof window.gc === 'function') {
-      window.gc();
+    // Run garbage collection if available
+    if ('gc' in window && typeof (window as unknown as { gc?: () => void }).gc === 'function') {
+      (window as unknown as { gc: () => void }).gc();
     }
-    
-    // 清理不可见的DOM元素
-    const hiddenElements = document.querySelectorAll('[style*="display: none"]');
-    hiddenElements.forEach(el => {
-      if (el.getAttribute('data-keep') !== 'true') {
-        el.remove();
+
+    // Clear image cache
+    clearImageCache();
+
+    // Run cleanup functions
+    cleanupFunctions.current.forEach(fn => {
+      try {
+        fn();
+      } catch (error) {
+        console.warn('Cleanup function failed:', error);
       }
     });
   };
 
   useEffect(() => {
     return () => {
-      cleanup.current.forEach(fn => fn());
-      cleanup.current = [];
+      optimizeMemory();
     };
   }, []);
 
-  return { addCleanup, clearImageCache, optimizeMemory };
+  return { addCleanup, optimizeMemory, clearImageCache };
 }
 
-// 性能监控面板
+// Performance monitoring panel
 export function PerformancePanel() {
   const metrics = usePerformanceMonitor();
   const [isVisible, setIsVisible] = useState(false);
 
-  // 只在开发环境显示
+  // Only show in development environment
   if (process.env.NODE_ENV !== 'development') return null;
 
   return (
@@ -438,48 +433,42 @@ export function PerformancePanel() {
       <button
         onClick={() => setIsVisible(!isVisible)}
         className="bg-yellow-500 text-white p-2 rounded-full shadow-lg hover:bg-yellow-600 transition-colors"
-        title="性能监控面板"
-        aria-label="性能监控面板"
+        title="Performance monitoring panel"
+        aria-label="Performance monitoring panel"
       >
         📊
       </button>
       
       {isVisible && (
         <div className="absolute bottom-12 right-0 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xl border min-w-64">
-          <h4 className="font-semibold mb-2">性能指标</h4>
+          <h4 className="font-semibold mb-2">Performance metrics</h4>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between">
               <span>FCP:</span>
-              <span className={metrics.firstContentfulPaint > 1800 ? 'text-red-500' : 'text-green-500'}>
-                {Math.round(metrics.firstContentfulPaint)}ms
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>LCP:</span>
-              <span className={metrics.largestContentfulPaint > 2500 ? 'text-red-500' : 'text-green-500'}>
-                {Math.round(metrics.largestContentfulPaint)}ms
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>FID:</span>
-              <span className={metrics.firstInputDelay > 100 ? 'text-red-500' : 'text-green-500'}>
-                {Math.round(metrics.firstInputDelay)}ms
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>CLS:</span>
-              <span className={metrics.cumulativeLayoutShift > 0.1 ? 'text-red-500' : 'text-green-500'}>
-                {metrics.cumulativeLayoutShift.toFixed(3)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>页面加载:</span>
-              <span className={metrics.loadTime > 3000 ? 'text-red-500' : 'text-green-500'}>
+              <span className={metrics.loadTime > 1800 ? 'text-red-500' : 'text-green-500'}>
                 {Math.round(metrics.loadTime)}ms
               </span>
             </div>
             <div className="flex justify-between">
-              <span>内存使用:</span>
+              <span>LCP:</span>
+              <span className={metrics.renderTime > 2500 ? 'text-red-500' : 'text-green-500'}>
+                {Math.round(metrics.renderTime)}ms
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>FID:</span>
+              <span className={metrics.memoryUsage > 100 ? 'text-red-500' : 'text-green-500'}>
+                {Math.round(metrics.memoryUsage)}ms
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>FPS:</span>
+              <span className={metrics.fps < 60 ? 'text-red-500' : 'text-green-500'}>
+                {Math.round(metrics.fps)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Memory usage:</span>
               <span className="text-blue-500">N/A</span>
             </div>
           </div>
