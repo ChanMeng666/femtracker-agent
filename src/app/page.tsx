@@ -352,7 +352,7 @@ function HomeContent() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">
-          {/* Full-width banner that scrolls with content */}
+          {/* Header Banner */}
           <div className="w-full">
             <Image
               className="dark:invert w-full h-auto"
@@ -365,234 +365,260 @@ function HomeContent() {
           </div>
           
           <div className="p-4 sm:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto">
+            <div className="max-w-6xl mx-auto">
               <main className="flex flex-col gap-8">
-              
-              <div className="text-center">
-                <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-pink-500 to-red-400 bg-clip-text text-transparent">
-                  FemTracker Agent
-                </h1>
-                <p className="text-lg text-gray-600 mb-8">
-                  Your Intelligent Women&apos;s Health Assistant - AI-Powered Comprehensive Health Guidance
-                </p>
-              </div>
+                
+                {/* Welcome Section */}
+                <div className="text-center">
+                  <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-purple-600 via-pink-500 to-red-400 bg-clip-text text-transparent">
+                    FemTracker Agent
+                  </h1>
+                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                    Your AI-Powered Women&apos;s Health Companion
+                  </p>
+                </div>
 
-              {/* Health Overview */}
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">🎯 Health Overview</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600 mb-1">{healthOverview.overallScore}</div>
-                    <div className="text-sm text-gray-600">Overall Health</div>
+                {/* Health Overview Dashboard */}
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800">Health Overview</h2>
+                    <div className="text-sm text-gray-500">
+                      Last updated: {healthOverview.lastUpdated}
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-pink-600 mb-1">{healthOverview.cycleHealth}</div>
-                    <div className="text-sm text-gray-600">Cycle Health</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600 mb-1">{healthOverview.nutritionScore}</div>
-                    <div className="text-sm text-gray-600">Nutrition</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-teal-600 mb-1">{healthOverview.exerciseScore}</div>
-                    <div className="text-sm text-gray-600">Exercise</div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                    <div className="lg:col-span-1 text-center p-4 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl">
+                      <div className="text-3xl font-bold text-purple-700 mb-1">{healthOverview.overallScore}</div>
+                      <div className="text-sm font-medium text-purple-600">Overall</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-pink-100 to-pink-200 rounded-xl">
+                      <div className="text-2xl font-bold text-pink-700 mb-1">{healthOverview.cycleHealth}</div>
+                      <div className="text-sm text-pink-600">Cycle</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl">
+                      <div className="text-2xl font-bold text-orange-700 mb-1">{healthOverview.nutritionScore}</div>
+                      <div className="text-sm text-orange-600">Nutrition</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-teal-100 to-teal-200 rounded-xl">
+                      <div className="text-2xl font-bold text-teal-700 mb-1">{healthOverview.exerciseScore}</div>
+                      <div className="text-sm text-teal-600">Exercise</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-green-100 to-green-200 rounded-xl">
+                      <div className="text-2xl font-bold text-green-700 mb-1">{healthOverview.fertilityScore}</div>
+                      <div className="text-sm text-green-600">Fertility</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-indigo-100 to-indigo-200 rounded-xl">
+                      <div className="text-2xl font-bold text-indigo-700 mb-1">{healthOverview.lifestyleScore}</div>
+                      <div className="text-sm text-indigo-600">Lifestyle</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl">
+                      <div className="text-2xl font-bold text-blue-700 mb-1">{healthOverview.symptomsScore}</div>
+                      <div className="text-sm text-blue-600">Symptoms</div>
+                    </div>
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-4 text-center">
-                  Last updated: {healthOverview.lastUpdated}
-                </p>
-              </div>
 
-              {/* Quick Records */}
-              {quickRecords.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">📝 Recent Quick Records</h2>
-                  <div className="space-y-3">
-                    {quickRecords.slice(0, 3).map((record, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-xl">{getRecordIcon(record.type)}</span>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium capitalize">{record.type}</span>
-                            <span className="text-gray-600">-</span>
-                            <span className="text-gray-800">{record.value}</span>
-                          </div>
-                          {record.notes && (
-                            <p className="text-sm text-gray-600 mt-1">{record.notes}</p>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500">{record.date}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Personalized Tips */}
-              {personalizedTips.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">💡 Personalized Tips</h2>
-                  <div className="space-y-4">
-                    {personalizedTips.slice(0, 3).map((tip) => (
-                      <div key={tip.id} className={`border rounded-lg p-4 ${getTipColor(tip.type)}`}>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
-                            <span className="text-xl">{getTipIcon(tip.type)}</span>
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium">{tip.category}</span>
+                {/* Quick Access & Recent Activity */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Recent Records */}
+                  {quickRecords.length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
+                      <div className="space-y-3">
+                        {quickRecords.slice(0, 3).map((record, index) => (
+                          <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                            <span className="text-xl">{getRecordIcon(record.type)}</span>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium capitalize">{record.type}</span>
+                                <span className="text-gray-600">-</span>
+                                <span className="text-gray-800">{record.value}</span>
                               </div>
-                              <p className="text-sm mb-2">{tip.message}</p>
+                              {record.notes && (
+                                <p className="text-sm text-gray-600 mt-1">{record.notes}</p>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500">{record.date}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Personalized Tips */}
+                  {personalizedTips.length > 0 && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-4">Health Tips</h3>
+                      <div className="space-y-3">
+                        {personalizedTips.slice(0, 3).map((tip) => (
+                          <div key={tip.id} className={`border rounded-lg p-3 ${getTipColor(tip.type)}`}>
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3 flex-1">
+                                <span className="text-lg">{getTipIcon(tip.type)}</span>
+                                <div>
+                                  <div className="font-medium text-sm">{tip.category}</div>
+                                  <p className="text-sm mt-1">{tip.message}</p>
+                                </div>
+                              </div>
+                              {tip.actionText && tip.actionLink && (
+                                <Link
+                                  href={tip.actionLink}
+                                  className="px-2 py-1 bg-white text-gray-700 rounded border border-gray-200 hover:bg-gray-50 transition-colors text-xs font-medium whitespace-nowrap ml-2"
+                                >
+                                  {tip.actionText}
+                                </Link>
+                              )}
                             </div>
                           </div>
-                          {tip.actionText && tip.actionLink && (
-                            <Link
-                              href={tip.actionLink}
-                              className="px-3 py-1 bg-white text-gray-700 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors text-sm font-medium whitespace-nowrap ml-4"
-                            >
-                              {tip.actionText}
-                            </Link>
-                          )}
-                        </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Main Navigation */}
+                <div className="space-y-6">
+                  {/* Primary Health Tracking */}
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4 text-gray-800">🎯 Core Health Tracking</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <Link
+                        href="/dashboard"
+                        className="group rounded-xl border-2 border-purple-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 to-purple-100 text-purple-800 gap-3 hover:from-purple-100 hover:to-purple-200 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">📊</span>
+                        <span className="font-semibold text-lg">Health Dashboard</span>
+                        <span className="text-xs text-center text-purple-600">Comprehensive health overview</span>
+                      </Link>
+                      
+                      <Link
+                        href="/cycle-tracker"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-pink-50 to-red-50 text-gray-800 gap-3 hover:from-pink-100 hover:to-red-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">🩸</span>
+                        <span className="font-semibold">Cycle Tracking</span>
+                        <span className="text-xs text-gray-600 text-center">Menstrual cycle monitoring</span>
+                      </Link>
+                      
+                      <Link
+                        href="/symptom-mood"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 text-gray-800 gap-3 hover:from-blue-100 hover:to-purple-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">😊</span>
+                        <span className="font-semibold">Symptoms & Mood</span>
+                        <span className="text-xs text-gray-600 text-center">Track symptoms and emotions</span>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Lifestyle & Wellness */}
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4 text-gray-800">🌿 Lifestyle & Wellness</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <Link
+                        href="/fertility"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 gap-3 hover:from-green-100 hover:to-emerald-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">🤰</span>
+                        <span className="font-semibold">Fertility Health</span>
+                        <span className="text-xs text-gray-600 text-center">Conception guidance</span>
+                      </Link>
+
+                      <Link
+                        href="/nutrition"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 to-yellow-50 text-gray-800 gap-3 hover:from-orange-100 hover:to-yellow-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">🥗</span>
+                        <span className="font-semibold">Nutrition</span>
+                        <span className="text-xs text-gray-600 text-center">Dietary guidance</span>
+                      </Link>
+
+                      <Link
+                        href="/exercise"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-50 text-gray-800 gap-3 hover:from-teal-100 hover:to-cyan-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">🏃‍♀️</span>
+                        <span className="font-semibold">Exercise</span>
+                        <span className="text-xs text-gray-600 text-center">Fitness tracking</span>
+                      </Link>
+
+                      <Link
+                        href="/lifestyle"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 text-gray-800 gap-3 hover:from-indigo-100 hover:to-purple-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">😴</span>
+                        <span className="font-semibold">Lifestyle</span>
+                        <span className="text-xs text-gray-600 text-center">Sleep & stress management</span>
+                      </Link>
+
+                      <Link
+                        href="/recipe"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-amber-50 to-orange-50 text-gray-800 gap-3 hover:from-amber-100 hover:to-orange-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">🍳</span>
+                        <span className="font-semibold">Smart Recipes</span>
+                        <span className="text-xs text-gray-600 text-center">Personalized meal plans</span>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Analytics & Settings */}
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4 text-gray-800">🔧 Analytics & Settings</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <Link
+                        href="/insights"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-violet-50 to-purple-50 text-gray-800 gap-3 hover:from-violet-100 hover:to-purple-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">📈</span>
+                        <span className="font-semibold">Health Insights</span>
+                        <span className="text-xs text-gray-600 text-center">Data analysis & trends</span>
+                      </Link>
+
+                      <Link
+                        href="/settings"
+                        className="group rounded-xl border border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-slate-50 text-gray-800 gap-3 hover:from-gray-100 hover:to-slate-100 hover:shadow-lg font-medium p-6 h-32"
+                      >
+                        <span className="text-3xl group-hover:scale-110 transition-transform">⚙️</span>
+                        <span className="font-semibold">Settings</span>
+                        <span className="text-xs text-gray-600 text-center">Preferences & configuration</span>
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Health Dashboard Entry */}
-              <div className="w-full">
-                <Link
-                  href="/dashboard"
-                  className="w-full rounded-2xl border border-solid border-transparent transition-colors flex items-center justify-center bg-gradient-to-r from-purple-600 via-pink-500 to-red-400 text-white gap-3 hover:from-purple-700 hover:via-pink-600 hover:to-red-500 font-semibold text-lg h-16 px-8 shadow-lg"
-                >
-                  📊 Health Dashboard - View Comprehensive Health Status
-                </Link>
-              </div>
-
-              {/* Professional Agent Navigation */}
-              <div className="w-full">
-                <h2 className="text-xl font-semibold mb-6 text-center">🤖 Professional Health Assistants</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <Link
-                    href="/cycle-tracker"
-                    className="group rounded-xl border border-solid border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-pink-50 to-red-50 text-gray-800 gap-2 hover:from-pink-100 hover:to-red-100 hover:shadow-md font-medium text-sm p-6 h-32"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🩸</span>
-                    <span className="font-semibold">Cycle Tracking</span>
-                    <span className="text-xs text-gray-600 text-center">Menstrual cycle recording and prediction</span>
-                  </Link>
-                  
-                  <Link
-                    href="/symptom-mood"
-                    className="group rounded-xl border border-solid border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 text-gray-800 gap-2 hover:from-blue-100 hover:to-purple-100 hover:shadow-md font-medium text-sm p-6 h-32"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">😰</span>
-                    <span className="font-semibold">Symptoms & Mood</span>
-                    <span className="text-xs text-gray-600 text-center">Symptom tracking and mood management</span>
-                  </Link>
-
-                  <Link
-                    href="/fertility"
-                    className="group rounded-xl border border-solid border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50 text-gray-800 gap-2 hover:from-green-100 hover:to-emerald-100 hover:shadow-md font-medium text-sm p-6 h-32"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🤰</span>
-                    <span className="font-semibold">Fertility Health</span>
-                    <span className="text-xs text-gray-600 text-center">Ovulation prediction and conception guidance</span>
-                  </Link>
-
-                  <Link
-                    href="/nutrition"
-                    className="group rounded-xl border border-solid border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 to-yellow-50 text-gray-800 gap-2 hover:from-orange-100 hover:to-yellow-100 hover:shadow-md font-medium text-sm p-6 h-32"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🥗</span>
-                    <span className="font-semibold">Nutrition Guidance</span>
-                    <span className="text-xs text-gray-600 text-center">Nutritional supplements and dietary advice</span>
-                  </Link>
-
-                  <Link
-                    href="/exercise"
-                    className="group rounded-xl border border-solid border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-50 text-gray-800 gap-2 hover:from-teal-100 hover:to-cyan-100 hover:shadow-md font-medium text-sm p-6 h-32"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">🏃‍♀️</span>
-                    <span className="font-semibold">Exercise Health</span>
-                    <span className="text-xs text-gray-600 text-center">Activity tracking and fitness advice</span>
-                  </Link>
-
-                  <Link
-                    href="/lifestyle"
-                    className="group rounded-xl border border-solid border-gray-200 transition-all flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 text-gray-800 gap-2 hover:from-indigo-100 hover:to-purple-100 hover:shadow-md font-medium text-sm p-6 h-32"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">😴</span>
-                    <span className="font-semibold">Lifestyle</span>
-                    <span className="text-xs text-gray-600 text-center">Sleep and stress management</span>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Additional Features */}
-              <div className="w-full">
-                <h2 className="text-lg font-medium mb-4 text-center text-gray-600">🔧 More Features</h2>
-                <div className="flex gap-4 items-center flex-col sm:flex-row justify-center">
-                  <Link
-                    href="/recipe"
-                    className="rounded-full border border-solid border-gray-300 transition-colors flex items-center justify-center bg-white text-gray-800 gap-2 hover:bg-gray-50 font-medium text-sm h-10 px-5"
-                  >
-                    🍳 Smart Recipes
-                  </Link>
-                  <Link
-                    href="/insights"
-                    className="rounded-full border border-solid border-purple-300 transition-colors flex items-center justify-center bg-purple-50 text-purple-800 gap-2 hover:bg-purple-100 font-medium text-sm h-10 px-5"
-                  >
-                    📊 Health Insights
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className="rounded-full border border-solid border-emerald-300 transition-colors flex items-center justify-center bg-emerald-50 text-emerald-800 gap-2 hover:bg-emerald-100 font-medium text-sm h-10 px-5"
-                  >
-                    ⚙️ Settings
-                  </Link>
-                  <a
-                    className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm h-10 px-5"
-                    href="https://github.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    💻 Source Code
-                  </a>
-                </div>
-              </div>
-
-              <div className="text-sm text-gray-500 text-center max-w-4xl mx-auto">
-                <p className="font-medium mb-3">🌟 System Features:</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-left">
-                  <div className="flex items-start gap-2">
-                    <span className="text-purple-500">🤖</span>
-                    <span>AI-Powered Health Assistant</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-pink-500">🩸</span>
-                    <span>Smart Menstrual Cycle Tracking</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-blue-500">📊</span>
-                    <span>Comprehensive Health Data Analysis</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-500">🤰</span>
-                    <span>Conception and Fertility Health Guidance</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-orange-500">🥗</span>
-                    <span>Personalized Nutrition and Exercise Advice</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-indigo-500">😴</span>
-                    <span>Sleep and Emotional Health Management</span>
+                {/* System Features */}
+                <div className="bg-gradient-to-r from-purple-100 via-pink-100 to-red-100 rounded-2xl p-6 mt-8">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">🌟 AI-Powered Features</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <span className="text-purple-500">🤖</span>
+                      <span>Intelligent Health Analysis</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <span className="text-pink-500">📱</span>
+                      <span>Personalized Recommendations</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <span className="text-blue-500">🔮</span>
+                      <span>Predictive Health Insights</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <span className="text-green-500">🎯</span>
+                      <span>Goal-Oriented Tracking</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <span className="text-orange-500">📊</span>
+                      <span>Comprehensive Data Visualization</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700">
+                      <span className="text-indigo-500">🔒</span>
+                      <span>Privacy-First Design</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </main>
+              </main>
             </div>
           </div>
         </div>
