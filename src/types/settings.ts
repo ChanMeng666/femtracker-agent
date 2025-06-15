@@ -1,3 +1,36 @@
+export type SettingTab = 'personal' | 'data' | 'notifications' | 'accessibility' | 'privacy' | 'about';
+
+export interface SettingTabItem {
+  id: SettingTab;
+  name: string;
+  description: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  color: string;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  age: number;
+  language: string;
+  theme: string;
+}
+
+export interface NotificationSettings {
+  cycleReminders: boolean;
+  symptomTracking: boolean;
+  exerciseGoals: boolean;
+  nutritionTips: boolean;
+  healthInsights: boolean;
+}
+
+export interface PrivacySettings {
+  dataSharing: boolean;
+  analyticsTracking: boolean;
+  biometricLock: boolean;
+  autoBackup: boolean;
+}
+
 export interface UserPreferences {
   // Personal Information
   name: string;

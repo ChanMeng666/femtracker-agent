@@ -1,5 +1,6 @@
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { Moon, Sun, Monitor, User, Download, Bell, Eye, Shield, Info } from 'lucide-react';
 import type { UserPreferences, ThemeOption, ColorOption, FontSizeOption } from '../types/settings';
+import { SettingTabItem } from '@/types/settings';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   name: 'User',
@@ -55,4 +56,49 @@ export const FONT_SIZE_OPTIONS: FontSizeOption[] = [
   { value: 'small', label: 'Small', size: 'text-sm' },
   { value: 'medium', label: 'Medium', size: 'text-base' },
   { value: 'large', label: 'Large', size: 'text-lg' }
+];
+
+export const settingTabs: SettingTabItem[] = [
+  {
+    id: 'personal',
+    name: 'Personal Settings',
+    description: 'Personal info, themes, app behavior',
+    icon: User,
+    color: 'text-blue-600'
+  },
+  {
+    id: 'data',
+    name: 'Data Management',
+    description: 'Data import/export, backup recovery',
+    icon: Download,
+    color: 'text-green-600'
+  },
+  {
+    id: 'notifications',
+    name: 'Notification Settings',
+    description: 'Push notifications, reminder settings',
+    icon: Bell,
+    color: 'text-yellow-600'
+  },
+  {
+    id: 'accessibility',
+    name: 'Accessibility',
+    description: 'Accessibility features, visual aids',
+    icon: Eye,
+    color: 'text-purple-600'
+  },
+  {
+    id: 'privacy',
+    name: 'Privacy & Security',
+    description: 'Data privacy, security settings',
+    icon: Shield,
+    color: 'text-red-600'
+  },
+  {
+    id: 'about',
+    name: 'About App',
+    description: 'Version info, help & support',
+    icon: Info,
+    color: 'text-gray-600'
+  }
 ]; 
