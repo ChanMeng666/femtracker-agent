@@ -1,7 +1,7 @@
 import React from 'react';
-import Link from "next/link";
-import { useCycle } from '@/hooks/useCycle';
+import { useCycle } from '@/hooks/cycle';
 import { symptoms, moods } from '@/constants/cycle';
+import { PageLayout } from '@/components/shared/PageLayout';
 
 export const CycleTrackerContent: React.FC = () => {
   const {
@@ -17,37 +17,16 @@ export const CycleTrackerContent: React.FC = () => {
   } = useCycle();
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header Navigation */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="px-3 py-2 text-gray-600 hover:text-gray-800 font-medium text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                ← Dashboard
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  🌸 Cycle & Mood Tracker
-                </h1>
-                <p className="text-sm text-gray-600">Track your menstrual cycle, symptoms, and mood patterns</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 bg-pink-100 text-pink-800 rounded-full text-sm font-medium">
-                Day {currentDay} - {currentPhase}
-              </span>
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-4xl mx-auto space-y-6">
+    <PageLayout
+      title="Cycle & Mood Tracker"
+      subtitle="Track your menstrual cycle, symptoms, and mood patterns"
+      icon="🌸"
+      gradient="pink"
+      statusInfo={{
+        text: `Day ${currentDay} - ${currentPhase}`,
+        variant: 'secondary'
+      }}
+    >
             
             {/* Cycle Overview */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -140,9 +119,6 @@ export const CycleTrackerContent: React.FC = () => {
               </div>
             </div>
 
-          </div>
-        </main>
-      </div>
-    </div>
+    </PageLayout>
   );
 }; 

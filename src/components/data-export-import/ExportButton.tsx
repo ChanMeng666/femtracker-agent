@@ -1,5 +1,6 @@
-import { Download, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import { Status } from './types';
+import { ActionButton } from '@/components/shared/ActionButton';
 
 interface ExportButtonProps {
   isExporting: boolean;
@@ -16,23 +17,17 @@ export function ExportButton({
 }: ExportButtonProps) {
   return (
     <div className="space-y-3">
-      <button
+      <ActionButton
         onClick={onExport}
         disabled={isExporting || selectedOptionsCount === 0}
-        className="w-full touch-button bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        loading={isExporting}
+        variant="primary"
+        size="lg"
+        fullWidth
+        icon={isExporting ? undefined : "📥"}
       >
-        {isExporting ? (
-          <>
-            <Loader2 size={18} className="animate-spin" />
-            Exporting...
-          </>
-        ) : (
-          <>
-            <Download size={18} />
-            Export Data
-          </>
-        )}
-      </button>
+        {isExporting ? 'Exporting...' : 'Export Data'}
+      </ActionButton>
 
       {exportStatus === 'success' && (
         <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 rounded-lg">

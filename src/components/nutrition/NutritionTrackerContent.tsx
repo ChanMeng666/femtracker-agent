@@ -1,6 +1,6 @@
 import React from 'react';
-import Link from "next/link";
-import { useNutrition } from '@/hooks/useNutrition';
+import { useNutrition } from '@/hooks/nutrition';
+import { PageHeader } from '@/components/shared/PageHeader';
 import { NutritionOverview } from './NutritionOverview';
 import { WaterIntakeTracker } from './WaterIntakeTracker';
 import { NutritionFocusSelection } from './NutritionFocusSelection';
@@ -26,29 +26,15 @@ export const NutritionTrackerContent: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header Navigation */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="px-3 py-2 text-gray-600 hover:text-gray-800 font-medium text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                ← Dashboard
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  🥗 Nutrition & Health Assistant
-                </h1>
-                <p className="text-sm text-gray-600">Track nutrition, water intake, and get personalized health advice</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                Score: {nutritionScore}/100
-              </span>
-            </div>
-          </div>
-        </header>
+        <PageHeader
+          title="Nutrition & Health Assistant"
+          subtitle="Track nutrition, water intake, and get personalized health advice"
+          icon="🥗"
+          statusInfo={{
+            text: `Score: ${nutritionScore}/100`,
+            variant: 'success'
+          }}
+        />
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6">

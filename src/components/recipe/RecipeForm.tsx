@@ -1,5 +1,5 @@
 import React from 'react';
-import { useRecipe } from '@/hooks/useRecipe';
+import { useRecipe } from '@/hooks/recipe';
 import { RecipeHeader } from './RecipeHeader';
 import { DietaryPreferences } from './DietaryPreferences';
 import { IngredientsSection } from './IngredientsSection';

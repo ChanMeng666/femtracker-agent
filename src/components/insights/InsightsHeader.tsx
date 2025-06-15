@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TimeRange } from "./types";
+import { FilterSelector } from "@/components/shared/FilterSelector";
 
 interface InsightsHeaderProps {
   selectedTimeRange: string;
@@ -32,17 +33,17 @@ export function InsightsHeader({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <select
+          <FilterSelector
+            label=""
             value={selectedTimeRange}
-            onChange={(e) => setSelectedTimeRange(e.target.value)}
-            className="px-3 py-1 bg-white border border-gray-300 rounded-lg text-sm"
-          >
-            {timeRanges.map((range) => (
-              <option key={range.value} value={range.value}>
-                {range.label}
-              </option>
-            ))}
-          </select>
+            options={timeRanges.map(range => ({
+              value: range.value,
+              label: range.label
+            }))}
+            onChange={setSelectedTimeRange}
+            variant="compact"
+            className="min-w-[120px]"
+          />
           <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
             Overall Score: {overallScore} points
           </span>

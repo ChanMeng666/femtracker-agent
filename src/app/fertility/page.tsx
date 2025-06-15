@@ -3,7 +3,7 @@
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { useFertility } from "@/hooks/useFertility";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageLayoutWithSidebar } from "@/components/shared/PageLayoutWithSidebar";
 import { FertilityStatusOverview } from "@/components/fertility/FertilityStatusOverview";
 import { BBTRecord } from "@/components/fertility/BBTRecord";
 import { CervicalMucusRecord } from "@/components/fertility/CervicalMucusRecord";
@@ -34,27 +34,18 @@ function FertilityTrackerContent() {
     conceptionProbability
   } = useFertility();
 
-  const headerRightContent = (
-    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-      Ovulation Prediction Active
-    </span>
-  );
-
   return (
     <div className="flex h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header Navigation */}
-        <PageHeader
-          title="Fertility Health Assistant"
-          subtitle="Ovulation Tracking & Conception Guidance"
-          icon="🤰"
-          rightContent={headerRightContent}
-        />
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto p-6">
-          <div className="max-w-4xl mx-auto space-y-6">
+      <PageLayoutWithSidebar
+        title="Fertility Health Assistant"
+        subtitle="Ovulation Tracking & Conception Guidance"
+        icon="🤰"
+        statusInfo={{
+          text: "Ovulation Prediction Active",
+          variant: "success"
+        }}
+      >
             
             {/* Fertility Status Overview */}
             <FertilityStatusOverview
@@ -81,9 +72,7 @@ function FertilityTrackerContent() {
             {/* Conception Probability Prediction */}
             <ConceptionProbabilityPrediction conceptionProbability={conceptionProbability} />
 
-          </div>
-        </main>
-      </div>
+      </PageLayoutWithSidebar>
 
       {/* AI Sidebar */}
       <CopilotSidebar

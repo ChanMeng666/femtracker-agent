@@ -4,10 +4,11 @@ import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 
 // Import hooks and components
-import { useDashboardState } from "../../hooks/useDashboardState";
+import { useDashboardState } from "../../hooks/dashboard";
 import { useDashboardCopilot } from "../../hooks/useDashboardCopilot";
 import { HealthOverviewCard } from "../../components/dashboard/HealthOverviewCard";
 import { HealthInsightsCard } from "../../components/dashboard/HealthInsightsCard";
+import { StatsCard } from "../../components/shared/StatsCard";
 
 // Main component that wraps everything in CopilotKit
 export default function HealthDashboard() {
@@ -70,44 +71,29 @@ function HealthDashboardContent() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📊</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Data Points</h3>
-              <p className="text-2xl font-bold text-pink-600">247</p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">This month</p>
-        </div>
+        <StatsCard
+          icon="📊"
+          title="Data Points"
+          value="247"
+          subtitle="This month"
+          color="pink"
+        />
 
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🎯</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Goals Met</h3>
-              <p className="text-2xl font-bold text-green-600">12/15</p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">This week</p>
-        </div>
+        <StatsCard
+          icon="🎯"
+          title="Goals Met"
+          value="12/15"
+          subtitle="This week"
+          color="green"
+        />
 
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">📈</span>
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800">Streak</h3>
-              <p className="text-2xl font-bold text-blue-600">28</p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">Days tracking</p>
-        </div>
+        <StatsCard
+          icon="📈"
+          title="Streak"
+          value="28"
+          subtitle="Days tracking"
+          color="blue"
+        />
       </div>
     </div>
   );

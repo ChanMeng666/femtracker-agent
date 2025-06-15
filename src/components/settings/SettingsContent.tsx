@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from "next/link";
-import { useSettings } from '@/hooks/useSettings';
+import { useSettings } from '@/hooks/settings';
 import { SettingsNavigation } from './SettingsNavigation';
 import { PersonalSettingsTab } from './PersonalSettingsTab';
 import { NotificationSettingsTab } from './NotificationSettingsTab';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { NotificationSettings } from '@/types/settings';
+import { DataCard } from '@/components/shared/DataCard';
 
 interface NotificationSettingsTabProps {
   notificationSettings: NotificationSettings;
@@ -48,8 +49,7 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">Notification Preferences</h2>
+    <DataCard title="Notification Preferences" icon="🔔">
       
       <div className="space-y-4">
         {notificationOptions.map((option) => (
@@ -86,6 +86,6 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
           You can adjust timing for each notification type in the advanced settings.
         </p>
       </div>
-    </div>
+    </DataCard>
   );
 }; 

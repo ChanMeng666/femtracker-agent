@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useNotificationState } from '../hooks/useNotificationState';
+import { useNotificationState } from '../hooks/notifications';
 import { NotificationHeader } from './notifications/NotificationHeader';
 import { NotificationList } from './notifications/NotificationList';
 import { NotificationRules } from './notifications/NotificationRules';
