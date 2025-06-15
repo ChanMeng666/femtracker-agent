@@ -12,7 +12,7 @@ import {
 import { NavItem } from '@/components/navigation/types';
 
 export const navItems: NavItem[] = [
-  { name: 'Home', href: '/dashboard', icon: Home, color: 'text-blue-600' },
+  { name: 'Home', href: '/', icon: Home, color: 'text-blue-600' },
   { name: 'Cycle', href: '/cycle-tracker', icon: Calendar, color: 'text-pink-600' },
   { name: 'Symptoms', href: '/symptom-mood', icon: Heart, color: 'text-red-600' },
   { name: 'Nutrition', href: '/nutrition', icon: Apple, color: 'text-green-600' },

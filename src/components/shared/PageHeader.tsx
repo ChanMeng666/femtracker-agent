@@ -24,8 +24,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   title,
   subtitle,
   icon,
-  backLink = "/dashboard",
-  backLinkText = "← Dashboard",
+  backLink = "/",
+      backLinkText = "← Home",
   statusInfo
 }) => {
   return (

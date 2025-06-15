@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { HealthOverview, QuickRecord, PersonalizedTip } from '../types/home';
+import { HealthInsight } from '../types/dashboard';
 import { DEFAULT_HEALTH_OVERVIEW, DEFAULT_PERSONALIZED_TIPS } from '../constants/home';
+import { DEFAULT_HEALTH_INSIGHTS } from '../constants/dashboard';
 
 export const useHomeState = () => {
   const [healthOverview, setHealthOverview] = useState<HealthOverview>(DEFAULT_HEALTH_OVERVIEW);
@@ -15,6 +17,8 @@ export const useHomeState = () => {
   ]);
 
   const [personalizedTips, setPersonalizedTips] = useState<PersonalizedTip[]>(DEFAULT_PERSONALIZED_TIPS);
+  
+  const [healthInsights, setHealthInsights] = useState<HealthInsight[]>(DEFAULT_HEALTH_INSIGHTS);
 
   const updateHealthScore = (scoreType: string, score: number) => {
     if (score >= 0 && score <= 100) {
@@ -74,13 +78,31 @@ export const useHomeState = () => {
     setPersonalizedTips(prev => prev.filter(tip => tip.id !== tipId));
   };
 
+  const addHealthInsight = (type: 'positive' | 'warning' | 'info', category: string, message: string, action?: string, actionLink?: string) => {
+    const newInsight: HealthInsight = {
+      type,
+      category,
+      message,
+      action,
+      actionLink
+    };
+    setHealthInsights(prev => [...prev, newInsight]);
+  };
+
+  const removeHealthInsight = (category: string) => {
+    setHealthInsights(prev => prev.filter(insight => insight.category !== category));
+  };
+
   return {
     healthOverview,
     quickRecords,
     personalizedTips,
+    healthInsights,
     updateHealthScore,
     addQuickRecord,
     addPersonalizedTip,
-    removeTip
+    removeTip,
+    addHealthInsight,
+    removeHealthInsight
   };
 }; 

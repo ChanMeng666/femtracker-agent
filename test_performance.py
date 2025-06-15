@@ -111,7 +111,7 @@ class PerformanceTest:
         logger.info("🌐 测试前端页面性能...")
         
         pages = [
-            "/dashboard",
+            "/",
             "/cycle-tracker", 
             "/symptom-mood",
             "/fertility",

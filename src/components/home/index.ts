@@ -1,7 +1,7 @@
 // Layout Components
 export { HeaderBanner } from './HeaderBanner';
 export { WelcomeSection } from './WelcomeSection';
-export { DashboardSection } from './DashboardSection';
+export { HealthInsightsCard } from './HealthInsightsCard';
 export { MainNavigation } from './MainNavigation';
 export { HomeLayout } from './HomeLayout';
 
@@ -16,7 +16,6 @@ export { CopilotSidebarConfig } from './CopilotSidebarConfig';
 export { HealthOverviewCard } from './HealthOverviewCard';
 export { QuickRecordsCard } from './QuickRecordsCard';
 export { PersonalizedTipsCard } from './PersonalizedTipsCard';
-export { QuickActionsCard } from './QuickActionsCard';
 
 // Types
 export type { NavigationLink, NavigationSection as NavigationSectionType } from './types'; 

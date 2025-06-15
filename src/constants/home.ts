@@ -39,7 +39,7 @@ export const DEFAULT_PERSONALIZED_TIPS: PersonalizedTip[] = [
 ];
 
 export const VALID_NAVIGATION_PAGES = [
-  'dashboard', 'cycle-tracker', 'nutrition', 'exercise', 
+  'cycle-tracker', 'nutrition', 'exercise', 
   'fertility', 'lifestyle', 'symptom-mood', 'recipe', 
   'insights', 'settings'
 ]; 

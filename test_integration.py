@@ -324,7 +324,7 @@ class FemTrackerIntegrationTest:
         
         api_endpoints = [
             "/api/copilotkit",
-            "/dashboard",
+            "/",
             "/cycle-tracker",
             "/symptom-mood",
             "/fertility",

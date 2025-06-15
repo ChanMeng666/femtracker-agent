@@ -1,23 +1,29 @@
 import { HeaderBanner } from "./HeaderBanner";
 import { WelcomeSection } from "./WelcomeSection";
-import { DashboardSection } from "./DashboardSection";
+import { HealthOverviewCard } from "./HealthOverviewCard";
+import { PersonalizedTipsCard } from "./PersonalizedTipsCard";
+import { HealthInsightsCard } from "./HealthInsightsCard";
+import { StatsCard } from "../shared/StatsCard";
 import { MainNavigation } from "./MainNavigation";
 import { CopilotSidebarConfig } from "./CopilotSidebarConfig";
 
-import { HealthOverview, QuickRecord, PersonalizedTip } from "../../types/home";
+import { HealthOverview, PersonalizedTip } from "../../types/home";
+import { HealthInsight } from "../../types/dashboard";
 
 interface HomeLayoutProps {
   healthOverview: HealthOverview;
-  quickRecords: QuickRecord[];
   personalizedTips: PersonalizedTip[];
+  healthInsights: HealthInsight[];
   onRemoveTip: (id: string) => void;
+  onRemoveInsight: (category: string) => void;
 }
 
 export function HomeLayout({
   healthOverview,
-  quickRecords,
   personalizedTips,
-  onRemoveTip
+  healthInsights,
+  onRemoveTip,
+  onRemoveInsight
 }: HomeLayoutProps) {
   return (
     <div className="flex h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-red-50">
@@ -33,15 +39,52 @@ export function HomeLayout({
                 {/* Welcome Section */}
                 <WelcomeSection />
 
-                {/* Dashboard Section */}
-                <DashboardSection
-                  healthOverview={healthOverview}
-                  quickRecords={quickRecords}
-                  personalizedTips={personalizedTips}
-                  onRemoveTip={onRemoveTip}
-                />
+                {/* Health Overview */}
+                <HealthOverviewCard healthOverview={healthOverview} />
 
-                {/* Main Navigation */}
+                {/* Personalized Content Row */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {/* Tips Section */}
+                  <PersonalizedTipsCard 
+                    personalizedTips={personalizedTips} 
+                    onRemoveTip={onRemoveTip}
+                  />
+                  
+                  {/* Health Insights Section */}
+                  {healthInsights.length > 0 && (
+                    <HealthInsightsCard 
+                      insights={healthInsights}
+                      onRemoveInsight={onRemoveInsight}
+                    />
+                  )}
+                </div>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <StatsCard
+                    icon="📊"
+                    title="Data Points"
+                    value="247"
+                    subtitle="This month"
+                    color="pink"
+                  />
+                  <StatsCard
+                    icon="🎯"
+                    title="Goals Met"
+                    value="12/15"
+                    subtitle="This week"
+                    color="green"
+                  />
+                  <StatsCard
+                    icon="📈"
+                    title="Streak"
+                    value="28"
+                    subtitle="Days tracking"
+                    color="blue"
+                  />
+                </div>
+
+                {/* Main Navigation - Single comprehensive navigation */}
                 <MainNavigation />
               </main>
             </div>

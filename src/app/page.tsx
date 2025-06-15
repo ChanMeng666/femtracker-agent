@@ -20,10 +20,13 @@ function HomeContent() {
     healthOverview,
     quickRecords,
     personalizedTips,
+    healthInsights,
     updateHealthScore,
     addQuickRecord,
     addPersonalizedTip,
-    removeTip
+    removeTip,
+    addHealthInsight,
+    removeHealthInsight
   } = useHomeState();
 
   // Initialize CopilotKit integration
@@ -31,18 +34,22 @@ function HomeContent() {
     healthOverview,
     quickRecords,
     personalizedTips,
+    healthInsights,
     updateHealthScore,
     addQuickRecord,
     addPersonalizedTip,
-    removeTip
+    removeTip,
+    addHealthInsight,
+    removeHealthInsight
   });
 
   return (
     <HomeLayout
       healthOverview={healthOverview}
-      quickRecords={quickRecords}
       personalizedTips={personalizedTips}
+      healthInsights={healthInsights}
       onRemoveTip={removeTip}
+      onRemoveInsight={removeHealthInsight}
     />
   );
 }

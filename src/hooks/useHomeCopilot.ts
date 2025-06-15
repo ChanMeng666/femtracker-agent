@@ -1,36 +1,44 @@
 import { useRouter } from "next/navigation";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { HealthOverview, QuickRecord, PersonalizedTip } from '../types/home';
+import { HealthInsight } from '../types/dashboard';
 import { VALID_NAVIGATION_PAGES } from '../constants/home';
 
 interface UseHomeCopilotProps {
   healthOverview: HealthOverview;
   quickRecords: QuickRecord[];
   personalizedTips: PersonalizedTip[];
+  healthInsights: HealthInsight[];
   updateHealthScore: (scoreType: string, score: number) => void;
   addQuickRecord: (type: string, value: string, notes?: string) => void;
   addPersonalizedTip: (type: string, category: string, message: string, actionText?: string, actionLink?: string) => void;
   removeTip: (tipId: string) => void;
+  addHealthInsight: (type: 'positive' | 'warning' | 'info', category: string, message: string, action?: string, actionLink?: string) => void;
+  removeHealthInsight: (category: string) => void;
 }
 
 export const useHomeCopilot = ({
   healthOverview,
   quickRecords,
   personalizedTips,
+  healthInsights,
   updateHealthScore,
   addQuickRecord,
   addPersonalizedTip,
-  removeTip
+  removeTip,
+  addHealthInsight,
+  removeHealthInsight
 }: UseHomeCopilotProps) => {
   const router = useRouter();
 
   // Make home page data readable by AI
   useCopilotReadable({
-    description: "Current health overview and personalized tips for the user",
+    description: "Current health overview, personalized tips, and health insights for the user",
     value: {
       healthOverview,
       quickRecords,
       personalizedTips,
+      healthInsights,
       healthStatus: healthOverview.overallScore >= 80 ? "Excellent" : 
                    healthOverview.overallScore >= 70 ? "Good" : 
                    healthOverview.overallScore >= 60 ? "Average" : "Needs Improvement",
@@ -46,7 +54,7 @@ export const useHomeCopilot = ({
       {
         name: "destination",
         type: "string",
-        description: "Page to navigate to (dashboard, cycle-tracker, nutrition, exercise, fertility, lifestyle, symptom-mood, recipe, insights, settings)",
+        description: "Page to navigate to (cycle-tracker, nutrition, exercise, fertility, lifestyle, symptom-mood, recipe, insights, settings)",
         required: true,
       }
     ],
@@ -164,6 +172,66 @@ export const useHomeCopilot = ({
     ],
     handler: ({ tipId }) => {
       removeTip(tipId);
+    },
+  });
+
+  // AI Action: Add health insight
+  useCopilotAction({
+    name: "addHealthInsight",
+    description: "Add a new health insight based on data analysis",
+    parameters: [
+      {
+        name: "type",
+        type: "string",
+        description: "Type of insight (positive, warning, info)",
+        required: true,
+      },
+      {
+        name: "category",
+        type: "string",
+        description: "Category of the insight (e.g., 'Cycle Health', 'Sleep Pattern')",
+        required: true,
+      },
+      {
+        name: "message",
+        type: "string",
+        description: "Insight message content",
+        required: true,
+      },
+      {
+        name: "action",
+        type: "string",
+        description: "Optional action text",
+        required: false,
+      },
+      {
+        name: "actionLink",
+        type: "string",
+        description: "Optional action link URL",
+        required: false,
+      }
+    ],
+    handler: ({ type, category, message, action, actionLink }) => {
+      if (type === 'positive' || type === 'warning' || type === 'info') {
+        addHealthInsight(type, category, message, action, actionLink);
+      }
+    },
+  });
+
+  // AI Action: Remove health insight
+  useCopilotAction({
+    name: "removeHealthInsight",
+    description: "Remove a health insight by category",
+    parameters: [
+      {
+        name: "category",
+        type: "string",
+        description: "Category of the insight to remove",
+        required: true,
+      }
+    ],
+    handler: ({ category }) => {
+      removeHealthInsight(category);
     },
   });
 }; 
