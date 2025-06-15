@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
+import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import Link from "next/link";
 
 // Mood options
@@ -27,9 +28,104 @@ const symptomOptions = [
   { icon: "🍎", label: "Appetite Changes", value: "appetite_change" }
 ];
 
+// Main component that wraps everything in CopilotKit
+export default function SymptomMoodTracker() {
+  return (
+    <CopilotKit runtimeUrl="/api/copilotkit">
+      <SymptomMoodContent />
+    </CopilotKit>
+  );
+}
+
+// Internal component that uses CopilotKit hooks
 function SymptomMoodContent() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+
+  // Make symptom and mood data readable by AI
+  useCopilotReadable({
+    description: "Current symptom and mood tracking data",
+    value: {
+      selectedMood,
+      selectedSymptoms,
+      moodOptions: moodOptions.map(mo => ({
+        value: mo.value,
+        label: mo.label,
+        selected: selectedMood === mo.value
+      })),
+      symptomOptions: symptomOptions.map(so => ({
+        value: so.value,
+        label: so.label,
+        selected: selectedSymptoms.includes(so.value)
+      }))
+    }
+  });
+
+  // AI Action: Set mood
+  useCopilotAction({
+    name: "setMood",
+    description: "Record current mood",
+    parameters: [{
+      name: "mood",
+      type: "string",
+      description: "Mood value (happy, neutral, sad, angry, anxious, tired)",
+      required: true,
+    }],
+    handler: ({ mood }) => {
+      const validMoods = ["happy", "neutral", "sad", "angry", "anxious", "tired"];
+      if (validMoods.includes(mood)) {
+        setSelectedMood(mood);
+      }
+    },
+  });
+
+  // AI Action: Add symptoms
+  useCopilotAction({
+    name: "addSymptoms",
+    description: "Add symptoms to track",
+    parameters: [{
+      name: "symptoms",
+      type: "string[]",
+      description: "Array of symptom values to add (headache, abdominal_pain, breast_tenderness, nausea, discharge_change, temperature_change, insomnia, appetite_change)",
+      required: true,
+    }],
+    handler: ({ symptoms }) => {
+      const validSymptoms = ["headache", "abdominal_pain", "breast_tenderness", "nausea", "discharge_change", "temperature_change", "insomnia", "appetite_change"];
+      const filteredSymptoms = symptoms.filter((symptom: string) => validSymptoms.includes(symptom));
+      setSelectedSymptoms(prev => {
+        const newSymptoms = [...new Set([...prev, ...filteredSymptoms])];
+        return newSymptoms;
+      });
+    },
+  });
+
+  // AI Action: Remove symptoms
+  useCopilotAction({
+    name: "removeSymptoms",
+    description: "Remove symptoms from tracking",
+    parameters: [{
+      name: "symptoms",
+      type: "string[]",
+      description: "Array of symptom values to remove",
+      required: true,
+    }],
+    handler: ({ symptoms }) => {
+      setSelectedSymptoms(prev => 
+        prev.filter(symptom => !symptoms.includes(symptom))
+      );
+    },
+  });
+
+  // AI Action: Clear all data
+  useCopilotAction({
+    name: "clearSymptomMoodData",
+    description: "Clear all symptom and mood data",
+    parameters: [],
+    handler: () => {
+      setSelectedMood(null);
+      setSelectedSymptoms([]);
+    },
+  });
 
   const toggleSymptom = (symptom: string) => {
     setSelectedSymptoms(prev => 
@@ -255,21 +351,39 @@ function SymptomMoodContent() {
 
       {/* CopilotKit sidebar */}
       <CopilotSidebar
-        instructions="You are a professional women's health assistant specializing in helping users track and manage symptoms and emotions. You can answer questions about PMS symptoms, emotion management, stress relief, and provide personalized advice based on user records. Please communicate with users in a gentle and caring tone."
+        instructions="You are a symptom and mood tracking assistant helping users monitor their physical and emotional health. You have access to the user's current symptom and mood data and can help them:
+
+1. Record current mood (happy, neutral, sad, angry, anxious, tired)
+2. Add symptoms they're experiencing
+3. Remove symptoms no longer present
+4. Track patterns in symptoms and mood
+5. Clear all tracking data if needed
+
+Available symptoms:
+- Headache
+- Abdominal Pain
+- Breast Tenderness
+- Nausea
+- Discharge Changes
+- Temperature Changes
+- Insomnia
+- Appetite Changes
+
+Available moods:
+- Happy: Feeling positive and content
+- Neutral: Feeling balanced
+- Low/Sad: Feeling down or melancholy
+- Irritable: Feeling easily annoyed
+- Anxious: Feeling worried or nervous
+- Tired: Feeling fatigued or exhausted
+
+You can see their current data and make real-time updates to help them track their health patterns effectively."
         labels={{
-          title: "😰 Symptoms & Mood Assistant",
-          initial: "Hello! I'm your dedicated symptoms and mood management assistant. I can help you track and manage various physical symptoms and emotional changes.\n\nI can help you:\n• Record and analyze symptom patterns\n• Provide emotion management advice\n• Answer PMS-related questions\n• Recommend relief methods and techniques\n\nHow are you feeling today?",
+          title: "Symptom & Mood AI Assistant",
+          initial: "👋 Hi! I'm your symptom and mood tracking assistant. I can help you monitor your physical and emotional health.\n\nTry asking me to:\n- \"Set my mood to happy\"\n- \"Add headache and nausea symptoms\"\n- \"Remove abdominal pain symptom\"\n- \"What symptoms am I tracking?\"\n- \"Give me health insights based on my data\"\n\nI can see your current data and update it in real-time!",
         }}
-        defaultOpen={true}
+        defaultOpen={false}
       />
     </div>
-  );
-}
-
-export default function SymptomMoodTracker() {
-  return (
-    <CopilotKit runtimeUrl="/api/copilotkit">
-      <SymptomMoodContent />
-    </CopilotKit>
   );
 } 
