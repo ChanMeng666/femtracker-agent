@@ -351,20 +351,22 @@ function HomeContent() {
     <div className="flex h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-red-50">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">
-            <main className="flex flex-col gap-8">
-              {/* Header */}
-              <div className="flex items-center justify-center mb-4">
-                <Image
-                  className="dark:invert"
-                  src="/next.svg"
-                  alt="Next.js logo"
-                  width={180}
-                  height={38}
-                  priority
-                />
-              </div>
+        <div className="flex-1 overflow-auto">
+          {/* Full-width banner that scrolls with content */}
+          <div className="w-full">
+            <Image
+              className="dark:invert w-full h-auto"
+              src="/chan-meng-banner.svg"
+              alt="chan meng banner"
+              width={1000}
+              height={100}
+              priority
+            />
+          </div>
+          
+          <div className="p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto">
+              <main className="flex flex-col gap-8">
               
               <div className="text-center">
                 <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-600 via-pink-500 to-red-400 bg-clip-text text-transparent">
@@ -591,6 +593,7 @@ function HomeContent() {
                 </div>
               </div>
             </main>
+            </div>
           </div>
         </div>
       </div>
