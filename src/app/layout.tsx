@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "@copilotkit/react-ui/styles.css";
 import MobileNavigation from "@/components/MobileNavigation";
 import { PerformancePanel } from "@/components/UnifiedPerformanceOptimizer";
 import { AccessibilityProvider } from "@/components/AccessibilityEnhancements";

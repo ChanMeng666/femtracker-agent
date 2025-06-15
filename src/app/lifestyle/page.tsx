@@ -4,7 +4,6 @@ import { useState } from "react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import Link from "next/link";
-import "@copilotkit/react-ui/styles.css";
 
 export default function LifestyleTracker() {
   const [sleepQuality, setSleepQuality] = useState<string>("");

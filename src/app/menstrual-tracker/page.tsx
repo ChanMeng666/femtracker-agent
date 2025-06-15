@@ -3,7 +3,6 @@ import { CopilotKit, useCoAgent } from "@copilotkit/react-core";
 import { CopilotSidebar, useCopilotChatSuggestions } from "@copilotkit/react-ui";
 import { useState, useEffect } from "react";
 // import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
-import "@copilotkit/react-ui/styles.css";
 import "./style.css";
 
 enum FlowIntensity {

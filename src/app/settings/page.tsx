@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import "@copilotkit/react-ui/styles.css";
 import "./style.css";
 import { 
   User, 
