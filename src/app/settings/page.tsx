@@ -16,6 +16,7 @@ import DataExportImport from '@/components/DataExportImport';
 import NotificationSystem from '@/components/NotificationSystem';
 import { CopilotKit } from '@copilotkit/react-core';
 import { CopilotSidebar } from '@copilotkit/react-ui';
+import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core';
 
 
 type SettingTab = 'personal' | 'data' | 'notifications' | 'accessibility' | 'privacy' | 'about';
@@ -73,11 +74,245 @@ const settingTabs: SettingTabItem[] = [
   }
 ];
 
+// Main component that wraps everything in CopilotKit
 export default function SettingsPage() {
+  return (
+    <CopilotKit 
+      runtimeUrl="/api/copilotkit"
+      agent="main_coordinator"
+    >
+      <SettingsPageContent />
+    </CopilotKit>
+  );
+}
+
+// Internal component that uses CopilotKit hooks
+function SettingsPageContent() {
   const [activeTab, setActiveTab] = useState<SettingTab>('personal');
   const [showSidebar, setShowSidebar] = useState(false);
+  const [userProfile, setUserProfile] = useState({
+    name: "Sarah Chen",
+    email: "sarah.chen@example.com",
+    age: 28,
+    language: "English",
+    theme: "light"
+  });
+  const [notificationSettings, setNotificationSettings] = useState({
+    cycleReminders: true,
+    symptomTracking: true,
+    exerciseGoals: false,
+    nutritionTips: true,
+    healthInsights: true
+  });
+  const [privacySettings, setPrivacySettings] = useState({
+    dataSharing: false,
+    analyticsTracking: true,
+    biometricLock: false,
+    autoBackup: true
+  });
 
   const currentTab = settingTabs.find(tab => tab.id === activeTab);
+
+  // Make settings data readable by AI
+  useCopilotReadable({
+    description: "Current app settings and user preferences",
+    value: {
+      activeTab,
+      userProfile,
+      notificationSettings,
+      privacySettings,
+      availableTabs: settingTabs.map(tab => ({
+        id: tab.id,
+        name: tab.name,
+        description: tab.description,
+        active: activeTab === tab.id
+      }))
+    }
+  });
+
+  // AI Action: Switch tab
+  useCopilotAction({
+    name: "switchSettingsTab",
+    description: "Switch to a different settings tab",
+    parameters: [{
+      name: "tabId",
+      type: "string",
+      description: "Tab to switch to (personal, data, notifications, accessibility, privacy, about)",
+      required: true,
+    }],
+    handler: ({ tabId }) => {
+      const validTabs: SettingTab[] = ['personal', 'data', 'notifications', 'accessibility', 'privacy', 'about'];
+      if (validTabs.includes(tabId as SettingTab)) {
+        setActiveTab(tabId as SettingTab);
+      }
+    },
+  });
+
+  // AI Action: Update user profile
+  useCopilotAction({
+    name: "updateUserProfile",
+    description: "Update user profile information",
+    parameters: [
+      {
+        name: "name",
+        type: "string",
+        description: "User's name",
+        required: false,
+      },
+      {
+        name: "email",
+        type: "string",
+        description: "User's email address",
+        required: false,
+      },
+      {
+        name: "age",
+        type: "number",
+        description: "User's age (18-100)",
+        required: false,
+      },
+      {
+        name: "language",
+        type: "string",
+        description: "Preferred language (English, Spanish, French, etc.)",
+        required: false,
+      },
+      {
+        name: "theme",
+        type: "string",
+        description: "App theme (light, dark, auto)",
+        required: false,
+      }
+    ],
+    handler: ({ name, email, age, language, theme }) => {
+      setUserProfile(prev => ({
+        ...prev,
+        ...(name && { name }),
+        ...(email && { email }),
+        ...(age && age >= 18 && age <= 100 && { age }),
+        ...(language && { language }),
+        ...(theme && ['light', 'dark', 'auto'].includes(theme) && { theme })
+      }));
+    },
+  });
+
+  // AI Action: Update notification settings
+  useCopilotAction({
+    name: "updateNotificationSettings",
+    description: "Update notification preferences",
+    parameters: [
+      {
+        name: "cycleReminders",
+        type: "boolean",
+        description: "Enable cycle reminders",
+        required: false,
+      },
+      {
+        name: "symptomTracking",
+        type: "boolean",
+        description: "Enable symptom tracking reminders",
+        required: false,
+      },
+      {
+        name: "exerciseGoals",
+        type: "boolean",
+        description: "Enable exercise goal notifications",
+        required: false,
+      },
+      {
+        name: "nutritionTips",
+        type: "boolean",
+        description: "Enable nutrition tips",
+        required: false,
+      },
+      {
+        name: "healthInsights",
+        type: "boolean",
+        description: "Enable health insights notifications",
+        required: false,
+      }
+    ],
+    handler: ({ cycleReminders, symptomTracking, exerciseGoals, nutritionTips, healthInsights }) => {
+      setNotificationSettings(prev => ({
+        ...prev,
+        ...(cycleReminders !== undefined && { cycleReminders }),
+        ...(symptomTracking !== undefined && { symptomTracking }),
+        ...(exerciseGoals !== undefined && { exerciseGoals }),
+        ...(nutritionTips !== undefined && { nutritionTips }),
+        ...(healthInsights !== undefined && { healthInsights })
+      }));
+    },
+  });
+
+  // AI Action: Update privacy settings
+  useCopilotAction({
+    name: "updatePrivacySettings",
+    description: "Update privacy and security settings",
+    parameters: [
+      {
+        name: "dataSharing",
+        type: "boolean",
+        description: "Enable data sharing for research",
+        required: false,
+      },
+      {
+        name: "analyticsTracking",
+        type: "boolean",
+        description: "Enable analytics tracking",
+        required: false,
+      },
+      {
+        name: "biometricLock",
+        type: "boolean",
+        description: "Enable biometric lock for app access",
+        required: false,
+      },
+      {
+        name: "autoBackup",
+        type: "boolean",
+        description: "Enable automatic data backup",
+        required: false,
+      }
+    ],
+    handler: ({ dataSharing, analyticsTracking, biometricLock, autoBackup }) => {
+      setPrivacySettings(prev => ({
+        ...prev,
+        ...(dataSharing !== undefined && { dataSharing }),
+        ...(analyticsTracking !== undefined && { analyticsTracking }),
+        ...(biometricLock !== undefined && { biometricLock }),
+        ...(autoBackup !== undefined && { autoBackup })
+      }));
+    },
+  });
+
+  // AI Action: Reset all settings
+  useCopilotAction({
+    name: "resetAllSettings",
+    description: "Reset all settings to default values",
+    parameters: [],
+    handler: () => {
+      setUserProfile({
+        name: "Sarah Chen",
+        email: "sarah.chen@example.com",
+        age: 28,
+        language: "English",
+        theme: "light"
+      });
+      setNotificationSettings({
+        cycleReminders: true,
+        symptomTracking: true,
+        exerciseGoals: false,
+        nutritionTips: true,
+        healthInsights: true
+      });
+      setPrivacySettings({
+        dataSharing: false,
+        analyticsTracking: true,
+        biometricLock: false,
+        autoBackup: true
+      });
+    },
+  });
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -99,11 +334,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <CopilotKit 
-      runtimeUrl="/api/copilotkit"
-      agent="main_coordinator"
-    >
-      <div className="flex h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-green-50">
+    <div className="flex h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-green-50">
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header Navigation */}
@@ -222,16 +453,43 @@ export default function SettingsPage() {
 
         {/* CopilotKit Sidebar */}
         <CopilotSidebar
-          instructions="You are a professional settings assistant, dedicated to helping users configure various settings for the female health tracking application. You need to: 1. Provide clear guidance on setting up 2. Explain the purpose of each feature 3. Help users optimize their personalized experience 4. Answer questions related to setting up. Please answer in a concise and friendly manner."
+          instructions="You are a comprehensive settings assistant for the FemTracker health app. You have access to all user settings and can help them:
+
+1. **Settings Navigation:**
+   - Switch between different settings tabs (personal, data, notifications, accessibility, privacy, about)
+   - Explain what each settings category includes
+
+2. **User Profile Management:**
+   - Update user name, email, age (18-100), language preferences
+   - Change app theme (light, dark, auto)
+   - Modify personal information settings
+
+3. **Notification Preferences:**
+   - Enable/disable cycle reminders
+   - Toggle symptom tracking notifications
+   - Control exercise goal alerts
+   - Manage nutrition tips and health insights
+
+4. **Privacy & Security Settings:**
+   - Configure data sharing preferences
+   - Toggle analytics tracking
+   - Set up biometric lock protection
+   - Control automatic backup settings
+
+5. **Settings Management:**
+   - Reset all settings to default values
+   - Provide guidance on optimal settings configurations
+   - Explain privacy and security features
+
+You can see all current settings values and make real-time updates to help users optimize their app experience while maintaining their privacy and security preferences."
           labels={{
-            title: "⚙️ Settings Assistant",
-            initial: "Hello! I'm your settings assistant. I can help you: \n\n• Configure personal preferences \n• Manage data import/export \n• Adjust notification and privacy settings \n• Answer questions related to setting up \n\nPlease tell me what help you need!",
+            title: "⚙️ Settings AI Assistant",
+            initial: "👋 Hi! I'm your settings assistant. I can help you configure all aspects of your FemTracker app.\n\n**🔧 Navigation:**\n- \"Switch to notifications settings\"\n- \"Go to privacy settings\"\n- \"Show me personal settings\"\n\n**👤 Profile Updates:**\n- \"Update my name to Jane Smith\"\n- \"Change my age to 25\"\n- \"Set theme to dark mode\"\n\n**🔔 Notifications:**\n- \"Enable cycle reminders\"\n- \"Turn off exercise goal notifications\"\n- \"Enable all health insights\"\n\n**🔒 Privacy & Security:**\n- \"Disable data sharing\"\n- \"Enable biometric lock\"\n- \"Turn on auto backup\"\n\n**⚙️ Management:**\n- \"Reset all settings to default\"\n- \"What are my current notification settings?\"\n- \"Explain privacy features\"\n\nI can see all your current settings and help you optimize them!"
           }}
-          defaultOpen={true}
+          defaultOpen={false}
         />
       </div>
-    </CopilotKit>
-  );
+    );
 }
 
 

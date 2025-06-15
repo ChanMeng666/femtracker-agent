@@ -20,6 +20,18 @@ function ExerciseTrackerContent() {
   const [selectedExercise, setSelectedExercise] = useState<string>("");
   const [exerciseDuration, setExerciseDuration] = useState<number>(30);
   const [exerciseIntensity, setExerciseIntensity] = useState<string>("");
+  // Add state for weekly goal and progress management
+  const [weeklyGoal, setWeeklyGoal] = useState<number>(150);
+  const [exerciseScore, setExerciseScore] = useState<number>(68);
+  const [weeklyProgress, setWeeklyProgress] = useState([
+    { day: "Mon", minutes: 45, type: "Yoga" },
+    { day: "Tue", minutes: 30, type: "Running" },
+    { day: "Wed", minutes: 0, type: "Rest" },
+    { day: "Thu", minutes: 40, type: "Strength" },
+    { day: "Fri", minutes: 25, type: "Walking" },
+    { day: "Sat", minutes: 60, type: "Swimming" },
+    { day: "Sun", minutes: 35, type: "Yoga" }
+  ]);
 
   const exerciseTypes = [
     { type: "cardio", label: "Cardio", icon: "🏃‍♀️", color: "bg-red-50 border-red-200", examples: "Running, Swimming, Cycling" },
@@ -34,19 +46,8 @@ function ExerciseTrackerContent() {
     { level: "high", label: "High Intensity", color: "bg-red-100 text-red-800", description: "Heavily breathing" }
   ];
 
-  const weeklyProgress = [
-    { day: "Mon", minutes: 45, type: "Yoga" },
-    { day: "Tue", minutes: 30, type: "Running" },
-    { day: "Wed", minutes: 0, type: "Rest" },
-    { day: "Thu", minutes: 40, type: "Strength" },
-    { day: "Fri", minutes: 25, type: "Walking" },
-    { day: "Sat", minutes: 60, type: "Swimming" },
-    { day: "Sun", minutes: 35, type: "Yoga" }
-  ];
-
   const totalWeeklyMinutes = weeklyProgress.reduce((sum, day) => sum + day.minutes, 0);
-  const exerciseScore = 68;
-  const goalAchievement = Math.round((totalWeeklyMinutes / 150) * 100);
+  const goalAchievement = Math.round((totalWeeklyMinutes / weeklyGoal) * 100);
 
   // Helper function to get exercise icon
   const getExerciseIcon = (type: string): string => {
@@ -55,7 +56,8 @@ function ExerciseTrackerContent() {
       'Running': '🏃‍♀️',
       'Strength': '🏋️‍♀️',
       'Walking': '🚶‍♀️',
-      'Swimming': '🏊‍♀️'
+      'Swimming': '🏊‍♀️',
+      'Rest': '😴'
     };
     return iconMap[type] || '🏃‍♀️';
   };
@@ -68,7 +70,7 @@ function ExerciseTrackerContent() {
       exerciseDuration,
       exerciseIntensity,
       totalWeeklyMinutes,
-      weeklyGoal: 150,
+      weeklyGoal,
       exerciseScore,
       goalAchievement,
       activeDays: weeklyProgress.filter(day => day.minutes > 0).length,
@@ -137,6 +139,81 @@ function ExerciseTrackerContent() {
       const validIntensities = ["low", "moderate", "high"];
       if (validIntensities.includes(intensity)) {
         setExerciseIntensity(intensity);
+      }
+    },
+  });
+
+  // AI Action: Set weekly goal
+  useCopilotAction({
+    name: "setWeeklyGoal",
+    description: "Set weekly exercise goal in minutes",
+    parameters: [{
+      name: "goalMinutes",
+      type: "number",
+      description: "Weekly exercise goal in minutes (60-500)",
+      required: true,
+    }],
+    handler: ({ goalMinutes }) => {
+      if (goalMinutes >= 60 && goalMinutes <= 500) {
+        setWeeklyGoal(goalMinutes);
+      }
+    },
+  });
+
+  // AI Action: Update daily exercise
+  useCopilotAction({
+    name: "updateDailyExercise",
+    description: "Update exercise for a specific day of the week",
+    parameters: [
+      {
+        name: "day",
+        type: "string",
+        description: "Day of the week (Mon, Tue, Wed, Thu, Fri, Sat, Sun)",
+        required: true,
+      },
+      {
+        name: "minutes",
+        type: "number",
+        description: "Exercise minutes for that day (0-120)",
+        required: true,
+      },
+      {
+        name: "exerciseType",
+        type: "string",
+        description: "Type of exercise (Yoga, Running, Strength, Walking, Swimming, Rest)",
+        required: true,
+      }
+    ],
+    handler: ({ day, minutes, exerciseType }) => {
+      const validDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      if (validDays.includes(day) && minutes >= 0 && minutes <= 120) {
+        setWeeklyProgress(prev => prev.map(dayData => {
+          if (dayData.day === day) {
+            return {
+              ...dayData,
+              minutes,
+              type: exerciseType || dayData.type
+            };
+          }
+          return dayData;
+        }));
+      }
+    },
+  });
+
+  // AI Action: Update exercise score
+  useCopilotAction({
+    name: "setExerciseScore",
+    description: "Set exercise health score",
+    parameters: [{
+      name: "score",
+      type: "number",
+      description: "Exercise score (0-100)",
+      required: true,
+    }],
+    handler: ({ score }) => {
+      if (score >= 0 && score <= 100) {
+        setExerciseScore(score);
       }
     },
   });
@@ -236,19 +313,19 @@ function ExerciseTrackerContent() {
                   <div className="text-xs text-teal-600 mt-1">minutes</div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">5</div>
+                  <div className="text-3xl font-bold text-blue-600 mb-1">{weeklyProgress.filter(day => day.minutes > 0).length}</div>
                   <div className="text-sm text-gray-600">Active Days</div>
                   <div className="text-xs text-blue-600 mt-1">this week</div>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-xl border border-purple-200">
-                  <div className="text-3xl font-bold text-purple-600 mb-1">68</div>
+                  <div className="text-3xl font-bold text-purple-600 mb-1">{exerciseScore}</div>
                   <div className="text-sm text-gray-600">Exercise Score</div>
                   <div className="text-xs text-purple-600 mt-1">Good</div>
                 </div>
                 <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
-                  <div className="text-3xl font-bold text-green-600 mb-1">78%</div>
+                  <div className="text-3xl font-bold text-green-600 mb-1">{goalAchievement}%</div>
                   <div className="text-sm text-gray-600">Goal Achievement</div>
-                  <div className="text-xs text-green-600 mt-1">150 min/week</div>
+                  <div className="text-xs text-green-600 mt-1">{weeklyGoal} min/week</div>
                 </div>
               </div>
             </div>
@@ -258,13 +335,13 @@ function ExerciseTrackerContent() {
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Weekly Exercise Progress</h2>
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-medium text-gray-700">Weekly Goal: 150 minutes</span>
-                  <span className="text-sm text-gray-600">{totalWeeklyMinutes}/150 minutes</span>
+                  <span className="text-sm font-medium text-gray-700">Weekly Goal: {weeklyGoal} minutes</span>
+                  <span className="text-sm text-gray-600">{totalWeeklyMinutes}/{weeklyGoal} minutes</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
                   <div 
                     className="bg-gradient-to-r from-teal-400 to-blue-500 h-3 rounded-full transition-all"
-                    style={{ width: `${Math.min((totalWeeklyMinutes / 150) * 100, 100)}%` }}
+                    style={{ width: `${Math.min((totalWeeklyMinutes / weeklyGoal) * 100, 100)}%` }}
                   ></div>
                 </div>
                 <div className="grid grid-cols-7 gap-2 mt-6">
@@ -378,7 +455,7 @@ function ExerciseTrackerContent() {
                       <span className="text-lg">📊</span>
                       <span className="font-medium text-gray-800">Weekly Analysis</span>
                     </div>
-                    <p className="text-sm text-gray-600">You&apos;ve achieved 78% of your weekly exercise goal. Consider adding 1-2 more cardio sessions.</p>
+                    <p className="text-sm text-gray-600">You&apos;ve achieved {goalAchievement}% of your weekly exercise goal. Consider adding 1-2 more cardio sessions.</p>
                   </div>
                   <div className="p-4 bg-white/60 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
@@ -415,12 +492,30 @@ function ExerciseTrackerContent() {
       <CopilotSidebar
         instructions="You are an exercise health assistant helping users track their workouts and maintain an active lifestyle. You have access to the user's current exercise data and can help them:
 
-1. Select exercise types (cardio, strength, yoga, walking)
-2. Set exercise duration (5-120 minutes)
-3. Choose exercise intensity (low, moderate, high)
-4. Set up complete workouts with type, duration, and intensity
-5. Track weekly progress and goal achievement
-6. Clear exercise data if needed
+1. **Today's Workout Setup:**
+   - Select exercise types (cardio, strength, yoga, walking)
+   - Set exercise duration (5-120 minutes)
+   - Choose exercise intensity (low, moderate, high)
+   - Set up complete workouts with type, duration, and intensity
+
+2. **Weekly Goal Management:**
+   - Set weekly exercise goals (60-500 minutes)
+   - Track weekly progress and goal achievement
+   - Monitor active days per week
+
+3. **Weekly Progress Tracking:**
+   - Update daily exercise for specific days (Mon-Sun)
+   - Set exercise minutes (0-120) and type for each day
+   - Track different exercise types: Yoga, Running, Strength, Walking, Swimming, Rest
+
+4. **Health Metrics:**
+   - Update exercise health score (0-100 points)
+   - Monitor goal achievement percentage
+   - Track total weekly exercise minutes
+
+5. **Data Management:**
+   - Clear current exercise selections
+   - Analyze workout patterns and progress
 
 Available exercise types:
 - Cardio: Running, Swimming, Cycling
@@ -437,7 +532,7 @@ You can see their current exercise data and make real-time updates to help them 
         defaultOpen={false}
         labels={{
           title: "Exercise AI Assistant",
-          initial: "👋 Hi! I'm your exercise assistant. I can help you track workouts and provide personalized fitness recommendations.\n\nTry asking me to:\n- \"Set up a 45-minute cardio workout with moderate intensity\"\n- \"Select yoga exercise for today\"\n- \"Set my exercise duration to 60 minutes\"\n- \"What's my current weekly progress?\"\n- \"Give me workout recommendations\"\n\nI can see your current data and update it in real-time!"
+          initial: "👋 Hi! I'm your exercise assistant. I can help you track workouts and provide personalized fitness recommendations.\n\n**🏃‍♀️ Workout Setup:**\n- \"Set up a 45-minute cardio workout with moderate intensity\"\n- \"Select yoga exercise for today\"\n- \"Set my exercise duration to 60 minutes\"\n\n**🎯 Weekly Goals:**\n- \"Set my weekly exercise goal to 200 minutes\"\n- \"What's my current goal achievement?\"\n- \"Update my exercise score to 75\"\n\n**📅 Weekly Progress:**\n- \"Update Monday's exercise to 40 minutes of Running\"\n- \"Set Wednesday as Rest day\"\n- \"Update Friday to 30 minutes of Strength training\"\n\n**📊 Analysis:**\n- \"What's my current weekly progress?\"\n- \"Give me workout recommendations\"\n- \"Analyze my exercise patterns\"\n\nI can see all your data and update it in real-time!"
         }}
       />
     </div>

@@ -19,6 +19,16 @@ export default function NutritionTracker() {
 function NutritionTrackerContent() {
   const [waterIntake, setWaterIntake] = useState<number>(1200);
   const [selectedFoodTypes, setSelectedFoodTypes] = useState<string[]>([]);
+  const [todayMeals, setTodayMeals] = useState([
+    { time: "Breakfast", foods: ["Oatmeal", "Blueberries", "Almonds"], calories: 320, nutrients: ["Fiber", "Antioxidants"] },
+    { time: "Lunch", foods: ["Salmon", "Green Salad", "Brown Rice"], calories: 480, nutrients: ["Omega-3", "Protein"] },
+    { time: "Dinner", foods: ["Chicken Breast", "Broccoli", "Sweet Potato"], calories: 410, nutrients: ["Protein", "Vitamin C"] }
+  ]);
+  const [calorieGoal, setCalorieGoal] = useState<number>(1400);
+  const [nutritionScore, setNutritionScore] = useState<number>(75);
+  const [proteinData, setProteinData] = useState<number>(65);
+  const [carbData, setCarbData] = useState<number>(140);
+  const [fatData, setFatData] = useState<number>(45);
 
   const nutritionFocus = [
     { type: "iron", label: "Iron Supplement", icon: "🍖", color: "bg-red-50 border-red-200", foods: "Red meat, Spinach, Beans" },
@@ -29,14 +39,7 @@ function NutritionTrackerContent() {
     { type: "antiInflammatory", label: "Anti-inflammatory Foods", icon: "🫐", color: "bg-purple-50 border-purple-200", foods: "Berries, Green tea" }
   ];
 
-  const todayMeals = [
-    { time: "Breakfast", foods: ["Oatmeal", "Blueberries", "Almonds"], calories: 320, nutrients: ["Fiber", "Antioxidants"] },
-    { time: "Lunch", foods: ["Salmon", "Green Salad", "Brown Rice"], calories: 480, nutrients: ["Omega-3", "Protein"] },
-    { time: "Dinner", foods: ["Chicken Breast", "Broccoli", "Sweet Potato"], calories: 410, nutrients: ["Protein", "Vitamin C"] }
-  ];
-
   const totalCalories = todayMeals.reduce((sum, meal) => sum + meal.calories, 0);
-  const nutritionScore = 75;
 
   // Make nutrition data readable by AI
   useCopilotReadable({
@@ -48,7 +51,10 @@ function NutritionTrackerContent() {
       selectedFoodTypes,
       nutritionScore,
       totalCalories,
-      calorieGoal: 1400,
+      calorieGoal,
+      proteinData,
+      carbData,
+      fatData,
       todayMeals,
       nutritionFocus: nutritionFocus.map(nf => ({
         type: nf.type,
@@ -89,6 +95,174 @@ function NutritionTrackerContent() {
     handler: ({ totalAmount }) => {
       if (totalAmount >= 0 && totalAmount <= 3000) {
         setWaterIntake(totalAmount);
+      }
+    },
+  });
+
+  // AI Action: Add meal
+  useCopilotAction({
+    name: "addMeal",
+    description: "Add a new meal to today's meal record",
+    parameters: [
+      {
+        name: "mealTime",
+        type: "string",
+        description: "Meal time (Breakfast, Lunch, Dinner, Snack)",
+        required: true,
+      },
+      {
+        name: "foods",
+        type: "string[]",
+        description: "Array of food items for this meal",
+        required: true,
+      },
+      {
+        name: "calories",
+        type: "number",
+        description: "Total calories for this meal",
+        required: true,
+      },
+      {
+        name: "nutrients",
+        type: "string[]",
+        description: "Array of key nutrients in this meal (e.g., ['Protein', 'Fiber'])",
+        required: false,
+      }
+    ],
+    handler: ({ mealTime, foods, calories, nutrients = [] }) => {
+      if (calories > 0 && calories <= 2000 && foods.length > 0) {
+        const newMeal = {
+          time: mealTime,
+          foods,
+          calories,
+          nutrients
+        };
+        setTodayMeals(prev => [...prev, newMeal]);
+      }
+    },
+  });
+
+  // AI Action: Update meal
+  useCopilotAction({
+    name: "updateMeal",
+    description: "Update an existing meal in today's meal record",
+    parameters: [
+      {
+        name: "mealTime",
+        type: "string",
+        description: "Meal time to update (Breakfast, Lunch, Dinner, Snack)",
+        required: true,
+      },
+      {
+        name: "foods",
+        type: "string[]",
+        description: "New array of food items for this meal",
+        required: false,
+      },
+      {
+        name: "calories",
+        type: "number",
+        description: "New total calories for this meal",
+        required: false,
+      },
+      {
+        name: "nutrients",
+        type: "string[]",
+        description: "New array of key nutrients in this meal",
+        required: false,
+      }
+    ],
+    handler: ({ mealTime, foods, calories, nutrients }) => {
+      setTodayMeals(prev => prev.map(meal => {
+        if (meal.time.toLowerCase() === mealTime.toLowerCase()) {
+          return {
+            ...meal,
+            ...(foods && { foods }),
+            ...(calories && { calories }),
+            ...(nutrients && { nutrients })
+          };
+        }
+        return meal;
+      }));
+    },
+  });
+
+  // AI Action: Remove meal
+  useCopilotAction({
+    name: "removeMeal",
+    description: "Remove a meal from today's meal record",
+    parameters: [{
+      name: "mealTime",
+      type: "string",
+      description: "Meal time to remove (Breakfast, Lunch, Dinner, Snack)",
+      required: true,
+    }],
+    handler: ({ mealTime }) => {
+      setTodayMeals(prev => prev.filter(meal => 
+        meal.time.toLowerCase() !== mealTime.toLowerCase()
+      ));
+    },
+  });
+
+  // AI Action: Set calorie goal
+  useCopilotAction({
+    name: "setCalorieGoal",
+    description: "Set daily calorie goal",
+    parameters: [{
+      name: "goal",
+      type: "number",
+      description: "Daily calorie goal (800-3000 calories)",
+      required: true,
+    }],
+    handler: ({ goal }) => {
+      if (goal >= 800 && goal <= 3000) {
+        setCalorieGoal(goal);
+      }
+    },
+  });
+
+  // AI Action: Update nutrition data
+  useCopilotAction({
+    name: "updateNutritionData",
+    description: "Update nutrition data (protein, carbs, fats, score)",
+    parameters: [
+      {
+        name: "protein",
+        type: "number",
+        description: "Protein amount in grams (0-200)",
+        required: false,
+      },
+      {
+        name: "carbs",
+        type: "number",
+        description: "Carbohydrates amount in grams (0-500)",
+        required: false,
+      },
+      {
+        name: "fats",
+        type: "number",
+        description: "Healthy fats amount in grams (0-150)",
+        required: false,
+      },
+      {
+        name: "score",
+        type: "number",
+        description: "Nutrition score (0-100)",
+        required: false,
+      }
+    ],
+    handler: ({ protein, carbs, fats, score }) => {
+      if (protein !== undefined && protein >= 0 && protein <= 200) {
+        setProteinData(protein);
+      }
+      if (carbs !== undefined && carbs >= 0 && carbs <= 500) {
+        setCarbData(carbs);
+      }
+      if (fats !== undefined && fats >= 0 && fats <= 150) {
+        setFatData(fats);
+      }
+      if (score !== undefined && score >= 0 && score <= 100) {
+        setNutritionScore(score);
       }
     },
   });
@@ -170,11 +344,11 @@ function NutritionTrackerContent() {
                 <p className="text-sm text-gray-600">Personalized Nutrition Advice & Diet Tracking</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
-                Nutrition Score: 75 pts
-              </span>
-            </div>
+                          <div className="flex items-center gap-3">
+                <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+                  Nutrition Score: {nutritionScore} pts
+                </span>
+              </div>
           </div>
         </header>
 
@@ -187,22 +361,22 @@ function NutritionTrackerContent() {
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Today&apos;s Nutrition Overview</h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
-                  <div className="text-3xl font-bold text-green-600 mb-1">1210</div>
+                  <div className="text-3xl font-bold text-green-600 mb-1">{totalCalories}</div>
                   <div className="text-sm text-gray-600">Calories</div>
-                  <div className="text-xs text-green-600 mt-1">Goal: 1400</div>
+                  <div className="text-xs text-green-600 mt-1">Goal: {calorieGoal}</div>
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">65g</div>
+                  <div className="text-3xl font-bold text-blue-600 mb-1">{proteinData}g</div>
                   <div className="text-sm text-gray-600">Protein</div>
                   <div className="text-xs text-blue-600 mt-1">Goal Met</div>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-xl border border-purple-200">
-                  <div className="text-3xl font-bold text-purple-600 mb-1">140g</div>
+                  <div className="text-3xl font-bold text-purple-600 mb-1">{carbData}g</div>
                   <div className="text-sm text-gray-600">Carbohydrates</div>
                   <div className="text-xs text-purple-600 mt-1">Moderate</div>
                 </div>
                 <div className="text-center p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                  <div className="text-3xl font-bold text-yellow-600 mb-1">45g</div>
+                  <div className="text-3xl font-bold text-yellow-600 mb-1">{fatData}g</div>
                   <div className="text-sm text-gray-600">Healthy Fats</div>
                   <div className="text-xs text-yellow-600 mt-1">Good</div>
                 </div>
@@ -357,11 +531,26 @@ function NutritionTrackerContent() {
       <CopilotSidebar
         instructions="You are a nutrition assistant helping users with personalized nutrition advice and diet tracking. You have access to the user's current nutrition data and can help them:
 
-1. Track and update water intake (0-3000ml)
-2. Add or remove nutrition focus areas (iron, calcium, magnesium, omega3, vitaminD, antiInflammatory)
-3. Analyze their current nutrition status and meal data
-4. Provide personalized dietary recommendations
-5. Clear nutrition data if needed
+1. **Water Intake Management:**
+   - Track and update water intake (0-3000ml)
+   - Set total daily water intake
+
+2. **Today's Meal Record Management:**
+   - Add new meals (Breakfast, Lunch, Dinner, Snack) with foods, calories, and nutrients
+   - Update existing meals (modify foods, calories, or nutrients)
+   - Remove meals from today's record
+
+3. **Nutrition Goals & Data:**
+   - Set daily calorie goals (800-3000 calories)
+   - Update nutrition data (protein 0-200g, carbs 0-500g, fats 0-150g)
+   - Adjust nutrition score (0-100 points)
+
+4. **Nutrition Focus Areas:**
+   - Add or remove nutrition focus areas (iron, calcium, magnesium, omega3, vitaminD, antiInflammatory)
+
+5. **Analysis & Recommendations:**
+   - Analyze current nutrition status and meal data
+   - Provide personalized dietary recommendations
 
 Available nutrition focus areas:
 - Iron: Red meat, Spinach, Beans
@@ -375,7 +564,7 @@ You can see their current nutrition data and make real-time updates to help them
         defaultOpen={false}
         labels={{
           title: "Nutrition AI Assistant",
-          initial: "👋 Hi! I'm your nutrition assistant. I can help you track your nutrition and provide personalized dietary advice.\n\nTry asking me to:\n- \"Add 500ml water to my intake\"\n- \"Add iron and calcium to my nutrition focus\"\n- \"What's my current nutrition status?\"\n- \"Give me meal recommendations based on my goals\"\n- \"Set my water intake to 1500ml\"\n\nI can see your current data and update it in real-time!"
+          initial: "👋 Hi! I'm your nutrition assistant. I can help you track your nutrition and provide personalized dietary advice.\n\n**🥗 Meal Management:**\n- \"Add a snack with apple and nuts, 150 calories\"\n- \"Update breakfast to include Greek yogurt and granola, 380 calories\"\n- \"Remove dinner from today's meals\"\n\n**📊 Nutrition Data:**\n- \"Set my calorie goal to 1600\"\n- \"Update my protein to 80g and carbs to 120g\"\n- \"Set nutrition score to 85\"\n\n**💧 Water & Focus:**\n- \"Add 500ml water to my intake\"\n- \"Add iron and calcium to my nutrition focus\"\n- \"Set my water intake to 1800ml\"\n\n**📈 Analysis:**\n- \"What's my current nutrition status?\"\n- \"Analyze my meal balance for today\"\n\nI can see all your data and update it in real-time!"
         }}
       />
     </div>
