@@ -8,7 +8,9 @@ export default function CycleTracker() {
   return (
     <CopilotKit runtimeUrl="/api/copilotkit">
       <div className="flex h-screen">
-        <CycleTrackerContent />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <CycleTrackerContent />
+        </div>
         <CopilotSidebar
           instructions="You are a menstrual cycle and mood tracking assistant helping women understand and track their reproductive health. You have access to their current cycle data and can help them:
 

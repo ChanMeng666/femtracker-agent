@@ -8,7 +8,9 @@ export default function ExerciseTracker() {
   return (
     <CopilotKit runtimeUrl="/api/copilotkit">
       <div className="flex h-screen">
-        <ExerciseTrackerContent />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ExerciseTrackerContent />
+        </div>
         <CopilotSidebar
           instructions="You are an exercise health assistant helping users track their workouts and maintain an active lifestyle. You have access to the user's current exercise data and can help them:
 

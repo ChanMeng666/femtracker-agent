@@ -8,7 +8,9 @@ export default function NutritionTracker() {
   return (
     <CopilotKit runtimeUrl="/api/copilotkit">
       <div className="flex h-screen">
-        <NutritionTrackerContent />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <NutritionTrackerContent />
+        </div>
         <CopilotSidebar
           instructions="You are a nutrition and health assistant helping users track their daily nutrition intake and maintain healthy eating habits. You have access to their current nutrition data and can help them:
 
