@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS quick_records (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     date DATE NOT NULL,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('weight', 'mood', 'symptom', 'exercise', 'meal', 'sleep', 'water')),
+    record_type VARCHAR(20) NOT NULL CHECK (record_type IN ('weight', 'mood', 'symptom', 'exercise', 'meal', 'sleep', 'water')),
     value TEXT NOT NULL,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS quick_records (
 CREATE TABLE IF NOT EXISTS personalized_tips (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('reminder', 'suggestion', 'warning', 'achievement')),
+    tip_type VARCHAR(20) NOT NULL CHECK (tip_type IN ('reminder', 'suggestion', 'warning', 'achievement')),
     category VARCHAR(50) NOT NULL,
     message TEXT NOT NULL,
     action_text VARCHAR(100),
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS personalized_tips (
 CREATE TABLE IF NOT EXISTS health_insights (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('positive', 'warning', 'info')),
+    insight_type VARCHAR(20) NOT NULL CHECK (insight_type IN ('positive', 'warning', 'info')),
     category VARCHAR(50) NOT NULL,
     message TEXT NOT NULL,
     action TEXT,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS health_overview (
 CREATE TABLE IF NOT EXISTS ai_insights (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('positive', 'improvement', 'warning', 'neutral')),
+    insight_type VARCHAR(20) NOT NULL CHECK (insight_type IN ('positive', 'improvement', 'warning', 'neutral')),
     category VARCHAR(50) NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
@@ -106,10 +106,10 @@ CREATE TABLE IF NOT EXISTS correlation_analyses (
 
 -- 为新表创建索引
 CREATE INDEX IF NOT EXISTS idx_quick_records_user_date ON quick_records(user_id, date DESC);
-CREATE INDEX IF NOT EXISTS idx_quick_records_type ON quick_records(type);
+CREATE INDEX IF NOT EXISTS idx_quick_records_type ON quick_records(record_type);
 
 CREATE INDEX IF NOT EXISTS idx_personalized_tips_user_active ON personalized_tips(user_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_personalized_tips_type ON personalized_tips(type);
+CREATE INDEX IF NOT EXISTS idx_personalized_tips_type ON personalized_tips(tip_type);
 
 CREATE INDEX IF NOT EXISTS idx_health_insights_user_active ON health_insights(user_id, is_active);
 CREATE INDEX IF NOT EXISTS idx_health_insights_category ON health_insights(category);

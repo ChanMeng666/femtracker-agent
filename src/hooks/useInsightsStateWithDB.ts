@@ -125,7 +125,7 @@ export const useInsightsStateWithDB = () => {
     if (data) {
       setAIInsights(data.map(insight => ({
         id: insight.id,
-        type: insight.type,
+        type: insight.insight_type,
         category: insight.category,
         title: insight.title,
         description: insight.description,
@@ -269,7 +269,7 @@ export const useInsightsStateWithDB = () => {
         .from('ai_insights')
         .insert([{
           user_id: user.id,
-          type,
+          insight_type: type,
           category,
           title,
           description,
@@ -286,7 +286,7 @@ export const useInsightsStateWithDB = () => {
 
       const newInsight: FrontendAIInsight = {
         id: data.id,
-        type: data.type,
+        type: data.insight_type,
         category: data.category,
         title: data.title,
         description: data.description,

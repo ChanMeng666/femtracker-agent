@@ -173,7 +173,7 @@ export interface UserPreferences {
 export interface PersonalizedTip {
   id: string
   user_id: string
-  type: 'reminder' | 'suggestion' | 'warning' | 'achievement'
+  tip_type: 'reminder' | 'suggestion' | 'warning' | 'achievement'
   category: string
   message: string
   action_text?: string
@@ -186,7 +186,7 @@ export interface PersonalizedTip {
 export interface HealthInsightDB {
   id: string
   user_id: string
-  type: 'positive' | 'warning' | 'info'
+  insight_type: 'positive' | 'warning' | 'info'
   category: string
   message: string
   action?: string
@@ -214,7 +214,7 @@ export interface HealthOverview {
 export interface AIInsight {
   id: string
   user_id: string
-  type: 'positive' | 'improvement' | 'warning' | 'neutral'
+  insight_type: 'positive' | 'improvement' | 'warning' | 'neutral'
   category: string
   title: string
   description: string

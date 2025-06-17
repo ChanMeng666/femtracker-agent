@@ -23,7 +23,7 @@ ON CONFLICT (user_id) DO UPDATE SET
   last_updated = EXCLUDED.last_updated;
 
 -- 示例快速记录
-INSERT INTO quick_records (user_id, date, type, value, notes) VALUES
+INSERT INTO quick_records (user_id, date, record_type, value, notes) VALUES
   ('YOUR_USER_ID_HERE', CURRENT_DATE, 'weight', '65.2 kg', 'Morning weight'),
   ('YOUR_USER_ID_HERE', CURRENT_DATE, 'mood', 'Happy', 'Feeling great today!'),
   ('YOUR_USER_ID_HERE', CURRENT_DATE - INTERVAL '1 day', 'exercise', '30 min cardio', 'Good workout session'),
@@ -31,20 +31,20 @@ INSERT INTO quick_records (user_id, date, type, value, notes) VALUES
   ('YOUR_USER_ID_HERE', CURRENT_DATE - INTERVAL '2 days', 'sleep', '8 hours', 'Restful night');
 
 -- 示例个性化提示
-INSERT INTO personalized_tips (user_id, type, category, message, action_text, action_link) VALUES
+INSERT INTO personalized_tips (user_id, tip_type, category, message, action_text, action_link) VALUES
   ('YOUR_USER_ID_HERE', 'reminder', 'cycle', 'Your next period is expected in 3 days. Consider tracking your symptoms.', 'Track Symptoms', '/symptom-mood'),
   ('YOUR_USER_ID_HERE', 'suggestion', 'nutrition', 'You have been consistent with your water intake! Try adding some iron-rich foods.', 'View Nutrition', '/nutrition'),
   ('YOUR_USER_ID_HERE', 'achievement', 'exercise', 'Great job! You have exercised 4 times this week.', 'View Progress', '/exercise'),
   ('YOUR_USER_ID_HERE', 'warning', 'health', 'You reported headaches 3 times this week. Consider consulting a healthcare provider.', 'Book Appointment', '#');
 
 -- 示例健康洞察
-INSERT INTO health_insights (user_id, type, category, message, action, action_link) VALUES
+INSERT INTO health_insights (user_id, insight_type, category, message, action, action_link) VALUES
   ('YOUR_USER_ID_HERE', 'positive', 'cycle', 'Your cycle regularity has improved this month!', 'View Cycle Data', '/cycle-tracker'),
   ('YOUR_USER_ID_HERE', 'info', 'nutrition', 'Your water intake is above average. Keep up the good hydration!', 'Track Water', '/nutrition'),
   ('YOUR_USER_ID_HERE', 'warning', 'symptoms', 'You have reported stress symptoms more frequently. Consider relaxation techniques.', 'Learn More', '/lifestyle');
 
 -- 示例AI洞察
-INSERT INTO ai_insights (user_id, type, category, title, description, recommendation, confidence_score) VALUES
+INSERT INTO ai_insights (user_id, insight_type, category, title, description, recommendation, confidence_score) VALUES
   ('YOUR_USER_ID_HERE', 'positive', 'overall', 'Improved Health Patterns', 'Your overall health metrics show a 15% improvement over the past month.', 'Continue your current routine and consider adding mindfulness practices.', 0.85),
   ('YOUR_USER_ID_HERE', 'improvement', 'exercise', 'Exercise Consistency Opportunity', 'Your exercise frequency has been irregular. Consistent moderate exercise could benefit your cycle health.', 'Try scheduling workouts at the same time each day for better consistency.', 0.75),
   ('YOUR_USER_ID_HERE', 'warning', 'symptoms', 'Symptom Pattern Alert', 'We noticed increased headache frequency during your luteal phase.', 'Consider tracking triggers like caffeine intake and sleep quality.', 0.80),

@@ -156,7 +156,7 @@ export const useHomeStateWithDB = () => {
     if (data) {
       setQuickRecords(data.map(record => ({
         date: record.date,
-        type: record.type as FrontendQuickRecord['type'],
+        type: record.record_type as FrontendQuickRecord['type'],
         value: record.value,
         notes: record.notes || undefined
       })));
@@ -182,7 +182,7 @@ export const useHomeStateWithDB = () => {
     if (data) {
       setPersonalizedTips(data.map(tip => ({
         id: tip.id,
-        type: tip.type,
+        type: tip.tip_type,
         category: tip.category,
         message: tip.message,
         actionText: tip.action_text || undefined,
@@ -209,7 +209,7 @@ export const useHomeStateWithDB = () => {
 
     if (data) {
       setHealthInsights(data.map(insight => ({
-        type: insight.type,
+        type: insight.insight_type,
         category: insight.category,
         message: insight.message,
         action: insight.action || undefined,
@@ -294,7 +294,7 @@ export const useHomeStateWithDB = () => {
         .insert([{
           user_id: user.id,
           date: new Date().toISOString().split('T')[0],
-          type,
+          record_type: type,
           value,
           notes
         }])
@@ -309,7 +309,7 @@ export const useHomeStateWithDB = () => {
       // 更新本地状态
       const newRecord: FrontendQuickRecord = {
         date: data.date,
-        type: data.type as FrontendQuickRecord['type'],
+        type: data.record_type as FrontendQuickRecord['type'],
         value: data.value,
         notes: data.notes || undefined
       };
@@ -332,7 +332,7 @@ export const useHomeStateWithDB = () => {
         .from('personalized_tips')
         .insert([{
           user_id: user.id,
-          type,
+          tip_type: type,
           category,
           message,
           action_text: actionText,
@@ -348,7 +348,7 @@ export const useHomeStateWithDB = () => {
 
       const newTip: FrontendPersonalizedTip = {
         id: data.id,
-        type: data.type,
+        type: data.tip_type,
         category: data.category,
         message: data.message,
         actionText: data.action_text || undefined,
@@ -392,7 +392,7 @@ export const useHomeStateWithDB = () => {
         .from('health_insights')
         .insert([{
           user_id: user.id,
-          type,
+          insight_type: type,
           category,
           message,
           action,
@@ -407,7 +407,7 @@ export const useHomeStateWithDB = () => {
       }
 
       const newInsight: FrontendHealthInsight = {
-        type: data.type,
+        type: data.insight_type,
         category: data.category,
         message: data.message,
         action: data.action || undefined,
