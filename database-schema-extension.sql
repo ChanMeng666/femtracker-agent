@@ -1,20 +1,12 @@
 -- 扩展数据库schema - 第一阶段核心功能表
 -- 在现有数据库的基础上添加新表
+-- 注意：database-setup.sql已经创建了基础表，此脚本只添加新的扩展表
 
--- 为了确保干净的安装，先删除可能存在的表和视图（按依赖关系逆序删除）
--- 先尝试删除视图，再删除同名表
-DROP VIEW IF EXISTS quick_records CASCADE;
-DROP VIEW IF EXISTS personalized_tips CASCADE;
-DROP VIEW IF EXISTS health_insights CASCADE;
+-- 检查并处理现有的health_overview视图
 DROP VIEW IF EXISTS health_overview CASCADE;
-DROP VIEW IF EXISTS ai_insights CASCADE;
-DROP VIEW IF EXISTS health_metrics CASCADE;
-DROP VIEW IF EXISTS correlation_analyses CASCADE;
 
--- 然后删除表
-DROP TABLE IF EXISTS quick_records CASCADE;
+-- 删除可能存在的扩展表（与database-setup.sql中的表不冲突）
 DROP TABLE IF EXISTS personalized_tips CASCADE;
-DROP TABLE IF EXISTS health_insights CASCADE;
 DROP TABLE IF EXISTS health_overview CASCADE;
 DROP TABLE IF EXISTS ai_insights CASCADE;
 DROP TABLE IF EXISTS health_metrics CASCADE;
@@ -25,22 +17,12 @@ DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 DROP FUNCTION IF EXISTS initialize_user_health_overview() CASCADE;
 
 -- ============================================
--- 第一部分：创建所有表
+-- 第一部分：创建扩展表（不与现有表冲突）
 -- ============================================
 
--- 快速记录表
-CREATE TABLE quick_records (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    record_type VARCHAR(20) NOT NULL CHECK (record_type IN ('weight', 'mood', 'symptom', 'exercise', 'meal', 'sleep', 'water')),
-    value TEXT NOT NULL,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
+-- 注意：quick_records 和 health_insights 已在database-setup.sql中存在，我们跳过这些表
 
--- 个性化提示表
+-- 个性化提示表（新增）
 CREATE TABLE personalized_tips (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -54,21 +36,7 @@ CREATE TABLE personalized_tips (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 健康洞察表
-CREATE TABLE health_insights (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-    insight_type VARCHAR(20) NOT NULL CHECK (insight_type IN ('positive', 'warning', 'info')),
-    category VARCHAR(50) NOT NULL,
-    message TEXT NOT NULL,
-    action TEXT,
-    action_link VARCHAR(255),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
-
--- 健康概览表（存储用户的各项健康分数）
+-- 健康概览表（替换原来的视图，存储用户的各项健康分数）
 CREATE TABLE health_overview (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -85,7 +53,7 @@ CREATE TABLE health_overview (
     UNIQUE(user_id)
 );
 
--- AI洞察记录表（用于洞察页面）
+-- AI洞察记录表（用于洞察页面，与现有health_insights区分）
 CREATE TABLE ai_insights (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -102,7 +70,7 @@ CREATE TABLE ai_insights (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 健康指标表
+-- 健康指标表（新增）
 CREATE TABLE health_metrics (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -115,7 +83,7 @@ CREATE TABLE health_metrics (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 相关性分析表
+-- 相关性分析表（新增）
 CREATE TABLE correlation_analyses (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -132,20 +100,31 @@ CREATE TABLE correlation_analyses (
 );
 
 -- ============================================
--- 第二部分：创建索引
+-- 第二部分：扩展现有表结构（如果需要）
 -- ============================================
 
--- quick_records 索引
-CREATE INDEX idx_quick_records_user_date ON quick_records(user_id, date DESC);
-CREATE INDEX idx_quick_records_type ON quick_records(record_type);
+-- 为现有的health_insights表添加新字段（如果不存在）
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'health_insights' AND column_name = 'is_active') THEN
+        ALTER TABLE health_insights ADD COLUMN is_active BOOLEAN DEFAULT true;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'health_insights' AND column_name = 'updated_at') THEN
+        ALTER TABLE health_insights ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL;
+    END IF;
+END
+$$;
+
+-- ============================================
+-- 第三部分：创建索引
+-- ============================================
 
 -- personalized_tips 索引
 CREATE INDEX idx_personalized_tips_user_active ON personalized_tips(user_id, is_active);
 CREATE INDEX idx_personalized_tips_type ON personalized_tips(tip_type);
-
--- health_insights 索引
-CREATE INDEX idx_health_insights_user_active ON health_insights(user_id, is_active);
-CREATE INDEX idx_health_insights_category ON health_insights(category);
 
 -- health_overview 索引
 CREATE INDEX idx_health_overview_user ON health_overview(user_id);
@@ -164,39 +143,28 @@ CREATE INDEX idx_health_metrics_category ON health_metrics(category);
 CREATE INDEX idx_correlation_analyses_user_active ON correlation_analyses(user_id, is_active);
 CREATE INDEX idx_correlation_analyses_generated ON correlation_analyses(generated_at DESC);
 
+-- 为现有health_insights表创建额外索引（如果不存在）
+CREATE INDEX IF NOT EXISTS idx_health_insights_user_active ON health_insights(user_id, is_active);
+
 -- ============================================
--- 第三部分：启用行级安全(RLS)
+-- 第四部分：启用行级安全(RLS)
 -- ============================================
 
-ALTER TABLE quick_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE personalized_tips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE health_insights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE health_overview ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_insights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE health_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE correlation_analyses ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 第四部分：创建RLS策略
+-- 第五部分：创建RLS策略
 -- ============================================
-
--- quick_records policies
-CREATE POLICY "Users can view own quick records" ON quick_records FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own quick records" ON quick_records FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own quick records" ON quick_records FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own quick records" ON quick_records FOR DELETE USING (auth.uid() = user_id);
 
 -- personalized_tips policies
 CREATE POLICY "Users can view own personalized tips" ON personalized_tips FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own personalized tips" ON personalized_tips FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own personalized tips" ON personalized_tips FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own personalized tips" ON personalized_tips FOR DELETE USING (auth.uid() = user_id);
-
--- health_insights policies
-CREATE POLICY "Users can view own health insights" ON health_insights FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can insert own health insights" ON health_insights FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update own health insights" ON health_insights FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Users can delete own health insights" ON health_insights FOR DELETE USING (auth.uid() = user_id);
 
 -- health_overview policies
 CREATE POLICY "Users can view own health overview" ON health_overview FOR SELECT USING (auth.uid() = user_id);
@@ -223,7 +191,7 @@ CREATE POLICY "Users can update own correlation analyses" ON correlation_analyse
 CREATE POLICY "Users can delete own correlation analyses" ON correlation_analyses FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================
--- 第五部分：创建触发器函数和触发器
+-- 第六部分：创建触发器函数和触发器
 -- ============================================
 
 -- 创建触发器函数用于自动更新 updated_at 字段
@@ -236,16 +204,17 @@ END;
 $$ language 'plpgsql';
 
 -- 为新表添加 updated_at 触发器
-CREATE TRIGGER update_quick_records_updated_at BEFORE UPDATE ON quick_records FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_personalized_tips_updated_at BEFORE UPDATE ON personalized_tips FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_health_insights_updated_at BEFORE UPDATE ON health_insights FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_health_overview_updated_at BEFORE UPDATE ON health_overview FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_ai_insights_updated_at BEFORE UPDATE ON ai_insights FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_health_metrics_updated_at BEFORE UPDATE ON health_metrics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_correlation_analyses_updated_at BEFORE UPDATE ON correlation_analyses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- 为现有的health_insights表添加触发器（如果updated_at字段存在）
+CREATE TRIGGER update_health_insights_updated_at BEFORE UPDATE ON health_insights FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================
--- 第六部分：用户初始化功能
+-- 第七部分：用户初始化功能
 -- ============================================
 
 -- 创建函数：初始化用户健康概览
@@ -253,7 +222,8 @@ CREATE OR REPLACE FUNCTION initialize_user_health_overview()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO health_overview (user_id, overall_score, cycle_health, nutrition_score, exercise_score, fertility_score, lifestyle_score, symptoms_score)
-    VALUES (NEW.id, 75, 75, 75, 75, 75, 75, 75);
+    VALUES (NEW.id, 75, 75, 75, 75, 75, 75, 75)
+    ON CONFLICT (user_id) DO NOTHING;
     RETURN NEW;
 END;
 $$ language 'plpgsql';

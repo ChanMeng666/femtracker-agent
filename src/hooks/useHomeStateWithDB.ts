@@ -194,27 +194,54 @@ export const useHomeStateWithDB = () => {
   const loadHealthInsights = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('health_insights')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    try {
+      // 首先尝试从新的ai_insights表加载
+      const { data: aiData, error: aiError } = await supabase
+        .from('ai_insights')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('generated_at', { ascending: false })
+        .limit(3);
 
-    if (error) {
+      // 然后从原始health_insights表加载（检查is_active字段是否存在）
+      const { data: healthData, error: healthError } = await supabase
+        .from('health_insights')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      const insights: FrontendHealthInsight[] = [];
+
+      // 添加AI洞察（如果存在）
+      if (aiData && !aiError) {
+        insights.push(...aiData.map(insight => ({
+          type: (insight.insight_type === 'positive' ? 'positive' : 
+                insight.insight_type === 'warning' ? 'warning' : 'info') as FrontendHealthInsight['type'],
+          category: insight.category,
+          message: insight.description,
+          action: insight.recommendation || undefined,
+          actionLink: undefined
+        })));
+      }
+
+      // 添加健康洞察（如果存在且AI洞察数量不足）
+      if (healthData && !healthError && insights.length < 5) {
+        insights.push(...healthData.slice(0, 5 - insights.length).map(insight => ({
+          type: (insight.insight_type === 'tip' ? 'positive' : 
+                insight.insight_type === 'warning' ? 'warning' : 'info') as FrontendHealthInsight['type'],
+          category: insight.category,
+          message: insight.description,
+          action: insight.action_required ? 'Take Action' : undefined,
+          actionLink: undefined
+        })));
+      }
+
+      setHealthInsights(insights);
+    } catch (error) {
       console.error('Error loading health insights:', error);
-      return;
-    }
-
-    if (data) {
-      setHealthInsights(data.map(insight => ({
-        type: insight.insight_type,
-        category: insight.category,
-        message: insight.message,
-        action: insight.action || undefined,
-        actionLink: insight.action_link || undefined
-      })));
     }
   };
 
@@ -384,34 +411,36 @@ export const useHomeStateWithDB = () => {
   };
 
   // 添加健康洞察
-  const addHealthInsight = async (type: 'positive' | 'warning' | 'info', category: string, message: string, action?: string, actionLink?: string) => {
+  const addHealthInsight = async (type: 'positive' | 'warning' | 'info', category: string, message: string, action?: string) => {
     if (!user) return;
 
     try {
+      // 尝试添加到新的ai_insights表
       const { data, error } = await supabase
-        .from('health_insights')
+        .from('ai_insights')
         .insert([{
           user_id: user.id,
-          insight_type: type,
+          insight_type: type === 'positive' ? 'positive' : type === 'warning' ? 'warning' : 'neutral',
           category,
-          message,
-          action,
-          action_link: actionLink
+          title: `${category} insight`,
+          description: message,
+          recommendation: action,
+          confidence_score: 0.8
         }])
         .select()
         .single();
 
       if (error) {
-        console.error('Error adding health insight:', error);
+        console.error('Error adding AI insight:', error);
         return;
       }
 
       const newInsight: FrontendHealthInsight = {
-        type: data.insight_type,
+        type: type,
         category: data.category,
-        message: data.message,
-        action: data.action || undefined,
-        actionLink: data.action_link || undefined
+        message: data.description,
+        action: data.recommendation || undefined,
+        actionLink: undefined
       };
 
       setHealthInsights(prev => [newInsight, ...prev]);
@@ -425,14 +454,15 @@ export const useHomeStateWithDB = () => {
     if (!user) return;
 
     try {
+      // 从ai_insights表删除
       const { error } = await supabase
-        .from('health_insights')
+        .from('ai_insights')
         .update({ is_active: false })
         .eq('category', category)
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error removing health insight:', error);
+        console.error('Error removing AI insight:', error);
         return;
       }
 

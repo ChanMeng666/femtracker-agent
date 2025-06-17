@@ -37,17 +37,18 @@ INSERT INTO personalized_tips (user_id, tip_type, category, message, action_text
   ('YOUR_USER_ID_HERE', 'achievement', 'exercise', 'Great job! You have exercised 4 times this week.', 'View Progress', '/exercise'),
   ('YOUR_USER_ID_HERE', 'warning', 'health', 'You reported headaches 3 times this week. Consider consulting a healthcare provider.', 'Book Appointment', '#');
 
--- 示例健康洞察
-INSERT INTO health_insights (user_id, insight_type, category, message, action, action_link) VALUES
-  ('YOUR_USER_ID_HERE', 'positive', 'cycle', 'Your cycle regularity has improved this month!', 'View Cycle Data', '/cycle-tracker'),
-  ('YOUR_USER_ID_HERE', 'info', 'nutrition', 'Your water intake is above average. Keep up the good hydration!', 'Track Water', '/nutrition'),
-  ('YOUR_USER_ID_HERE', 'warning', 'symptoms', 'You have reported stress symptoms more frequently. Consider relaxation techniques.', 'Learn More', '/lifestyle');
+-- 注意：health_insights 表结构已在database-setup.sql中定义，这里不插入数据
+-- 改为插入到新的ai_insights表
 
--- 示例AI洞察
+-- 示例AI洞察（用于洞察页面）
 INSERT INTO ai_insights (user_id, insight_type, category, title, description, recommendation, confidence_score) VALUES
-  ('YOUR_USER_ID_HERE', 'positive', 'overall', 'Improved Health Patterns', 'Your overall health metrics show a 15% improvement over the past month.', 'Continue your current routine and consider adding mindfulness practices.', 0.85),
+  ('YOUR_USER_ID_HERE', 'positive', 'cycle', 'Cycle Improvement Detected', 'Your cycle regularity has improved this month!', 'Continue tracking to maintain this positive trend.', 0.85),
+  ('YOUR_USER_ID_HERE', 'neutral', 'nutrition', 'Hydration Status Good', 'Your water intake is above average. Keep up the good hydration!', 'Try to maintain consistent daily water intake.', 0.75),
+  ('YOUR_USER_ID_HERE', 'warning', 'symptoms', 'Stress Pattern Alert', 'You have reported stress symptoms more frequently during certain cycle phases.', 'Consider stress management techniques like meditation or exercise.', 0.80);
+
+-- 扩展的AI洞察示例（更多数据）
+INSERT INTO ai_insights (user_id, insight_type, category, title, description, recommendation, confidence_score) VALUES
   ('YOUR_USER_ID_HERE', 'improvement', 'exercise', 'Exercise Consistency Opportunity', 'Your exercise frequency has been irregular. Consistent moderate exercise could benefit your cycle health.', 'Try scheduling workouts at the same time each day for better consistency.', 0.75),
-  ('YOUR_USER_ID_HERE', 'warning', 'symptoms', 'Symptom Pattern Alert', 'We noticed increased headache frequency during your luteal phase.', 'Consider tracking triggers like caffeine intake and sleep quality.', 0.80),
   ('YOUR_USER_ID_HERE', 'neutral', 'fertility', 'Ovulation Tracking Insight', 'Your temperature patterns suggest ovulation occurred around day 14 of your cycle.', 'Continue temperature tracking for more accurate predictions.', 0.70);
 
 -- 示例健康指标

@@ -183,15 +183,36 @@ export interface PersonalizedTip {
   updated_at: string
 }
 
+// 原始health_insights表的接口（来自database-setup.sql）
 export interface HealthInsightDB {
   id: string
   user_id: string
-  insight_type: 'positive' | 'warning' | 'info'
+  date: string
+  insight_type: 'warning' | 'tip' | 'achievement' | 'medical_advice'
   category: string
-  message: string
-  action?: string
-  action_link?: string
+  title: string
+  description: string
+  priority: number
+  action_required: boolean
+  is_read: boolean
+  is_active?: boolean  // 新增字段
+  created_at: string
+  updated_at?: string  // 新增字段
+}
+
+// 新的AI洞察表接口（来自database-schema-extension.sql）
+export interface AIInsightExtended {
+  id: string
+  user_id: string
+  insight_type: 'positive' | 'improvement' | 'warning' | 'neutral'
+  category: string
+  title: string
+  description: string
+  recommendation?: string
+  confidence_score: number
   is_active: boolean
+  generated_at: string
+  expires_at?: string
   created_at: string
   updated_at: string
 }
