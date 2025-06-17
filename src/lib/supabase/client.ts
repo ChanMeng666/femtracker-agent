@@ -167,4 +167,89 @@ export interface UserPreferences {
   behavior: Record<string, boolean>
   created_at: string
   updated_at: string
+}
+
+// 新增类型定义 - 第一阶段功能
+export interface PersonalizedTip {
+  id: string
+  user_id: string
+  type: 'reminder' | 'suggestion' | 'warning' | 'achievement'
+  category: string
+  message: string
+  action_text?: string
+  action_link?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface HealthInsightDB {
+  id: string
+  user_id: string
+  type: 'positive' | 'warning' | 'info'
+  category: string
+  message: string
+  action?: string
+  action_link?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface HealthOverview {
+  id: string
+  user_id: string
+  overall_score: number
+  cycle_health: number
+  nutrition_score: number
+  exercise_score: number
+  fertility_score: number
+  lifestyle_score: number
+  symptoms_score: number
+  last_updated: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AIInsight {
+  id: string
+  user_id: string
+  type: 'positive' | 'improvement' | 'warning' | 'neutral'
+  category: string
+  title: string
+  description: string
+  recommendation?: string
+  confidence_score: number
+  is_active: boolean
+  generated_at: string
+  expires_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface HealthMetric {
+  id: string
+  user_id: string
+  category: string
+  score: number
+  trend: 'up' | 'down' | 'stable'
+  color: string
+  date: string
+  created_at: string
+  updated_at: string
+}
+
+export interface CorrelationAnalysis {
+  id: string
+  user_id: string
+  title: string
+  description: string
+  correlation: number
+  suggestion?: string
+  confidence_level: 'low' | 'medium' | 'high'
+  is_active: boolean
+  generated_at: string
+  expires_at?: string
+  created_at: string
+  updated_at: string
 } 

@@ -2,7 +2,7 @@
 
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
-import { useSymptomMood } from "@/hooks/useSymptomMood";
+import { useSymptomsMoods } from "@/hooks/data/useSymptomsMoods";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MoodSelector } from "@/components/symptom-mood/MoodSelector";
 import { SymptomSelector } from "@/components/symptom-mood/SymptomSelector";
@@ -22,13 +22,47 @@ export default function SymptomMoodTracker() {
 
 // Internal component that uses CopilotKit hooks
 function SymptomMoodContent() {
-  const { selectedMood, selectedSymptoms, setSelectedMood, toggleSymptom } = useSymptomMood();
+  const { symptoms, moods, loading, error } = useSymptomsMoods();
 
   const headerRightContent = (
     <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
       AI Emotion Analysis
     </span>
   );
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your symptoms and mood data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to load data</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Get today's data
+  const today = new Date().toISOString().split('T')[0];
+  const todayMoods = moods.filter(m => m.date === today);
+  const todaySymptoms = symptoms.filter(s => s.date === today);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
@@ -47,14 +81,14 @@ function SymptomMoodContent() {
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Today's mood record */}
             <MoodSelector 
-              selectedMood={selectedMood} 
-              onMoodSelect={setSelectedMood} 
+              selectedMood={todayMoods.length > 0 ? todayMoods[0].mood_type : null} 
+              onMoodSelect={() => {}} // Will be handled by AI assistant
             />
 
             {/* Symptom recording */}
             <SymptomSelector 
-              selectedSymptoms={selectedSymptoms} 
-              onSymptomToggle={toggleSymptom} 
+              selectedSymptoms={todaySymptoms.map(s => s.symptom_type)} 
+              onSymptomToggle={() => {}} // Will be handled by AI assistant
             />
 
             {/* Mood trend chart */}
