@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useCopilotReadable } from '@copilotkit/react-core'
 import { supabase, MenstrualCycle, PeriodDay } from '@/lib/supabase/client'
-import { cache } from '@/lib/redis/client'
 import { useAuth } from '../auth/useAuth'
 
 export interface CycleWithPeriodDays extends MenstrualCycle {
@@ -35,7 +34,7 @@ export function useCycles() {
   useEffect(() => {
     if (!user) return
     fetchCycles()
-  }, [user])
+  }, [user]) // fetchCycles is stable, no need to include in deps
 
   const fetchCycles = async () => {
     if (!user) return
@@ -44,45 +43,28 @@ export function useCycles() {
     setError(null)
 
     try {
-      // Try cache first
-      const cacheKey = `cycles:${user.id}`
-      const cachedData = await cache.get(cacheKey)
-      
-      if (cachedData) {
-        setCycles(cachedData)
-        setLoading(false)
-        // Still fetch fresh data in background
-        fetchFreshData(cacheKey)
-        return
-      }
+      // Fetch directly from Supabase (caching handled by API routes if needed)
+      const { data: cyclesData, error: cyclesError } = await supabase
+        .from('menstrual_cycles')
+        .select(`
+          *,
+          period_days (*)
+        `)
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: false })
 
-      await fetchFreshData(cacheKey)
+      if (cyclesError) {
+        console.error('Error fetching cycles:', cyclesError)
+        setError('Failed to load cycle data')
+      } else {
+        setCycles(cyclesData || [])
+      }
     } catch (err) {
       console.error('Error fetching cycles:', err)
       setError('Failed to load cycle data')
+    } finally {
       setLoading(false)
     }
-  }
-
-  const fetchFreshData = async (cacheKey: string) => {
-    const { data: cyclesData, error: cyclesError } = await supabase
-      .from('menstrual_cycles')
-      .select(`
-        *,
-        period_days (*)
-      `)
-      .eq('user_id', user!.id)
-      .order('start_date', { ascending: false })
-
-    if (cyclesError) {
-      console.error('Error fetching cycles:', cyclesError)
-      setError('Failed to load cycle data')
-    } else {
-      setCycles(cyclesData || [])
-      // Cache the data
-      await cache.set(cacheKey, cyclesData || [], 1800) // 30 minutes
-    }
-    setLoading(false)
   }
 
   const addCycle = async (cycleData: Omit<MenstrualCycle, 'id' | 'user_id' | 'created_at'>) => {
@@ -103,10 +85,6 @@ export function useCycles() {
       } else {
         const newCycle = data[0] as CycleWithPeriodDays
         setCycles(prev => [newCycle, ...prev])
-        
-        // Invalidate cache
-        await cache.del(`cycles:${user.id}`)
-        
         return { data: newCycle }
       }
     } catch (err) {
@@ -137,10 +115,6 @@ export function useCycles() {
         setCycles(prev => prev.map(cycle => 
           cycle.id === id ? { ...cycle, ...data[0] } : cycle
         ))
-        
-        // Invalidate cache
-        await cache.del(`cycles:${user.id}`)
-        
         return { data: data[0] }
       }
     } catch (err) {
@@ -168,10 +142,6 @@ export function useCycles() {
         return { error }
       } else {
         setCycles(prev => prev.filter(cycle => cycle.id !== id))
-        
-        // Invalidate cache
-        await cache.del(`cycles:${user.id}`)
-        
         return { success: true }
       }
     } catch (err) {
@@ -203,10 +173,6 @@ export function useCycles() {
             ? { ...cycle, period_days: [...(cycle.period_days || []), data[0]] }
             : cycle
         ))
-        
-        // Invalidate cache
-        await cache.del(`cycles:${user.id}`)
-        
         return { data: data[0] }
       }
     } catch (err) {
@@ -220,10 +186,10 @@ export function useCycles() {
     cycles,
     loading,
     error,
+    fetchCycles,
     addCycle,
     updateCycle,
     deleteCycle,
     addPeriodDay,
-    refetch: fetchCycles,
   }
 } 

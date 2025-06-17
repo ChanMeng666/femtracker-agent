@@ -25,12 +25,32 @@ const nextConfig = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
 
   // Webpack配置
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     // 添加SVG支持
     config.module.rules.push({
       test: /\.svg$/,
       use: ['@svgr/webpack'],
     });
+
+    // 如果是客户端构建，排除服务器端模块
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        'node:crypto': false,
+        'node:events': false,
+        'node:net': false,
+        'node:timers/promises': false,
+        'node:tls': false,
+      };
+      
+      // 将redis标记为外部依赖，防止在客户端打包
+      config.externals = config.externals || [];
+      config.externals.push('redis');
+    }
 
     return config;
   },

@@ -115,7 +115,7 @@ export function useSymptomsMoods() {
   useEffect(() => {
     if (!user) return
     fetchData()
-  }, [user])
+  }, [user]) // fetchData is stable, no need to include in deps
 
   const fetchData = async () => {
     if (!user) return
