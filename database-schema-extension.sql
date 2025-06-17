@@ -1,7 +1,17 @@
 -- 扩展数据库schema - 第一阶段核心功能表
 -- 在现有数据库的基础上添加新表
 
--- 为了确保干净的安装，先删除可能存在的表（按依赖关系逆序删除）
+-- 为了确保干净的安装，先删除可能存在的表和视图（按依赖关系逆序删除）
+-- 先尝试删除视图，再删除同名表
+DROP VIEW IF EXISTS quick_records CASCADE;
+DROP VIEW IF EXISTS personalized_tips CASCADE;
+DROP VIEW IF EXISTS health_insights CASCADE;
+DROP VIEW IF EXISTS health_overview CASCADE;
+DROP VIEW IF EXISTS ai_insights CASCADE;
+DROP VIEW IF EXISTS health_metrics CASCADE;
+DROP VIEW IF EXISTS correlation_analyses CASCADE;
+
+-- 然后删除表
 DROP TABLE IF EXISTS quick_records CASCADE;
 DROP TABLE IF EXISTS personalized_tips CASCADE;
 DROP TABLE IF EXISTS health_insights CASCADE;
