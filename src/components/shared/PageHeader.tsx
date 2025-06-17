@@ -9,8 +9,9 @@ interface PageHeaderProps {
   backLinkText?: string;
   statusInfo?: {
     text: string;
-    variant: 'primary' | 'secondary' | 'success' | 'warning';
+    variant?: 'primary' | 'secondary' | 'success' | 'warning';
   };
+  rightContent?: React.ReactNode;
 }
 
 const statusVariants = {
@@ -25,8 +26,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   subtitle,
   icon,
   backLink = "/",
-      backLinkText = "← Home",
-  statusInfo
+  backLinkText = "← Home",
+  statusInfo,
+  rightContent
 }) => {
   return (
     <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-4">
@@ -48,13 +50,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             )}
           </div>
         </div>
-        {statusInfo && (
-          <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusVariants[statusInfo.variant]}`}>
+        <div className="flex items-center gap-3">
+          {statusInfo && (
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusVariants[statusInfo.variant || 'primary']}`}>
               {statusInfo.text}
             </span>
-          </div>
-        )}
+          )}
+          {rightContent}
+        </div>
       </div>
     </header>
   );

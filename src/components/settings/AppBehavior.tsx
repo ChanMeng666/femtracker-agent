@@ -1,4 +1,5 @@
 import { Smartphone } from 'lucide-react';
+import type { UserPreferences } from '@/types/settings';
 import { ToggleSwitch } from './ToggleSwitch';
 
 interface AppBehaviorProps {
@@ -10,7 +11,11 @@ interface AppBehaviorProps {
       quickActions: boolean;
     };
   };
-  onUpdatePreference: (category: string, key: string, value: boolean) => void;
+  onUpdatePreference: <T extends keyof UserPreferences>(
+    section: T,
+    key: keyof UserPreferences[T],
+    value: UserPreferences[T][keyof UserPreferences[T]]
+  ) => void;
 }
 
 export function AppBehavior({ preferences, onUpdatePreference }: AppBehaviorProps) {
