@@ -3,7 +3,7 @@ import { UserProfile } from '@/types/settings';
 
 interface PersonalSettingsTabProps {
   userProfile: UserProfile;
-  onUpdateProfile: (updates: Partial<UserProfile>) => void;
+  onUpdateProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
 export const PersonalSettingsTab: React.FC<PersonalSettingsTabProps> = ({

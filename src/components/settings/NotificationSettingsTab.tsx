@@ -4,7 +4,7 @@ import { DataCard } from '@/components/shared/DataCard';
 
 interface NotificationSettingsTabProps {
   notificationSettings: NotificationSettings;
-  onUpdateSettings: (updates: Partial<NotificationSettings>) => void;
+  onUpdateSettings: (updates: Partial<NotificationSettings>) => Promise<void>;
 }
 
 export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = ({
@@ -44,8 +44,8 @@ export const NotificationSettingsTab: React.FC<NotificationSettingsTabProps> = (
     }
   ];
 
-  const handleToggle = (key: keyof NotificationSettings) => {
-    onUpdateSettings({ [key]: !notificationSettings[key] });
+  const handleToggle = async (key: keyof NotificationSettings) => {
+    await onUpdateSettings({ [key]: !notificationSettings[key] });
   };
 
   return (

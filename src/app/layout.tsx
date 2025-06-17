@@ -5,6 +5,7 @@ import "@copilotkit/react-ui/styles.css";
 import MobileNavigation from "@/components/MobileNavigation";
 import { PerformancePanel } from "@/components/UnifiedPerformanceOptimizer";
 import { AccessibilityProvider } from "@/components/AccessibilityEnhancements";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -75,15 +76,17 @@ export default function RootLayout({
           role="status"
         />
         
-        <AccessibilityProvider>
-          <div className="min-h-screen bg-background">
-            <main id="main-content" role="main">
-              {children}
-            </main>
-            <MobileNavigation />
-            <PerformancePanel />
-          </div>
-        </AccessibilityProvider>
+        <AuthProvider>
+          <AccessibilityProvider>
+            <div className="min-h-screen bg-background">
+              <main id="main-content" role="main">
+                {children}
+              </main>
+              <MobileNavigation />
+              <PerformancePanel />
+            </div>
+          </AccessibilityProvider>
+        </AuthProvider>
       </body>
     </html>
   );

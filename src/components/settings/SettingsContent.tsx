@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from "next/link";
-import { useSettings } from '@/hooks/settings';
+import { useSettingsWithDB } from '@/hooks/useSettingsWithDB';
 import { SettingsNavigation } from './SettingsNavigation';
 import { PersonalSettingsTab } from './PersonalSettingsTab';
 import { NotificationSettingsTab } from './NotificationSettingsTab';
@@ -14,14 +14,15 @@ export const SettingsContent: React.FC = () => {
     notificationSettings,
     setNotificationSettings,
     currentTab,
-  } = useSettings();
+    loading,
+  } = useSettingsWithDB();
 
-  const handleUpdateProfile = (updates: Partial<typeof userProfile>) => {
-    setUserProfile(prev => ({ ...prev, ...updates }));
+  const handleUpdateProfile = async (updates: Partial<typeof userProfile>) => {
+    await setUserProfile(updates);
   };
 
-  const handleUpdateNotifications = (updates: Partial<typeof notificationSettings>) => {
-    setNotificationSettings(prev => ({ ...prev, ...updates }));
+  const handleUpdateNotifications = async (updates: Partial<typeof notificationSettings>) => {
+    await setNotificationSettings(updates);
   };
 
   const renderTabContent = () => {
@@ -118,6 +119,17 @@ export const SettingsContent: React.FC = () => {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
