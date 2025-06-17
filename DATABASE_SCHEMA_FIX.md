@@ -127,6 +127,38 @@ SQL脚本中索引创建语句在表完全创建之前执行，导致引用不�
 
 这确保了正确的依赖关系和执行顺序。
 
+## 🔧 第三次修复 - 视图冲突问题
+
+### 问题：
+```
+ERROR: 42809: "health_overview" is not a table
+HINT: Use DROP VIEW to remove a view.
+```
+
+### 原因：
+在之前的测试中，某些对象（特别是`health_overview`）被创建为了视图(VIEW)而不是表(TABLE)，导致`DROP TABLE`命令失败。
+
+### 解决方案：
+在删除表之前先删除可能存在的同名视图：
+
+```sql
+-- 先尝试删除视图，再删除同名表
+DROP VIEW IF EXISTS quick_records CASCADE;
+DROP VIEW IF EXISTS personalized_tips CASCADE;
+DROP VIEW IF EXISTS health_insights CASCADE;
+DROP VIEW IF EXISTS health_overview CASCADE;
+DROP VIEW IF EXISTS ai_insights CASCADE;
+DROP VIEW IF EXISTS health_metrics CASCADE;
+DROP VIEW IF EXISTS correlation_analyses CASCADE;
+
+-- 然后删除表
+DROP TABLE IF EXISTS quick_records CASCADE;
+DROP TABLE IF EXISTS personalized_tips CASCADE;
+-- ... 其他表
+```
+
+这样可以安全地清理所有可能的冲突对象。
+
 ## ⚠️ 注意事项
 
 - 这是一个**破坏性更改**，如果之前已经有数据在旧表结构中，需要先备份
