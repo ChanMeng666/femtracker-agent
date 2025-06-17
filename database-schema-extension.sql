@@ -1,8 +1,25 @@
 -- 扩展数据库schema - 第一阶段核心功能表
 -- 在现有数据库的基础上添加新表
 
+-- 为了确保干净的安装，先删除可能存在的表（按依赖关系逆序删除）
+DROP TABLE IF EXISTS quick_records CASCADE;
+DROP TABLE IF EXISTS personalized_tips CASCADE;
+DROP TABLE IF EXISTS health_insights CASCADE;
+DROP TABLE IF EXISTS health_overview CASCADE;
+DROP TABLE IF EXISTS ai_insights CASCADE;
+DROP TABLE IF EXISTS health_metrics CASCADE;
+DROP TABLE IF EXISTS correlation_analyses CASCADE;
+
+-- 删除可能存在的函数
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS initialize_user_health_overview() CASCADE;
+
+-- ============================================
+-- 第一部分：创建所有表
+-- ============================================
+
 -- 快速记录表
-CREATE TABLE IF NOT EXISTS quick_records (
+CREATE TABLE quick_records (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     date DATE NOT NULL,
@@ -14,7 +31,7 @@ CREATE TABLE IF NOT EXISTS quick_records (
 );
 
 -- 个性化提示表
-CREATE TABLE IF NOT EXISTS personalized_tips (
+CREATE TABLE personalized_tips (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     tip_type VARCHAR(20) NOT NULL CHECK (tip_type IN ('reminder', 'suggestion', 'warning', 'achievement')),
@@ -28,7 +45,7 @@ CREATE TABLE IF NOT EXISTS personalized_tips (
 );
 
 -- 健康洞察表
-CREATE TABLE IF NOT EXISTS health_insights (
+CREATE TABLE health_insights (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     insight_type VARCHAR(20) NOT NULL CHECK (insight_type IN ('positive', 'warning', 'info')),
@@ -42,7 +59,7 @@ CREATE TABLE IF NOT EXISTS health_insights (
 );
 
 -- 健康概览表（存储用户的各项健康分数）
-CREATE TABLE IF NOT EXISTS health_overview (
+CREATE TABLE health_overview (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     overall_score INTEGER DEFAULT 0 CHECK (overall_score >= 0 AND overall_score <= 100),
@@ -59,7 +76,7 @@ CREATE TABLE IF NOT EXISTS health_overview (
 );
 
 -- AI洞察记录表（用于洞察页面）
-CREATE TABLE IF NOT EXISTS ai_insights (
+CREATE TABLE ai_insights (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     insight_type VARCHAR(20) NOT NULL CHECK (insight_type IN ('positive', 'improvement', 'warning', 'neutral')),
@@ -76,7 +93,7 @@ CREATE TABLE IF NOT EXISTS ai_insights (
 );
 
 -- 健康指标表
-CREATE TABLE IF NOT EXISTS health_metrics (
+CREATE TABLE health_metrics (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     category VARCHAR(50) NOT NULL,
@@ -89,7 +106,7 @@ CREATE TABLE IF NOT EXISTS health_metrics (
 );
 
 -- 相关性分析表
-CREATE TABLE IF NOT EXISTS correlation_analyses (
+CREATE TABLE correlation_analyses (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -104,30 +121,43 @@ CREATE TABLE IF NOT EXISTS correlation_analyses (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 为新表创建索引
-CREATE INDEX IF NOT EXISTS idx_quick_records_user_date ON quick_records(user_id, date DESC);
-CREATE INDEX IF NOT EXISTS idx_quick_records_type ON quick_records(record_type);
+-- ============================================
+-- 第二部分：创建索引
+-- ============================================
 
-CREATE INDEX IF NOT EXISTS idx_personalized_tips_user_active ON personalized_tips(user_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_personalized_tips_type ON personalized_tips(tip_type);
+-- quick_records 索引
+CREATE INDEX idx_quick_records_user_date ON quick_records(user_id, date DESC);
+CREATE INDEX idx_quick_records_type ON quick_records(record_type);
 
-CREATE INDEX IF NOT EXISTS idx_health_insights_user_active ON health_insights(user_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_health_insights_category ON health_insights(category);
+-- personalized_tips 索引
+CREATE INDEX idx_personalized_tips_user_active ON personalized_tips(user_id, is_active);
+CREATE INDEX idx_personalized_tips_type ON personalized_tips(tip_type);
 
-CREATE INDEX IF NOT EXISTS idx_health_overview_user ON health_overview(user_id);
-CREATE INDEX IF NOT EXISTS idx_health_overview_updated ON health_overview(last_updated DESC);
+-- health_insights 索引
+CREATE INDEX idx_health_insights_user_active ON health_insights(user_id, is_active);
+CREATE INDEX idx_health_insights_category ON health_insights(category);
 
-CREATE INDEX IF NOT EXISTS idx_ai_insights_user_active ON ai_insights(user_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_ai_insights_category ON ai_insights(category);
-CREATE INDEX IF NOT EXISTS idx_ai_insights_generated ON ai_insights(generated_at DESC);
+-- health_overview 索引
+CREATE INDEX idx_health_overview_user ON health_overview(user_id);
+CREATE INDEX idx_health_overview_updated ON health_overview(last_updated DESC);
 
-CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, date DESC);
-CREATE INDEX IF NOT EXISTS idx_health_metrics_category ON health_metrics(category);
+-- ai_insights 索引
+CREATE INDEX idx_ai_insights_user_active ON ai_insights(user_id, is_active);
+CREATE INDEX idx_ai_insights_category ON ai_insights(category);
+CREATE INDEX idx_ai_insights_generated ON ai_insights(generated_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_correlation_analyses_user_active ON correlation_analyses(user_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_correlation_analyses_generated ON correlation_analyses(generated_at DESC);
+-- health_metrics 索引
+CREATE INDEX idx_health_metrics_user_date ON health_metrics(user_id, date DESC);
+CREATE INDEX idx_health_metrics_category ON health_metrics(category);
 
--- 启用RLS（行级安全）
+-- correlation_analyses 索引
+CREATE INDEX idx_correlation_analyses_user_active ON correlation_analyses(user_id, is_active);
+CREATE INDEX idx_correlation_analyses_generated ON correlation_analyses(generated_at DESC);
+
+-- ============================================
+-- 第三部分：启用行级安全(RLS)
+-- ============================================
+
 ALTER TABLE quick_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE personalized_tips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE health_insights ENABLE ROW LEVEL SECURITY;
@@ -136,7 +166,10 @@ ALTER TABLE ai_insights ENABLE ROW LEVEL SECURITY;
 ALTER TABLE health_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE correlation_analyses ENABLE ROW LEVEL SECURITY;
 
--- 创建RLS策略
+-- ============================================
+-- 第四部分：创建RLS策略
+-- ============================================
+
 -- quick_records policies
 CREATE POLICY "Users can view own quick records" ON quick_records FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own quick records" ON quick_records FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -179,6 +212,10 @@ CREATE POLICY "Users can insert own correlation analyses" ON correlation_analyse
 CREATE POLICY "Users can update own correlation analyses" ON correlation_analyses FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own correlation analyses" ON correlation_analyses FOR DELETE USING (auth.uid() = user_id);
 
+-- ============================================
+-- 第五部分：创建触发器函数和触发器
+-- ============================================
+
 -- 创建触发器函数用于自动更新 updated_at 字段
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -196,6 +233,10 @@ CREATE TRIGGER update_health_overview_updated_at BEFORE UPDATE ON health_overvie
 CREATE TRIGGER update_ai_insights_updated_at BEFORE UPDATE ON ai_insights FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_health_metrics_updated_at BEFORE UPDATE ON health_metrics FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_correlation_analyses_updated_at BEFORE UPDATE ON correlation_analyses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- 第六部分：用户初始化功能
+-- ============================================
 
 -- 创建函数：初始化用户健康概览
 CREATE OR REPLACE FUNCTION initialize_user_health_overview()
