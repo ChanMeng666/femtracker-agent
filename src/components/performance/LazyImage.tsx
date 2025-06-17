@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { LazyImageProps } from './types';
 
 export function LazyImage({
@@ -6,11 +7,13 @@ export function LazyImage({
   alt,
   className = '',
   placeholder = '/placeholder.svg',
+  width = 400,
+  height = 300,
   ...props
-}: LazyImageProps) {
+}: LazyImageProps & { width?: number; height?: number }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!imgRef.current) return;
@@ -40,21 +43,27 @@ export function LazyImage({
   return (
     <div className={`relative overflow-hidden ${className}`} ref={imgRef}>
       {!isLoaded && (
-        <img
+        <Image
           src={placeholder}
           alt="Loading..."
+          width={width}
+          height={height}
           className="absolute inset-0 w-full h-full object-cover blur-sm"
+          priority={false}
         />
       )}
       {isInView && (
-        <img
+        <Image
           src={src}
           alt={alt}
+          width={width}
+          height={height}
           onLoad={handleLoad}
           onError={handleError}
           className={`w-full h-full object-cover transition-opacity duration-300 ${
             isLoaded ? 'opacity-100' : 'opacity-0'
           }`}
+          priority={false}
           {...props}
         />
       )}

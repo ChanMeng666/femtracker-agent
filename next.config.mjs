@@ -2,7 +2,6 @@
 const nextConfig = {
   // 基础配置
   reactStrictMode: true,
-  swcMinify: true,
   
   // 图片优化配置
   images: {

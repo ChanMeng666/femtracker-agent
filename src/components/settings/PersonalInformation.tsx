@@ -1,4 +1,5 @@
 import { User } from 'lucide-react';
+import type { UserPreferences } from '@/types/settings';
 
 interface PersonalInformationProps {
   preferences: {
@@ -6,7 +7,7 @@ interface PersonalInformationProps {
     age: number;
     location: string;
   };
-  onUpdateBasicSetting: (key: string, value: string | number) => void;
+  onUpdateBasicSetting: <T extends keyof UserPreferences>(key: T, value: UserPreferences[T]) => void;
 }
 
 export function PersonalInformation({ preferences, onUpdateBasicSetting }: PersonalInformationProps) {

@@ -1,10 +1,14 @@
 import React from 'react';
 import { Palette } from 'lucide-react';
-import type { UserPreferences } from '../../types/settings';
-import { THEME_OPTIONS, COLOR_OPTIONS, FONT_SIZE_OPTIONS } from '../../constants/settings';
+import type { UserPreferences } from '@/types/settings';
+import { THEME_OPTIONS, COLOR_OPTIONS, FONT_SIZE_OPTIONS } from '@/constants/settings';
 
 interface ThemeSettingsProps {
-  preferences: UserPreferences;
+  preferences: {
+    theme: 'light' | 'dark' | 'auto';
+    primaryColor: string;
+    fontSize: 'small' | 'medium' | 'large';
+  };
   onUpdateBasicSetting: <T extends keyof UserPreferences>(key: T, value: UserPreferences[T]) => void;
 }
 

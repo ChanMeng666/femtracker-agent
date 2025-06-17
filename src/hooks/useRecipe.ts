@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
 import { useCopilotChatSuggestions } from "@copilotkit/react-ui";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
@@ -33,41 +33,46 @@ export const useRecipe = () => {
     });
   };
 
-  const newRecipeState = { ...recipe };
-  const newChangedKeys = [];
   const changedKeysRef = useRef<string[]>([]);
 
-  for (const key in recipe) {
-    const recipeKey = key as keyof Recipe;
-    if (
-      agentState &&
-      agentState.recipe &&
-      agentState.recipe[recipeKey] !== undefined &&
-      agentState.recipe[recipeKey] !== null
-    ) {
-      let agentValue = agentState.recipe[recipeKey];
-      const recipeValue = recipe[recipeKey];
+  const newRecipeState = useMemo(() => {
+    const result = { ...recipe };
+    const newChangedKeys = [];
 
-      if (typeof agentValue === "string") {
-        agentValue = agentValue.replace(/\\n/g, "\n");
-      }
+    for (const key in recipe) {
+      const recipeKey = key as keyof Recipe;
+      if (
+        agentState &&
+        agentState.recipe &&
+        agentState.recipe[recipeKey] !== undefined &&
+        agentState.recipe[recipeKey] !== null
+      ) {
+        let agentValue = agentState.recipe[recipeKey];
+        const recipeValue = recipe[recipeKey];
 
-      if (JSON.stringify(agentValue) !== JSON.stringify(recipeValue)) {
-        (newRecipeState as Record<keyof Recipe, unknown>)[recipeKey] = agentValue;
-        newChangedKeys.push(key);
+        if (typeof agentValue === "string") {
+          agentValue = agentValue.replace(/\\n/g, "\n");
+        }
+
+        if (JSON.stringify(agentValue) !== JSON.stringify(recipeValue)) {
+          (result as Record<keyof Recipe, unknown>)[recipeKey] = agentValue;
+          newChangedKeys.push(key);
+        }
       }
     }
-  }
 
-  if (newChangedKeys.length > 0) {
-    changedKeysRef.current = newChangedKeys;
-  } else if (!isLoading) {
-    changedKeysRef.current = [];
-  }
+    if (newChangedKeys.length > 0) {
+      changedKeysRef.current = newChangedKeys;
+    } else if (!isLoading) {
+      changedKeysRef.current = [];
+    }
+
+    return result;
+  }, [recipe, agentState, isLoading]);
 
   useEffect(() => {
     setRecipe(newRecipeState);
-  }, [JSON.stringify(newRecipeState)]);
+  }, [newRecipeState]);
 
   // Event handlers
   const handleTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
