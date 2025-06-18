@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNutrition } from '@/hooks/nutrition';
+import { useNutritionWithDB } from '@/hooks/useNutritionWithDB';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { NutritionOverview } from './NutritionOverview';
 import { WaterIntakeTracker } from './WaterIntakeTracker';
@@ -8,8 +8,8 @@ import { MealsOverview } from './MealsOverview';
 
 export const NutritionTrackerContent: React.FC = () => {
   const {
-    waterIntake,
-    setWaterIntake,
+    todayWaterIntake,
+    waterPercentage,
     selectedFoodTypes,
     todayMeals,
     calorieGoal,
@@ -19,7 +19,39 @@ export const NutritionTrackerContent: React.FC = () => {
     fatData,
     totalCalories,
     toggleFoodType,
-  } = useNutrition();
+    loading,
+    error,
+    addWaterIntake
+  } = useNutritionWithDB();
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your nutrition data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to load nutrition data</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -50,8 +82,8 @@ export const NutritionTrackerContent: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <WaterIntakeTracker
-                waterIntake={waterIntake}
-                onWaterIntakeChange={setWaterIntake}
+                waterIntake={todayWaterIntake}
+                onWaterIntakeChange={addWaterIntake}
               />
 
               <NutritionFocusSelection
@@ -78,7 +110,7 @@ export const NutritionTrackerContent: React.FC = () => {
                       <span className="font-medium text-gray-800">Hydration Status</span>
                     </div>
                     <p className="text-sm text-gray-600">
-                      You&apos;ve consumed {waterIntake}ml today. Great progress! Try to reach your 2000ml daily goal.
+                      You&apos;ve consumed {todayWaterIntake}ml today. Great progress! Try to reach your 2000ml daily goal ({waterPercentage.toFixed(0)}% complete).
                     </p>
                   </div>
                   <div className="p-4 bg-white/60 rounded-lg">
