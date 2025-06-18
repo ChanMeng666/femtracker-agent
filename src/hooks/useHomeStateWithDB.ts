@@ -42,6 +42,23 @@ interface FrontendHealthInsight {
   actionLink?: string;
 }
 
+// 安全的CopilotKit wrapper
+const safeCopilotReadable = (config: any) => {
+  try {
+    useCopilotReadable(config);
+  } catch (error) {
+    console.warn('[HOME-STATE] CopilotKit readable failed, continuing without AI features:', error);
+  }
+};
+
+const safeCopilotAction = (config: any) => {
+  try {
+    useCopilotAction(config);
+  } catch (error) {
+    console.warn('[HOME-STATE] CopilotKit action failed, continuing without AI features:', error);
+  }
+};
+
 export const useHomeStateWithDB = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -63,27 +80,34 @@ export const useHomeStateWithDB = () => {
   const [personalizedTips, setPersonalizedTips] = useState<FrontendPersonalizedTip[]>([]);
   const [healthInsights, setHealthInsights] = useState<FrontendHealthInsight[]>([]);
 
-  // CopilotKit readable data
-  useCopilotReadable({
-    description: "User's complete health dashboard data with real-time database integration",
-    value: {
-      healthOverview,
-      quickRecords,
-      personalizedTips,
-      healthInsights,
-      isAuthenticated: !!user,
-      loading,
-      totalTips: personalizedTips.length,
-      activeTips: personalizedTips.length,
-      totalInsights: healthInsights.length,
-      recentRecords: quickRecords.slice(0, 5)
-    }
-  });
+  // 安全的CopilotKit readable data
+  try {
+    safeCopilotReadable({
+      description: "User's complete health dashboard data with real-time database integration",
+      value: {
+        healthOverview,
+        quickRecords,
+        personalizedTips,
+        healthInsights,
+        isAuthenticated: !!user,
+        loading,
+        totalTips: personalizedTips.length,
+        activeTips: personalizedTips.length,
+        totalInsights: healthInsights.length,
+        recentRecords: quickRecords.slice(0, 5)
+      }
+    });
+  } catch (error) {
+    console.warn('[HOME-STATE] CopilotKit readable setup failed:', error);
+  }
 
   // 从数据库加载数据
   useEffect(() => {
+    console.log('[HOME-STATE] User state changed:', { hasUser: !!user, userEmail: user?.email });
+    
     if (!user) {
       // 清除所有数据并停止加载
+      console.log('[HOME-STATE] No user, clearing data');
       setHealthOverview({
         overallScore: 75,
         cycleHealth: 75,
@@ -101,6 +125,8 @@ export const useHomeStateWithDB = () => {
       setError(null);
       return;
     }
+    
+    console.log('[HOME-STATE] Loading data for user:', user.email);
     loadAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -108,6 +134,7 @@ export const useHomeStateWithDB = () => {
   const loadAllData = async () => {
     if (!user) return;
 
+    console.log('[HOME-STATE] Starting to load all data...');
     setLoading(true);
     setError(null);
 
@@ -118,8 +145,9 @@ export const useHomeStateWithDB = () => {
         loadPersonalizedTips(),
         loadHealthInsights()
       ]);
+      console.log('[HOME-STATE] All data loaded successfully');
     } catch (err) {
-      console.error('Error loading home data:', err);
+      console.error('[HOME-STATE] Error loading home data:', err);
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -129,87 +157,108 @@ export const useHomeStateWithDB = () => {
   const loadHealthOverview = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('health_overview')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    console.log('[HOME-STATE] Loading health overview...');
+    try {
+      const { data, error } = await supabase
+        .from('health_overview')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error loading health overview:', error);
-      return;
-    }
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('[HOME-STATE] Error loading health overview:', error);
+        return;
+      }
 
-    if (data) {
-      setHealthOverview({
-        overallScore: data.overall_score,
-        cycleHealth: data.cycle_health,
-        nutritionScore: data.nutrition_score,
-        exerciseScore: data.exercise_score,
-        fertilityScore: data.fertility_score,
-        lifestyleScore: data.lifestyle_score,
-        symptomsScore: data.symptoms_score,
-        lastUpdated: data.last_updated
-      });
+      if (data) {
+        console.log('[HOME-STATE] Health overview loaded:', data);
+        setHealthOverview({
+          overallScore: data.overall_score,
+          cycleHealth: data.cycle_health,
+          nutritionScore: data.nutrition_score,
+          exerciseScore: data.exercise_score,
+          fertilityScore: data.fertility_score,
+          lifestyleScore: data.lifestyle_score,
+          symptomsScore: data.symptoms_score,
+          lastUpdated: data.last_updated
+        });
+      } else {
+        console.log('[HOME-STATE] No health overview data found, using defaults');
+      }
+    } catch (err) {
+      console.error('[HOME-STATE] Exception loading health overview:', err);
     }
   };
 
   const loadQuickRecords = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('quick_records')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(10);
+    console.log('[HOME-STATE] Loading quick records...');
+    try {
+      const { data, error } = await supabase
+        .from('quick_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(10);
 
-    if (error) {
-      console.error('Error loading quick records:', error);
-      return;
-    }
+      if (error) {
+        console.error('[HOME-STATE] Error loading quick records:', error);
+        return;
+      }
 
-    if (data) {
-      setQuickRecords(data.map(record => ({
-        date: record.date,
-        type: record.record_type as FrontendQuickRecord['type'],
-        value: record.value,
-        notes: record.notes || undefined
-      })));
+      if (data) {
+        console.log(`[HOME-STATE] Loaded ${data.length} quick records`);
+        setQuickRecords(data.map(record => ({
+          date: record.date,
+          type: record.record_type as FrontendQuickRecord['type'],
+          value: record.value,
+          notes: record.notes || undefined
+        })));
+      }
+    } catch (err) {
+      console.error('[HOME-STATE] Exception loading quick records:', err);
     }
   };
 
   const loadPersonalizedTips = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('personalized_tips')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    console.log('[HOME-STATE] Loading personalized tips...');
+    try {
+      const { data, error } = await supabase
+        .from('personalized_tips')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-    if (error) {
-      console.error('Error loading personalized tips:', error);
-      return;
-    }
+      if (error) {
+        console.error('[HOME-STATE] Error loading personalized tips:', error);
+        return;
+      }
 
-    if (data) {
-      setPersonalizedTips(data.map(tip => ({
-        id: tip.id,
-        type: tip.tip_type,
-        category: tip.category,
-        message: tip.message,
-        actionText: tip.action_text || undefined,
-        actionLink: tip.action_link || undefined
-      })));
+      if (data) {
+        console.log(`[HOME-STATE] Loaded ${data.length} personalized tips`);
+        setPersonalizedTips(data.map(tip => ({
+          id: tip.id,
+          type: tip.tip_type,
+          category: tip.category,
+          message: tip.message,
+          actionText: tip.action_text || undefined,
+          actionLink: tip.action_link || undefined
+        })));
+      }
+    } catch (err) {
+      console.error('[HOME-STATE] Exception loading personalized tips:', err);
     }
   };
 
   const loadHealthInsights = async () => {
     if (!user) return;
 
+    console.log('[HOME-STATE] Loading health insights...');
     try {
       // 首先尝试从新的ai_insights表加载
       const { data: aiData, error: aiError } = await supabase
@@ -243,28 +292,29 @@ export const useHomeStateWithDB = () => {
         })));
       }
 
-      // 添加健康洞察（如果存在且AI洞察数量不足）
-      if (healthData && !healthError && insights.length < 5) {
-        insights.push(...healthData.slice(0, 5 - insights.length).map(insight => ({
-          type: (insight.insight_type === 'tip' ? 'positive' : 
-                insight.insight_type === 'warning' ? 'warning' : 'info') as FrontendHealthInsight['type'],
+      // 添加健康洞察（如果存在）
+      if (healthData && !healthError) {
+        insights.push(...healthData.map(insight => ({
+          type: (insight.insight_type === 'warning' ? 'warning' : 'info') as FrontendHealthInsight['type'],
           category: insight.category,
           message: insight.description,
-          action: insight.action_required ? 'Take Action' : undefined,
+          action: insight.action_required ? 'Take action' : undefined,
           actionLink: undefined
         })));
       }
 
+      console.log(`[HOME-STATE] Loaded ${insights.length} health insights`);
       setHealthInsights(insights);
-    } catch (error) {
-      console.error('Error loading health insights:', error);
+    } catch (err) {
+      console.error('[HOME-STATE] Exception loading health insights:', err);
     }
   };
 
-  // 更新健康分数
+  // 安全的数据更新函数
   const updateHealthScore = async (scoreType: string, score: number) => {
     if (!user || score < 0 || score > 100) return;
 
+    console.log(`[HOME-STATE] Updating ${scoreType} score to ${score}`);
     try {
       const updates: Partial<HealthOverview> = {};
       
@@ -303,7 +353,7 @@ export const useHomeStateWithDB = () => {
         .upsert({ user_id: user.id, ...updates });
 
       if (error) {
-        console.error('Error updating health score:', error);
+        console.error('[HOME-STATE] Error updating health score:', error);
         return;
       }
 
@@ -319,95 +369,75 @@ export const useHomeStateWithDB = () => {
         symptomsScore: updates.symptoms_score || prev.symptomsScore,
         lastUpdated: updates.last_updated || prev.lastUpdated
       }));
+
+      console.log('[HOME-STATE] Health score updated successfully');
     } catch (err) {
-      console.error('Error updating health score:', err);
+      console.error('[HOME-STATE] Exception updating health score:', err);
     }
   };
 
-  // 添加快速记录
   const addQuickRecord = async (type: string, value: string, notes?: string) => {
     if (!user) return;
 
-    const validTypes = ['weight', 'mood', 'symptom', 'exercise', 'meal', 'sleep', 'water'];
-    if (!validTypes.includes(type)) return;
-
+    console.log(`[HOME-STATE] Adding quick record: ${type} = ${value}`);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('quick_records')
         .insert([{
           user_id: user.id,
           date: new Date().toISOString().split('T')[0],
           record_type: type,
           value,
-          notes
-        }])
-        .select()
-        .single();
+          notes: notes || null
+        }]);
 
       if (error) {
-        console.error('Error adding quick record:', error);
+        console.error('[HOME-STATE] Error adding quick record:', error);
         return;
       }
 
-      // 更新本地状态
-      const newRecord: FrontendQuickRecord = {
-        date: data.date,
-        type: data.record_type as FrontendQuickRecord['type'],
-        value: data.value,
-        notes: data.notes || undefined
-      };
-
-      setQuickRecords(prev => [newRecord, ...prev.slice(0, 9)]);
+      // 重新加载快速记录
+      await loadQuickRecords();
+      console.log('[HOME-STATE] Quick record added successfully');
     } catch (err) {
-      console.error('Error adding quick record:', err);
+      console.error('[HOME-STATE] Exception adding quick record:', err);
     }
   };
 
-  // 添加个性化提示
   const addPersonalizedTip = async (type: string, category: string, message: string, actionText?: string, actionLink?: string) => {
     if (!user) return;
 
-    const validTypes = ['reminder', 'suggestion', 'warning', 'achievement'];
-    if (!validTypes.includes(type)) return;
-
+    console.log(`[HOME-STATE] Adding personalized tip: ${category} - ${message}`);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('personalized_tips')
         .insert([{
           user_id: user.id,
           tip_type: type,
           category,
           message,
-          action_text: actionText,
-          action_link: actionLink
-        }])
-        .select()
-        .single();
+          action_text: actionText || null,
+          action_link: actionLink || null,
+          is_active: true
+        }]);
 
       if (error) {
-        console.error('Error adding personalized tip:', error);
+        console.error('[HOME-STATE] Error adding personalized tip:', error);
         return;
       }
 
-      const newTip: FrontendPersonalizedTip = {
-        id: data.id,
-        type: data.tip_type,
-        category: data.category,
-        message: data.message,
-        actionText: data.action_text || undefined,
-        actionLink: data.action_link || undefined
-      };
-
-      setPersonalizedTips(prev => [newTip, ...prev]);
+      // 重新加载个性化提示
+      await loadPersonalizedTips();
+      console.log('[HOME-STATE] Personalized tip added successfully');
     } catch (err) {
-      console.error('Error adding personalized tip:', err);
+      console.error('[HOME-STATE] Exception adding personalized tip:', err);
     }
   };
 
-  // 删除提示
   const removeTip = async (tipId: string) => {
     if (!user) return;
 
+    console.log(`[HOME-STATE] Removing tip: ${tipId}`);
     try {
       const { error } = await supabase
         .from('personalized_tips')
@@ -416,130 +446,96 @@ export const useHomeStateWithDB = () => {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error removing tip:', error);
+        console.error('[HOME-STATE] Error removing tip:', error);
         return;
       }
 
+      // 更新本地状态
       setPersonalizedTips(prev => prev.filter(tip => tip.id !== tipId));
+      console.log('[HOME-STATE] Tip removed successfully');
     } catch (err) {
-      console.error('Error removing tip:', err);
+      console.error('[HOME-STATE] Exception removing tip:', err);
     }
   };
 
-  // 添加健康洞察
-  const addHealthInsight = async (type: 'positive' | 'warning' | 'info', category: string, message: string, action?: string) => {
+  const addHealthInsight = async (type: 'positive' | 'warning' | 'info', category: string, message: string, action?: string, actionLink?: string) => {
     if (!user) return;
 
-    try {
-      // 尝试添加到新的ai_insights表
-      const { data, error } = await supabase
-        .from('ai_insights')
-        .insert([{
-          user_id: user.id,
-          insight_type: type === 'positive' ? 'positive' : type === 'warning' ? 'warning' : 'neutral',
-          category,
-          title: `${category} insight`,
-          description: message,
-          recommendation: action,
-          confidence_score: 0.8
-        }])
-        .select()
-        .single();
+    console.log(`[HOME-STATE] Adding health insight: ${category} - ${message}`);
+    // 先更新本地状态
+    const newInsight: FrontendHealthInsight = {
+      type,
+      category,
+      message,
+      action,
+      actionLink
+    };
 
-      if (error) {
-        console.error('Error adding AI insight:', error);
-        return;
-      }
-
-      const newInsight: FrontendHealthInsight = {
-        type: type,
-        category: data.category,
-        message: data.description,
-        action: data.recommendation || undefined,
-        actionLink: undefined
-      };
-
-      setHealthInsights(prev => [newInsight, ...prev]);
-    } catch (err) {
-      console.error('Error adding health insight:', err);
-    }
+    setHealthInsights(prev => [newInsight, ...prev.slice(0, 4)]);
+    console.log('[HOME-STATE] Health insight added to local state');
   };
 
-  // 删除健康洞察
   const removeHealthInsight = async (category: string) => {
-    if (!user) return;
-
-    try {
-      // 从ai_insights表删除
-      const { error } = await supabase
-        .from('ai_insights')
-        .update({ is_active: false })
-        .eq('category', category)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error removing AI insight:', error);
-        return;
-      }
-
-      setHealthInsights(prev => prev.filter(insight => insight.category !== category));
-    } catch (err) {
-      console.error('Error removing health insight:', err);
-    }
+    console.log(`[HOME-STATE] Removing health insight for category: ${category}`);
+    setHealthInsights(prev => prev.filter(insight => insight.category !== category));
   };
 
-  // CopilotKit Actions
-  useCopilotAction({
-    name: "updateHealthScore",
-    description: "Update health score for a specific category",
-    parameters: [
-      {
-        name: "scoreType",
-        type: "string",
-        description: "Score type (overall, cycle, nutrition, exercise, fertility, lifestyle, symptoms)",
-        required: true,
+  // 安全的CopilotKit Actions
+  try {
+    safeCopilotAction({
+      name: "updateHealthScore",
+      description: "Update health score for a specific category",
+      parameters: [
+        {
+          name: "scoreType",
+          type: "string",
+          description: "Score type (overall, cycle, nutrition, exercise, fertility, lifestyle, symptoms)",
+          required: true,
+        },
+        {
+          name: "score",
+          type: "number",
+          description: "Score value (0-100)",
+          required: true,
+        }
+      ],
+      handler: async ({ scoreType, score }) => {
+        await updateHealthScore(scoreType, score);
+        return `Updated ${scoreType} score to ${score}`;
       },
-      {
-        name: "score",
-        type: "number",
-        description: "Score value (0-100)",
-        required: true,
-      }
-    ],
-    handler: async ({ scoreType, score }) => {
-      await updateHealthScore(scoreType, score);
-      return `Updated ${scoreType} score to ${score}`;
-    },
-  });
+    });
 
-  useCopilotAction({
-    name: "addQuickRecord",
-    description: "Add a quick health record",
-    parameters: [
-      {
-        name: "type",
-        type: "string",
-        description: "Record type (weight, mood, symptom, exercise, meal, sleep, water)",
-        required: true,
+    safeCopilotAction({
+      name: "addQuickRecord",
+      description: "Add a quick health record",
+      parameters: [
+        {
+          name: "type",
+          type: "string",
+          description: "Record type (weight, mood, symptom, exercise, meal, sleep, water)",
+          required: true,
+        },
+        {
+          name: "value",
+          type: "string",
+          description: "Record value",
+          required: true,
+        },
+        {
+          name: "notes",
+          type: "string",
+          description: "Optional notes",
+          required: false,
+        }
+      ],
+      handler: async ({ type, value, notes }) => {
+        await addQuickRecord(type, value, notes);
+        return `Added ${type} record: ${value}`;
       },
-      {
-        name: "value",
-        type: "string",
-        description: "Record value",
-        required: true,
-      },
-      {
-        name: "notes",
-        type: "string",
-        description: "Optional notes",
-        required: false,
-      }
-    ],
-    handler: async ({ type, value, notes }) => {
-      await addQuickRecord(type, value, notes);
-      return `Added ${type} record: ${value}`;
-    },
-  });
+    });
+  } catch (error) {
+    console.warn('[HOME-STATE] CopilotKit actions setup failed:', error);
+  }
 
   return {
     healthOverview,
