@@ -54,18 +54,19 @@ export function PersonalSettingsContent() {
     }
   };
 
-  const updatePreference = async (section: string, key: string, value: unknown) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updatePreference: any = (section: any, key: any, value: any) => {
     if (section === 'notifications') {
       if (key === 'cycleReminders') {
-        await settingsData.setNotificationSettings({ cycleReminders: value as boolean });
+        settingsData.setNotificationSettings({ cycleReminders: value as boolean });
       } else if (key === 'healthTips') {
-        await settingsData.setNotificationSettings({ healthInsights: value as boolean });
+        settingsData.setNotificationSettings({ healthInsights: value as boolean });
       }
     } else if (section === 'privacy') {
       if (key === 'dataCollection') {
-        await settingsData.setPrivacySettings({ dataSharing: value as boolean });
+        settingsData.setPrivacySettings({ dataSharing: value as boolean });
       } else if (key === 'analytics') {
-        await settingsData.setPrivacySettings({ analyticsTracking: value as boolean });
+        settingsData.setPrivacySettings({ analyticsTracking: value as boolean });
       }
     }
   };

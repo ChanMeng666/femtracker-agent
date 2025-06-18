@@ -76,7 +76,8 @@ export const PersonalSettingsTab: React.FC<PersonalSettingsTabProps> = ({
                  />
                ) : (
                  <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200" role="img" aria-label="Default avatar placeholder">
-                   <Image className="w-8 h-8 text-gray-400" />
+                   {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                   <Image className="w-8 h-8 text-gray-400" aria-hidden="true" />
                  </div>
                )}
               {isUploadingAvatar && (
