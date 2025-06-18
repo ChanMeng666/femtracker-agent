@@ -12,6 +12,9 @@ export function DataExportImportContent() {
     exportStatus,
     importStatus,
     importMessage,
+    exportToCloud,
+    setExportToCloud,
+    cloudExportUrl,
     fileInputRef,
     toggleOption,
     handleExport,
@@ -25,9 +28,12 @@ export function DataExportImportContent() {
         exportFormat={exportFormat}
         isExporting={isExporting}
         exportStatus={exportStatus}
+        exportToCloud={exportToCloud}
+        cloudExportUrl={cloudExportUrl}
         onToggleOption={toggleOption}
         onFormatChange={setExportFormat}
         onExport={handleExport}
+        onToggleCloudExport={setExportToCloud}
       />
       
       <DataImportSection

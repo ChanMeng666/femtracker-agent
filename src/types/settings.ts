@@ -14,6 +14,7 @@ export interface UserProfile {
   age: number;
   language: string;
   theme: string;
+  avatarUrl?: string;
 }
 
 export interface NotificationSettings {
@@ -36,6 +37,7 @@ export interface UserPreferences {
   name: string;
   age: number;
   location: string;
+  avatarUrl?: string;
   
   // Theme Settings
   theme: 'light' | 'dark' | 'auto';

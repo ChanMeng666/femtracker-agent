@@ -4,6 +4,7 @@ import { useAuth } from './auth/useAuth';
 import { 
   supabase
 } from '@/lib/supabase/client';
+import { cache } from '@/lib/redis/client';
 
 // 前端类型定义
 interface FrontendAIInsight {
@@ -109,6 +110,17 @@ export const useInsightsStateWithDB = () => {
   const loadAIInsights = async () => {
     if (!user) return;
 
+    // 尝试从缓存获取AI洞察数据
+    const cacheKey = cache.healthKey(user.id, 'ai_insights');
+    const cachedData = await cache.get<FrontendAIInsight[]>(cacheKey);
+
+    if (cachedData) {
+      console.log('Loading AI insights from cache');
+      setAIInsights(cachedData);
+      return;
+    }
+
+    // 从数据库加载
     const { data, error } = await supabase
       .from('ai_insights')
       .select('*')
@@ -123,7 +135,7 @@ export const useInsightsStateWithDB = () => {
     }
 
     if (data) {
-      setAIInsights(data.map(insight => ({
+      const insights = data.map(insight => ({
         id: insight.id,
         type: insight.insight_type,
         category: insight.category,
@@ -132,12 +144,27 @@ export const useInsightsStateWithDB = () => {
         recommendation: insight.recommendation || undefined,
         confidenceScore: insight.confidence_score,
         generatedAt: insight.generated_at
-      })));
+      }));
+
+      setAIInsights(insights);
+      
+      // 缓存数据2小时（AI洞察变化不频繁）
+      await cache.set(cacheKey, insights, 7200);
     }
   };
 
   const loadHealthMetrics = async () => {
     if (!user) return;
+
+    // 尝试从缓存获取健康指标数据（包含时间范围）
+    const cacheKey = cache.healthKey(user.id, 'health_metrics', timeRange);
+    const cachedData = await cache.get<FrontendHealthMetric[]>(cacheKey);
+
+    if (cachedData) {
+      console.log('Loading health metrics from cache');
+      setHealthMetrics(cachedData);
+      return;
+    }
 
     // 计算日期范围
     const endDate = new Date();
@@ -165,13 +192,18 @@ export const useInsightsStateWithDB = () => {
     }
 
     if (data) {
-      setHealthMetrics(data.map(metric => ({
+      const metrics = data.map(metric => ({
         category: metric.category,
         score: metric.score,
         trend: metric.trend,
         color: metric.color,
         date: metric.date
-      })));
+      }));
+
+      setHealthMetrics(metrics);
+      
+      // 缓存30分钟（健康指标更新相对频繁）
+      await cache.set(cacheKey, metrics, 1800);
     }
   };
 
@@ -437,6 +469,19 @@ export const useInsightsStateWithDB = () => {
     setTimeRange(newTimeRange);
   };
 
+  // 清除用户健康相关缓存的辅助方法
+  const clearHealthCache = async () => {
+    if (!user) return;
+    
+    try {
+      // 清除所有健康相关缓存
+      await cache.invalidatePattern(`health:${user.id}:*`);
+      console.log('Health cache cleared successfully');
+    } catch (error) {
+      console.error('Error clearing health cache:', error);
+    }
+  };
+
   // CopilotKit Actions
   useCopilotAction({
     name: "addAIInsight",
@@ -611,6 +656,7 @@ export const useInsightsStateWithDB = () => {
     removeAIInsight,
     removeCorrelationAnalysis,
     updateTimeRange,
+    clearHealthCache,
     refetch: loadAllData
   };
 };

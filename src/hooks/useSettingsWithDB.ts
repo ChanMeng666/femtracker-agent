@@ -4,6 +4,7 @@ import { SettingTab, UserProfile, NotificationSettings, PrivacySettings } from "
 import { settingTabs } from "@/constants/settings";
 import { useAuth } from "./auth/useAuth";
 import { supabase, Profile } from "@/lib/supabase/client";
+import { cache } from "@/lib/redis/client";
 
 export const useSettingsWithDB = () => {
   const { user } = useAuth();
@@ -39,21 +40,48 @@ export const useSettingsWithDB = () => {
     const loadUserData = async () => {
       setLoading(true);
       try {
-        // Load profile data
+        // 尝试从缓存加载用户设置
+        const cacheKey = cache.userKey(user.id, 'settings');
+        const cachedSettings = await cache.get<{
+          profile: UserProfile;
+          notifications: NotificationSettings;
+          privacy: PrivacySettings;
+        }>(cacheKey);
+
+        if (cachedSettings) {
+          console.log('Loading user settings from cache');
+          setUserProfile(cachedSettings.profile);
+          setNotificationSettings(cachedSettings.notifications);
+          setPrivacySettings(cachedSettings.privacy);
+          setLoading(false);
+          return;
+        }
+
+        // Load profile data from database
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
 
+        let profile: UserProfile = {
+          name: '',
+          email: user.email || '',
+          age: 0,
+          language: "English",
+          theme: "light",
+          avatarUrl: undefined
+        };
+
         if (profileData) {
-          setUserProfile({
+          profile = {
             name: profileData.full_name || user.user_metadata?.full_name || '',
             email: profileData.email || user.email || '',
             age: profileData.age || 0,
             language: "English", // Default for now
-            theme: "light" // Default for now
-          });
+            theme: "light", // Default for now
+            avatarUrl: profileData.avatar_url || undefined
+          };
         }
 
         // Load user preferences
@@ -63,34 +91,47 @@ export const useSettingsWithDB = () => {
           .eq('user_id', user.id)
           .single();
 
+        let notifications = notificationSettings;
+        let privacy = privacySettings;
+
         if (preferencesData) {
           // Update theme and other app preferences
-          setUserProfile(prev => ({
-            ...prev,
-            theme: preferencesData.theme || 'light'
-          }));
+          profile.theme = preferencesData.theme || 'light';
 
           // Update notification settings
           if (preferencesData.notifications) {
-            setNotificationSettings({
+            notifications = {
               cycleReminders: preferencesData.notifications.cycleReminders ?? true,
               symptomTracking: preferencesData.notifications.symptomTracking ?? true,
               exerciseGoals: preferencesData.notifications.exerciseGoals ?? false,
               nutritionTips: preferencesData.notifications.nutritionTips ?? true,
               healthInsights: preferencesData.notifications.healthInsights ?? true
-            });
+            };
           }
 
           // Update privacy settings
           if (preferencesData.privacy) {
-            setPrivacySettings({
+            privacy = {
               dataSharing: preferencesData.privacy.dataSharing ?? false,
               analyticsTracking: preferencesData.privacy.analyticsTracking ?? true,
               biometricLock: preferencesData.privacy.biometricLock ?? false,
               autoBackup: preferencesData.privacy.autoBackup ?? true
-            });
+            };
           }
         }
+
+        // Update state
+        setUserProfile(profile);
+        setNotificationSettings(notifications);
+        setPrivacySettings(privacy);
+
+        // Cache settings for 1 hour
+        await cache.set(cacheKey, {
+          profile,
+          notifications,
+          privacy
+        }, 3600);
+
       } catch (error) {
         console.error('Error loading user data:', error);
       } finally {
@@ -111,6 +152,7 @@ export const useSettingsWithDB = () => {
       if (updates.name !== undefined) profileUpdates.full_name = updates.name;
       if (updates.email !== undefined) profileUpdates.email = updates.email;
       if (updates.age !== undefined) profileUpdates.age = updates.age;
+      if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
 
       if (Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase
@@ -139,6 +181,10 @@ export const useSettingsWithDB = () => {
 
       // Update local state
       setUserProfile(prev => ({ ...prev, ...updates }));
+      
+      // Clear settings cache
+      await cache.del(cache.userKey(user.id, 'settings'));
+      
       console.log('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -167,6 +213,10 @@ export const useSettingsWithDB = () => {
 
       // Update local state
       setNotificationSettings(prev => ({ ...prev, ...updates }));
+      
+      // Clear settings cache
+      await cache.del(cache.userKey(user.id, 'settings'));
+      
       console.log('Notification settings updated successfully');
     } catch (error) {
       console.error('Error updating notification settings:', error);

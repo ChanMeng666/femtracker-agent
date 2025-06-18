@@ -4,6 +4,7 @@ import { useSettingsWithDB } from '@/hooks/useSettingsWithDB';
 import { SettingsNavigation } from './SettingsNavigation';
 import { PersonalSettingsTab } from './PersonalSettingsTab';
 import { NotificationSettingsTab } from './NotificationSettingsTab';
+import { DataExportImportContent } from '../data-export-import/DataExportImportContent';
 
 export const SettingsContent: React.FC = () => {
   const {
@@ -45,21 +46,8 @@ export const SettingsContent: React.FC = () => {
         return (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-6">Data Management</h2>
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-50 rounded-xl">
-                <h3 className="font-medium text-gray-800 mb-2">📥 Export Data</h3>
-                <p className="text-sm text-gray-600 mb-4">Download all your health data in JSON format</p>
-                <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                  Export Data
-                </button>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-xl">
-                <h3 className="font-medium text-gray-800 mb-2">📤 Import Data</h3>
-                <p className="text-sm text-gray-600 mb-4">Import previously exported data</p>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                  Import Data
-                </button>
-              </div>
+            <div className="space-y-6">
+              <DataExportImportContent />
             </div>
           </div>
         );

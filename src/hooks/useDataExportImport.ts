@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react';
 import { ExportFormat, Status, HealthData } from '@/components/data-export-import/types';
 import { exportOptions } from '@/constants/exportOptions';
+import { blobClient } from '@/lib/blob/client';
+import { useAuth } from './auth/useAuth';
 
 export function useDataExportImport() {
+  const { user } = useAuth();
   const [selectedOptions, setSelectedOptions] = useState<string[]>(['cycle', 'symptoms']);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
   const [isExporting, setIsExporting] = useState(false);
@@ -10,6 +13,8 @@ export function useDataExportImport() {
   const [exportStatus, setExportStatus] = useState<Status>('idle');
   const [importStatus, setImportStatus] = useState<Status>('idle');
   const [importMessage, setImportMessage] = useState('');
+  const [exportToCloud, setExportToCloud] = useState(false);
+  const [cloudExportUrl, setCloudExportUrl] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleOption = (optionId: string) => {
@@ -178,6 +183,7 @@ export function useDataExportImport() {
 
     setIsExporting(true);
     setExportStatus('idle');
+    setCloudExportUrl('');
 
     try {
       // Simulate export processing time
@@ -185,14 +191,28 @@ export function useDataExportImport() {
       
       const data = generateMockData();
       
-      if (exportFormat === 'json') {
-        exportAsJSON(data);
+      if (exportToCloud && user) {
+        // Export to cloud storage
+        const result = await blobClient.uploadDataExport(data as unknown as Record<string, unknown>, user.id, exportFormat);
+        
+        if (result.success && result.blob) {
+          setCloudExportUrl(result.blob.url);
+          setExportStatus('success');
+        } else {
+          console.error('Cloud export failed:', result.error);
+          setExportStatus('error');
+        }
       } else {
-        exportAsCSV(data);
+        // Traditional local export
+        if (exportFormat === 'json') {
+          exportAsJSON(data);
+        } else {
+          exportAsCSV(data);
+        }
+        setExportStatus('success');
       }
-      
-      setExportStatus('success');
-    } catch {
+    } catch (error) {
+      console.error('Export failed:', error);
       setExportStatus('error');
     } finally {
       setIsExporting(false);
@@ -254,6 +274,9 @@ export function useDataExportImport() {
     exportStatus,
     importStatus,
     importMessage,
+    exportToCloud,
+    setExportToCloud,
+    cloudExportUrl,
     fileInputRef,
     toggleOption,
     handleExport,
