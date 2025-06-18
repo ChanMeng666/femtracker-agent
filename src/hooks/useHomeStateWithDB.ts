@@ -83,7 +83,22 @@ export const useHomeStateWithDB = () => {
   // 从数据库加载数据
   useEffect(() => {
     if (!user) {
+      // 清除所有数据并停止加载
+      setHealthOverview({
+        overallScore: 75,
+        cycleHealth: 75,
+        nutritionScore: 75,
+        exerciseScore: 75,
+        fertilityScore: 75,
+        lifestyleScore: 75,
+        symptomsScore: 75,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      });
+      setQuickRecords([]);
+      setPersonalizedTips([]);
+      setHealthInsights([]);
       setLoading(false);
+      setError(null);
       return;
     }
     loadAllData();

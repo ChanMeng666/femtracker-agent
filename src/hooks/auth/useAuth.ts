@@ -5,18 +5,45 @@ import { supabase } from '@/lib/supabase/client'
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    let timeoutId: NodeJS.Timeout
+
+    // Add timeout for auth initialization
+    const initAuth = async () => {
+      try {
+        // Set a timeout for the initial session check
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(() => {
+            reject(new Error('Authentication timeout'))
+          }, 10000) // 10 second timeout
+        })
+
+        const result = await Promise.race([sessionPromise, timeoutPromise])
+        const sessionData = result as { data: { session: { user: User | null } | null } }
+        const session = sessionData.data.session
+        
+        clearTimeout(timeoutId)
+        setUser(session?.user ?? null)
+        setError(null)
+      } catch (err) {
+        console.error('Auth initialization error:', err)
+        setError('Authentication failed. Please try refreshing the page.')
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initAuth()
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null)
+        setError(null)
         
         // Handle email confirmation - create profile when user confirms email
         if (event === 'SIGNED_IN' && session?.user) {
@@ -27,7 +54,10 @@ export function useAuth() {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const ensureUserProfile = async (user: User) => {
@@ -119,6 +149,7 @@ export function useAuth() {
   return {
     user,
     loading,
+    error,
     signIn,
     signUp,
     signOut,
