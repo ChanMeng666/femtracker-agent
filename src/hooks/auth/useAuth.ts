@@ -5,7 +5,11 @@ import { supabase } from '@/lib/supabase/client'
 // 添加调试日志helper
 const debugLog = (message: string, data?: unknown) => {
   const timestamp = new Date().toISOString()
-  console.log(`[AUTH-DEBUG ${timestamp}] ${message}`, data)
+  if (data !== undefined) {
+    console.log(`[AUTH-DEBUG ${timestamp}] ${message}`, data)
+  } else {
+    console.log(`[AUTH-DEBUG ${timestamp}] ${message}`)
+  }
 }
 
 export function useAuth() {
@@ -15,7 +19,7 @@ export function useAuth() {
   const [connectionState, setConnectionState] = useState<'connecting' | 'connected' | 'error' | 'timeout'>('connecting')
   
   // 使用ref避免闭包问题
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isInitializingRef = useRef(false)
 
   useEffect(() => {
