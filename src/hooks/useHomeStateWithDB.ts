@@ -42,23 +42,6 @@ interface FrontendHealthInsight {
   actionLink?: string;
 }
 
-// 安全的CopilotKit wrapper
-const safeCopilotReadable = (config: any) => {
-  try {
-    useCopilotReadable(config);
-  } catch (error) {
-    console.warn('[HOME-STATE] CopilotKit readable failed, continuing without AI features:', error);
-  }
-};
-
-const safeCopilotAction = (config: any) => {
-  try {
-    useCopilotAction(config);
-  } catch (error) {
-    console.warn('[HOME-STATE] CopilotKit action failed, continuing without AI features:', error);
-  }
-};
-
 export const useHomeStateWithDB = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -80,26 +63,22 @@ export const useHomeStateWithDB = () => {
   const [personalizedTips, setPersonalizedTips] = useState<FrontendPersonalizedTip[]>([]);
   const [healthInsights, setHealthInsights] = useState<FrontendHealthInsight[]>([]);
 
-  // 安全的CopilotKit readable data
-  try {
-    safeCopilotReadable({
-      description: "User's complete health dashboard data with real-time database integration",
-      value: {
-        healthOverview,
-        quickRecords,
-        personalizedTips,
-        healthInsights,
-        isAuthenticated: !!user,
-        loading,
-        totalTips: personalizedTips.length,
-        activeTips: personalizedTips.length,
-        totalInsights: healthInsights.length,
-        recentRecords: quickRecords.slice(0, 5)
-      }
-    });
-  } catch (error) {
-    console.warn('[HOME-STATE] CopilotKit readable setup failed:', error);
-  }
+  // CopilotKit readable data
+  useCopilotReadable({
+    description: "User's complete health dashboard data with real-time database integration",
+    value: {
+      healthOverview,
+      quickRecords,
+      personalizedTips,
+      healthInsights,
+      isAuthenticated: !!user,
+      loading,
+      totalTips: personalizedTips.length,
+      activeTips: personalizedTips.length,
+      totalInsights: healthInsights.length,
+      recentRecords: quickRecords.slice(0, 5)
+    }
+  });
 
   // 从数据库加载数据
   useEffect(() => {
@@ -480,62 +459,58 @@ export const useHomeStateWithDB = () => {
     setHealthInsights(prev => prev.filter(insight => insight.category !== category));
   };
 
-  // 安全的CopilotKit Actions
-  try {
-    safeCopilotAction({
-      name: "updateHealthScore",
-      description: "Update health score for a specific category",
-      parameters: [
-        {
-          name: "scoreType",
-          type: "string",
-          description: "Score type (overall, cycle, nutrition, exercise, fertility, lifestyle, symptoms)",
-          required: true,
-        },
-        {
-          name: "score",
-          type: "number",
-          description: "Score value (0-100)",
-          required: true,
-        }
-      ],
-      handler: async ({ scoreType, score }) => {
-        await updateHealthScore(scoreType, score);
-        return `Updated ${scoreType} score to ${score}`;
+  // CopilotKit Actions
+  useCopilotAction({
+    name: "updateHealthScore",
+    description: "Update health score for a specific category",
+    parameters: [
+      {
+        name: "scoreType",
+        type: "string",
+        description: "Score type (overall, cycle, nutrition, exercise, fertility, lifestyle, symptoms)",
+        required: true,
       },
-    });
+      {
+        name: "score",
+        type: "number",
+        description: "Score value (0-100)",
+        required: true,
+      }
+    ],
+    handler: async ({ scoreType, score }: { scoreType: string; score: number }) => {
+      await updateHealthScore(scoreType, score);
+      return `Updated ${scoreType} score to ${score}`;
+    },
+  });
 
-    safeCopilotAction({
-      name: "addQuickRecord",
-      description: "Add a quick health record",
-      parameters: [
-        {
-          name: "type",
-          type: "string",
-          description: "Record type (weight, mood, symptom, exercise, meal, sleep, water)",
-          required: true,
-        },
-        {
-          name: "value",
-          type: "string",
-          description: "Record value",
-          required: true,
-        },
-        {
-          name: "notes",
-          type: "string",
-          description: "Optional notes",
-          required: false,
-        }
-      ],
-      handler: async ({ type, value, notes }) => {
-        await addQuickRecord(type, value, notes);
-        return `Added ${type} record: ${value}`;
+  useCopilotAction({
+    name: "addQuickRecord",
+    description: "Add a quick health record",
+    parameters: [
+      {
+        name: "type",
+        type: "string",
+        description: "Record type (weight, mood, symptom, exercise, meal, sleep, water)",
+        required: true,
       },
-    });
-  } catch (error) {
-    console.warn('[HOME-STATE] CopilotKit actions setup failed:', error);
-  }
+      {
+        name: "value",
+        type: "string",
+        description: "Record value",
+        required: true,
+      },
+      {
+        name: "notes",
+        type: "string",
+        description: "Optional notes",
+        required: false,
+      }
+    ],
+    handler: async ({ type, value, notes }: { type: string; value: string; notes?: string }) => {
+      await addQuickRecord(type, value, notes);
+      return `Added ${type} record: ${value}`;
+    },
+  });
 
   return {
     healthOverview,
