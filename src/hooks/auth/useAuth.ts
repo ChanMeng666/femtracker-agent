@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 
@@ -7,25 +7,29 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  const isInitializing = useRef<boolean>(false)
 
   const initAuth = useCallback(async (isRetry = false) => {
+    // 防止同时进行多个初始化
+    if (isInitializing.current) {
+      console.log('Auth init skipped - already in progress')
+      return
+    }
+
+    isInitializing.current = true
+
     if (!isRetry) {
       setLoading(true)
     }
     setError(null)
 
     try {
-      // 减少超时时间，更快失败恢复
-      const sessionPromise = supabase.auth.getSession()
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Authentication timeout'))
-        }, 8000) // 8秒超时
-      })
-
-      const result = await Promise.race([sessionPromise, timeoutPromise])
-      const sessionData = result as { data: { session: { user: User | null } | null } }
-      const session = sessionData.data.session
+      // 获取当前会话
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        throw sessionError
+      }
       
       setUser(session?.user ?? null)
       setError(null)
@@ -49,14 +53,15 @@ export function useAuth() {
       // 自动重试机制（最多3次）
       if (retryCount < 3 && !isRetry) {
         setRetryCount(prev => prev + 1)
-        console.log(`Auto retry ${retryCount + 1}/3 in 2 seconds...`)
+        console.log(`Auto retry ${retryCount + 1}/3 in 3 seconds...`)
         setTimeout(() => {
           initAuth(true)
-        }, 2000)
+        }, 3000)
         return
       }
     } finally {
       setLoading(false)
+      isInitializing.current = false
     }
   }, [retryCount])
 
@@ -73,6 +78,8 @@ export function useAuth() {
         async (event, session) => {
           if (!mounted) return
           
+          console.log('Auth state changed:', event, session?.user?.id ? 'user present' : 'no user')
+          
           setUser(session?.user ?? null)
           setError(null)
           
@@ -81,7 +88,10 @@ export function useAuth() {
             await ensureUserProfile(session.user)
           }
           
-          setLoading(false)
+          // 只有在初始加载时才设置loading为false
+          if (loading) {
+            setLoading(false)
+          }
         }
       )
       subscription = data.subscription
@@ -89,33 +99,11 @@ export function useAuth() {
 
     setupAuthListener()
 
-    // 页面可见性变化时重新检查认证状态
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !loading) {
-        // 页面变为可见时，检查认证状态
-        console.log('Page became visible, checking auth status...')
-        initAuth(true)
-      }
-    }
-
-    // 网络状态变化时重新检查认证
-    const handleOnline = () => {
-      if (!loading) {
-        console.log('Network reconnected, checking auth status...')
-        initAuth(true)
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('online', handleOnline)
-
     return () => {
       mounted = false
       subscription?.unsubscribe()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('online', handleOnline)
     }
-  }, [initAuth])
+  }, [initAuth, loading])
 
   const ensureUserProfile = async (user: User) => {
     try {

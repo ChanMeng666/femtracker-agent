@@ -1,10 +1,14 @@
 'use client'
-import { useAuth } from '@/hooks/auth/useAuth'
 import { supabase } from '@/lib/supabase/client'
 import { useState, useEffect } from 'react'
 
-export function AuthDebugger() {
-  const { user, loading, error } = useAuth()
+interface AuthDebuggerProps {
+  user?: { id: string; email?: string } | null;
+  loading?: boolean;
+  error?: string | null;
+}
+
+export function AuthDebugger({ user, loading, error }: AuthDebuggerProps) {
   const [supabaseStatus, setSupabaseStatus] = useState<string>('checking')
   const [redisStatus, setRedisStatus] = useState<string>('checking')
   const [envVars, setEnvVars] = useState<{url?: string; key?: string; redis?: string}>({})
@@ -45,9 +49,9 @@ export function AuthDebugger() {
         } else {
           setRedisStatus('error')
         }
-             } catch {
-         setRedisStatus('unavailable')
-       }
+      } catch {
+        setRedisStatus('unavailable')
+      }
     }
 
     testConnections()

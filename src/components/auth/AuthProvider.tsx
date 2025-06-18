@@ -1,7 +1,6 @@
 'use client'
 import { useAuth } from '@/hooks/auth/useAuth'
 import LoginForm from './LoginForm'
-import { AuthDebugger } from './AuthDebugger'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, loading, error, retry } = useAuth()
@@ -52,18 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    return (
-      <>
-        <LoginForm />
-        <AuthDebugger />
-      </>
-    )
+    return <LoginForm />
   }
 
-  return (
-    <>
-      {children}
-      <AuthDebugger />
-    </>
-  )
+  return <>{children}</>
 } 
