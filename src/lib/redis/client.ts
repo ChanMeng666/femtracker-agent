@@ -4,90 +4,134 @@
 export const cache = {
   async get<T = unknown>(key: string): Promise<T | null> {
     try {
+      // 增加超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
       const response = await fetch(`/api/cache?key=${encodeURIComponent(key)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (response.status === 404) {
         return null;
       }
 
       if (!response.ok) {
-        console.error('Cache get failed:', await response.text());
-        return null;
+        console.warn('Cache get failed, continuing without cache:', await response.text());
+        return null; // 降级处理：缓存失败时返回null，不影响主流程
       }
 
       const result = await response.json();
       return result.data as T;
     } catch (error) {
-      console.error('Cache get error:', error);
-      return null;
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Cache get timeout, continuing without cache');
+      } else {
+        console.warn('Cache get error, continuing without cache:', error);
+      }
+      return null; // 容错处理：任何缓存错误都不应影响主流程
     }
   },
 
   async set(key: string, value: unknown, ttl: number = 3600): Promise<boolean> {
     try {
+      // 增加超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
       const response = await fetch('/api/cache', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ key, value, ttl }),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        console.error('Cache set failed:', await response.text());
-        return false;
+        console.warn('Cache set failed, continuing without cache:', await response.text());
+        return false; // 降级处理：缓存失败不影响主流程
       }
 
       return true;
     } catch (error) {
-      console.error('Cache set error:', error);
-      return false;
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Cache set timeout, continuing without cache');
+      } else {
+        console.warn('Cache set error, continuing without cache:', error);
+      }
+      return false; // 容错处理：任何缓存错误都不应影响主流程
     }
   },
 
   async del(key: string): Promise<boolean> {
     try {
+      // 增加超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
       const response = await fetch(`/api/cache?key=${encodeURIComponent(key)}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        console.error('Cache delete failed:', await response.text());
+        console.warn('Cache delete failed, continuing without cache:', await response.text());
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Cache delete error:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Cache delete timeout, continuing without cache');
+      } else {
+        console.warn('Cache delete error, continuing without cache:', error);
+      }
       return false;
     }
   },
 
   async invalidatePattern(pattern: string): Promise<boolean> {
     try {
+      // 增加超时控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
       const response = await fetch(`/api/cache?pattern=${encodeURIComponent(pattern)}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        console.error('Cache pattern delete failed:', await response.text());
+        console.warn('Cache pattern delete failed, continuing without cache:', await response.text());
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Cache pattern delete error:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Cache pattern delete timeout, continuing without cache');
+      } else {
+        console.warn('Cache pattern delete error, continuing without cache:', error);
+      }
       return false;
     }
   },

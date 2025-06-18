@@ -4,7 +4,7 @@ import LoginForm from './LoginForm'
 import { AuthDebugger } from './AuthDebugger'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading, error } = useAuth()
+  const { user, loading, error, retry } = useAuth()
 
   if (loading) {
     return (
@@ -12,6 +12,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-pink-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading FemTracker...</p>
+          <p className="mt-2 text-sm text-gray-500">Establishing secure connection...</p>
         </div>
       </div>
     )
@@ -28,12 +29,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Connection Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
-          >
-            Retry
-          </button>
+          <div className="space-y-3">
+            <button 
+              onClick={retry}
+              className="w-full px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+            >
+              Try Again
+            </button>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Reload Page
+            </button>
+          </div>
+          <p className="mt-4 text-xs text-gray-500">
+            If the problem persists, please check your internet connection
+          </p>
         </div>
       </div>
     )

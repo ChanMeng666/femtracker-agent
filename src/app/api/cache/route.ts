@@ -3,10 +3,15 @@ import { createClient } from 'redis';
 
 // Redis客户端配置
 const getRedisClient = async () => {
+  // 如果没有配置Redis URL，直接返回错误
+  if (!process.env.REDIS_URL) {
+    throw new Error('Redis URL not configured');
+  }
+
   const client = createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env.REDIS_URL,
     socket: {
-      connectTimeout: 60000,
+      connectTimeout: 10000, // 10秒连接超时
     },
   });
 
@@ -27,6 +32,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Key is required' }, { status: 400 });
     }
 
+    // 检查Redis是否可用
+    if (!process.env.REDIS_URL) {
+      console.warn('Redis not configured, returning cache miss');
+      return NextResponse.json({ data: null }, { status: 404 });
+    }
+
     const client = await getRedisClient();
     const value = await client.get(key);
     
@@ -42,11 +53,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Redis GET error:', error);
-    return NextResponse.json({ 
-      error: 'Cache get failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.warn('Redis GET error, treating as cache miss:', error);
+    // 不返回500错误，而是返回404（缓存未命中）
+    // 这样应用程序可以继续正常工作而不依赖Redis
+    return NextResponse.json({ data: null }, { status: 404 });
   }
 }
 
@@ -60,6 +70,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: 'Key and value are required' 
       }, { status: 400 });
+    }
+
+    // 检查Redis是否可用
+    if (!process.env.REDIS_URL) {
+      console.warn('Redis not configured, cache set ignored');
+      return NextResponse.json({ 
+        success: true,
+        message: 'Cache disabled - operation ignored'
+      });
     }
 
     const client = await getRedisClient();
@@ -77,11 +96,13 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Redis SET error:', error);
+    console.warn('Redis SET error, ignoring cache operation:', error);
+    // 不返回错误，而是返回成功
+    // 这样应用程序可以继续正常工作而不依赖Redis
     return NextResponse.json({ 
-      error: 'Cache set failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+      success: true,
+      message: 'Cache operation failed but ignored'
+    });
   }
 }
 
@@ -96,6 +117,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ 
         error: 'Key or pattern is required' 
       }, { status: 400 });
+    }
+
+    // 检查Redis是否可用
+    if (!process.env.REDIS_URL) {
+      console.warn('Redis not configured, cache delete ignored');
+      return NextResponse.json({ 
+        success: true,
+        deletedCount: 0,
+        message: 'Cache disabled - delete ignored'
+      });
     }
 
     const client = await getRedisClient();
@@ -122,10 +153,12 @@ export async function DELETE(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Redis DELETE error:', error);
+    console.warn('Redis DELETE error, ignoring cache operation:', error);
+    // 不返回错误，而是返回成功
     return NextResponse.json({ 
-      error: 'Cache delete failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+      success: true,
+      deletedCount: 0,
+      message: 'Cache delete failed but ignored'
+    });
   }
 } 
