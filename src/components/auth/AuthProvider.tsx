@@ -2,15 +2,15 @@
 import { useAuth } from '@/hooks/auth/useAuth'
 import LoginForm from './LoginForm'
 import { AuthDebugger } from './AuthDebugger'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, loading, error, connectionState, debug } = useAuth()
   const [fallbackTimer, setFallbackTimer] = useState<NodeJS.Timeout | null>(null)
   const [showFallback, setShowFallback] = useState(false)
 
-  // Debug logging
-  useEffect(() => {
+  // Debug logging - 使用useCallback避免无限重渲染
+  const logAuthState = useCallback(() => {
     console.log('[AUTH-PROVIDER] State update:', {
       hasUser: !!user,
       loading,
@@ -20,7 +20,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }, [user, loading, error, connectionState])
 
-  // Fallback mechanism for stuck loading
+  useEffect(() => {
+    logAuthState()
+  }, [logAuthState])
+
+  // Fallback mechanism for stuck loading - 修复依赖问题
   useEffect(() => {
     if (loading && !showFallback) {
       // 如果30秒后仍在加载，显示调试信息
@@ -30,26 +34,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }, 30000)
       
       setFallbackTimer(timer)
+      
+      return () => {
+        clearTimeout(timer)
+      }
     } else {
       if (fallbackTimer) {
         clearTimeout(fallbackTimer)
         setFallbackTimer(null)
       }
-      if (!loading) {
+      if (!loading && showFallback) {
         setShowFallback(false)
-      }
-    }
-
-    return () => {
-      if (fallbackTimer) {
-        clearTimeout(fallbackTimer)
       }
     }
   }, [loading, showFallback, fallbackTimer])
 
-  // 检查网页控制台提醒
+  // 检查网页控制台提醒 - 只在开发环境显示
   useEffect(() => {
-    if (loading || error) {
+    if (process.env.NODE_ENV === 'development' && (loading || error)) {
       console.log('%c🔍 请检查网页控制台以获取详细的认证调试信息', 'background: #ffeb3b; color: #333; padding: 8px; border-radius: 4px; font-weight: bold;')
     }
   }, [loading, error])
@@ -74,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* 显示调试信息（长时间加载时） */}
-          {showFallback && (
+          {showFallback && process.env.NODE_ENV === 'development' && (
             <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-left">
               <h3 className="font-semibold text-yellow-800 mb-2">🔧 Debug Information</h3>
               <div className="text-xs text-yellow-700 space-y-1">
@@ -118,18 +120,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             Connection: {connectionState}
           </div>
 
-          {/* 详细错误信息 */}
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-left">
-            <h3 className="font-semibold text-red-800 mb-2">🔧 Debug Information</h3>
-            <div className="text-xs text-red-700 space-y-1">
-              <div>Connection State: {connectionState}</div>
-              <div>Error Message: {error}</div>
-              <div>User: {debug.userEmail || 'None'}</div>
-              <div className="mt-2 text-red-600">
-                💡 Check browser console for detailed authentication logs
+          {/* 详细错误信息 - 只在开发环境显示 */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-left">
+              <h3 className="font-semibold text-red-800 mb-2">🔧 Debug Information</h3>
+              <div className="text-xs text-red-700 space-y-1">
+                <div>Connection State: {connectionState}</div>
+                <div>Error Message: {error}</div>
+                <div>User: {debug.userEmail || 'None'}</div>
+                <div className="mt-2 text-red-600">
+                  💡 Check browser console for detailed authentication logs
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-2">
             <button 
@@ -158,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return (
       <>
         <LoginForm />
-        <AuthDebugger />
+        {process.env.NODE_ENV === 'development' && <AuthDebugger />}
       </>
     )
   }
@@ -166,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <AuthDebugger />
+      {process.env.NODE_ENV === 'development' && <AuthDebugger />}
     </>
   )
 } 
