@@ -140,6 +140,7 @@ export const useSettingsWithDB = () => {
     };
 
     loadUserData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Save profile updates to database

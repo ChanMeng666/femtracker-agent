@@ -34,6 +34,7 @@ export function useCycles() {
   useEffect(() => {
     if (!user) return
     fetchCycles()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]) // fetchCycles is stable, no need to include in deps
 
   const fetchCycles = async () => {

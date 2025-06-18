@@ -67,17 +67,18 @@ export const PersonalSettingsTab: React.FC<PersonalSettingsTabProps> = ({
           </label>
           <div className="flex items-center gap-4">
             <div className="relative">
-              {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt="Profile"
-                  className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
-                  <Image className="w-8 h-8 text-gray-400" />
-                </div>
-              )}
+                             {avatarPreview ? (
+                 // eslint-disable-next-line @next/next/no-img-element
+                 <img
+                   src={avatarPreview}
+                   alt="Profile picture preview"
+                   className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                 />
+               ) : (
+                 <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200" role="img" aria-label="Default avatar placeholder">
+                   <Image className="w-8 h-8 text-gray-400" />
+                 </div>
+               )}
               {isUploadingAvatar && (
                 <div className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center">
                   <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
