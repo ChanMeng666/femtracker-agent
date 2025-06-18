@@ -10,19 +10,17 @@ interface AuthDebuggerProps {
 
 export function AuthDebugger({ user, loading, error }: AuthDebuggerProps) {
   const [supabaseStatus, setSupabaseStatus] = useState<string>('checking')
-  const [redisStatus, setRedisStatus] = useState<string>('checking')
-  const [envVars, setEnvVars] = useState<{url?: string; key?: string; redis?: string}>({})
+  const [envVars, setEnvVars] = useState<{url?: string; key?: string}>({})
 
   useEffect(() => {
     // Check environment variables
     setEnvVars({
       url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'set' : 'missing',
-      key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'set' : 'missing',
-      redis: 'unknown' // Redis URL is server-side only
+      key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'set' : 'missing'
     })
 
     // Test Supabase connection
-    const testConnections = async () => {
+    const testConnection = async () => {
       try {
         const { error: healthError } = await supabase
           .from('profiles')
@@ -37,24 +35,9 @@ export function AuthDebugger({ user, loading, error }: AuthDebuggerProps) {
       } catch (err) {
         setSupabaseStatus(`failed: ${err}`)
       }
-
-      // Test Redis through API
-      try {
-        const response = await fetch('/api/cache?key=health-check', {
-          method: 'GET',
-        });
-        
-        if (response.ok || response.status === 404) {
-          setRedisStatus('available')
-        } else {
-          setRedisStatus('error')
-        }
-      } catch {
-        setRedisStatus('unavailable')
-      }
     }
 
-    testConnections()
+    testConnection()
   }, [])
 
   // Show in development OR when there are issues OR when explicitly needed
@@ -108,12 +91,6 @@ export function AuthDebugger({ user, loading, error }: AuthDebuggerProps) {
           <span>Supabase:</span>
           <span className={supabaseStatus === 'connected' ? 'text-green-400' : 'text-red-400'}>
             {supabaseStatus}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span>Redis Cache:</span>
-          <span className={redisStatus === 'available' ? 'text-green-400' : 'text-yellow-400'}>
-            {redisStatus}
           </span>
         </div>
         <hr className="border-gray-600 my-2" />
