@@ -22,7 +22,7 @@ export default function SymptomMoodTracker() {
 
 // Internal component that uses CopilotKit hooks
 function SymptomMoodContent() {
-  const { symptoms, moods, loading, error } = useSymptomsMoods();
+  const { symptoms, moods, loading, error, addSymptom, addMood } = useSymptomsMoods();
 
   const headerRightContent = (
     <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
@@ -64,6 +64,33 @@ function SymptomMoodContent() {
   const todayMoods = moods.filter(m => m.date === today);
   const todaySymptoms = symptoms.filter(s => s.date === today);
 
+  // Handle mood selection
+  const handleMoodSelect = async (mood: string) => {
+    await addMood({
+      mood_type: mood,
+      intensity: 5, // Default intensity
+      date: today,
+      notes: `Mood recorded via Symptom-Mood page`
+    });
+  };
+
+  // Handle symptom toggle
+  const handleSymptomToggle = async (symptom: string) => {
+    const existingSymptom = todaySymptoms.find(s => s.symptom_type === symptom);
+    
+    if (!existingSymptom) {
+      // Add new symptom
+      await addSymptom({
+        symptom_type: symptom,
+        severity: 5, // Default severity
+        date: today,
+        notes: `Symptom recorded via Symptom-Mood page`
+      });
+    }
+    // Note: For removing symptoms, we'd need a removeSymptom function
+    // For now, we only support adding symptoms
+  };
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Main content area */}
@@ -76,19 +103,38 @@ function SymptomMoodContent() {
           rightContent={headerRightContent}
         />
 
+        {/* Database Connection Status */}
+        <div className="px-6 pt-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-green-800">
+                  <span className="font-medium">Connected to database</span> - Your symptoms and moods are being saved automatically
+                  <span className="block text-xs text-green-600 mt-1">
+                    {symptoms.length} symptoms and {moods.length} mood records loaded
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Main content */}
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-6xl mx-auto space-y-6">
             {/* Today's mood record */}
             <MoodSelector 
               selectedMood={todayMoods.length > 0 ? todayMoods[0].mood_type : null} 
-              onMoodSelect={() => {}} // Will be handled by AI assistant
+              onMoodSelect={handleMoodSelect}
             />
 
             {/* Symptom recording */}
             <SymptomSelector 
               selectedSymptoms={todaySymptoms.map(s => s.symptom_type)} 
-              onSymptomToggle={() => {}} // Will be handled by AI assistant
+              onSymptomToggle={handleSymptomToggle}
             />
 
             {/* Mood trend chart */}
@@ -102,44 +148,32 @@ function SymptomMoodContent() {
 
             {/* Quick action buttons */}
             <QuickActions />
+
+            {/* AI Assistant Instructions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-blue-800 mb-2">🤖 Ask your AI Assistant</h3>
+              <div className="text-xs text-blue-700 space-y-1">
+                <p><strong>Try saying:</strong></p>
+                <p>• &ldquo;I&apos;m feeling anxious today&rdquo;</p>
+                <p>• &ldquo;Add headache and nausea symptoms&rdquo;</p>
+                <p>• &ldquo;Record my mood as happy&rdquo;</p>
+                <p>• &ldquo;Show me my mood trends this week&rdquo;</p>
+                <p>• &ldquo;What symptoms did I have yesterday?&rdquo;</p>
+                <p>• &ldquo;Remove all symptoms for today&rdquo;</p>
+              </div>
+            </div>
           </div>
         </main>
       </div>
 
       {/* CopilotKit sidebar */}
       <CopilotSidebar
-        instructions="You are a symptom and mood tracking assistant helping users monitor their physical and emotional health. You have access to the user's current symptom and mood data and can help them:
-
-1. Record current mood (happy, neutral, sad, angry, anxious, tired)
-2. Add symptoms they're experiencing
-3. Remove symptoms no longer present
-4. Track patterns in symptoms and mood
-5. Clear all tracking data if needed
-
-Available symptoms:
-- Headache
-- Abdominal Pain
-- Breast Tenderness
-- Nausea
-- Discharge Changes
-- Temperature Changes
-- Insomnia
-- Appetite Changes
-
-Available moods:
-- Happy: Feeling positive and content
-- Neutral: Feeling balanced
-- Low/Sad: Feeling down or melancholy
-- Irritable: Feeling easily annoyed
-- Anxious: Feeling worried or nervous
-- Tired: Feeling fatigued or exhausted
-
-You can see their current data and make real-time updates to help them track their health patterns effectively."
+        defaultOpen={true}
         labels={{
           title: "Symptom & Mood AI Assistant",
-          initial: "👋 Hi! I'm your symptom and mood tracking assistant. I can help you monitor your physical and emotional health.\n\nTry asking me to:\n- \"Set my mood to happy\"\n- \"Add headache and nausea symptoms\"\n- \"Remove abdominal pain symptom\"\n- \"What symptoms am I tracking?\"\n- \"Give me health insights based on my data\"\n\nI can see your current data and update it in real-time!",
+          initial: "Hello! I can help you track your symptoms and moods. You can tell me about how you're feeling, add symptoms, or ask about your health patterns. What would you like to record today?",
         }}
-        defaultOpen={false}
+        clickOutsideToClose={false}
       />
     </div>
   );

@@ -385,6 +385,7 @@
 .action-container {
   display: flex;
   justify-content: center;
+  gap: 16px;
   margin-top: 40px;
   padding-bottom: 20px;
   position: relative;
@@ -452,6 +453,40 @@
 @keyframes spin {
   0% { transform: translateY(-50%) rotate(0deg); }
   100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Save Button */
+.save-button {
+  background-color: #10B981;
+  border: none;
+  color: white;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  min-width: 140px;
+}
+
+.save-button:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.5);
+}
+
+.save-button:disabled {
+  background-color: #9CA3AF;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(156, 163, 175, 0.3);
 }
 
 /* Ping Animation */

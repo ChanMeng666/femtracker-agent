@@ -1,5 +1,5 @@
 import React from 'react';
-import { useRecipe } from '@/hooks/recipe';
+import { useRecipeWithDB } from '@/hooks/useRecipeWithDB';
 import { RecipeHeader } from './RecipeHeader';
 import { DietaryPreferences } from './DietaryPreferences';
 import { IngredientsSection } from './IngredientsSection';
@@ -23,7 +23,12 @@ export const RecipeForm: React.FC = () => {
     updateInstruction,
     removeInstruction,
     handleImproveRecipe,
-  } = useRecipe();
+    saveRecipe,
+  } = useRecipeWithDB();
+
+  const handleSaveRecipe = async () => {
+    await saveRecipe();
+  };
 
   return (
     <form className="recipe-card">
@@ -68,6 +73,15 @@ export const RecipeForm: React.FC = () => {
           disabled={isLoading}
         >
           {isLoading ? "Please Wait..." : "Improve with AI"}
+        </button>
+        
+        <button
+          className="save-button"
+          type="button"
+          onClick={handleSaveRecipe}
+          disabled={isLoading || !recipe.title.trim()}
+        >
+          💾 Save Recipe
         </button>
       </div>
     </form>
