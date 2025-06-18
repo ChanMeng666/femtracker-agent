@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core';
 import { useAuth } from './auth/useAuth';
-import { supabase } from '@/lib/supabase/client';
+import { 
+  supabase
+} from '@/lib/supabase/client';
+import { cache } from '@/lib/redis/client';
 
 // 前端类型定义
 interface FrontendAIInsight {
@@ -44,15 +47,13 @@ export const useInsightsStateWithDB = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // State definitions
+  // 状态定义
   const [aiInsights, setAIInsights] = useState<FrontendAIInsight[]>([]);
   const [healthMetrics, setHealthMetrics] = useState<FrontendHealthMetric[]>([]);
   const [correlationAnalyses, setCorrelationAnalyses] = useState<FrontendCorrelationAnalysis[]>([]);
-  const [healthScore, setHealthScore] = useState<number>(75);
   const [healthTrends, setHealthTrends] = useState<FrontendHealthTrend[]>([]);
-
-  // Time range state
-  const [timeRange, setTimeRange] = useState<string>('1M');
+  const [healthScore, setHealthScore] = useState<number>(75);
+  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter'>('month');
 
   // CopilotKit readable data
   useCopilotReadable({
@@ -110,6 +111,16 @@ export const useInsightsStateWithDB = () => {
   const loadAIInsights = async () => {
     if (!user) return;
 
+    // 尝试从缓存获取AI洞察数据
+    const cacheKey = cache.healthKey(user.id, 'ai_insights');
+    const cachedData = await cache.get<FrontendAIInsight[]>(cacheKey);
+
+    if (cachedData) {
+      console.log('Loading AI insights from cache');
+      setAIInsights(cachedData);
+      return;
+    }
+
     // 从数据库加载
     const { data, error } = await supabase
       .from('ai_insights')
@@ -137,11 +148,24 @@ export const useInsightsStateWithDB = () => {
       }));
 
       setAIInsights(insights);
+      
+      // 缓存数据2小时（AI洞察变化不频繁）
+      await cache.set(cacheKey, insights, 7200);
     }
   };
 
   const loadHealthMetrics = async () => {
     if (!user) return;
+
+    // 尝试从缓存获取健康指标数据（包含时间范围）
+    const cacheKey = cache.healthKey(user.id, 'health_metrics', timeRange);
+    const cachedData = await cache.get<FrontendHealthMetric[]>(cacheKey);
+
+    if (cachedData) {
+      console.log('Loading health metrics from cache');
+      setHealthMetrics(cachedData);
+      return;
+    }
 
     // 计算日期范围
     const endDate = new Date();
@@ -178,6 +202,9 @@ export const useInsightsStateWithDB = () => {
       }));
 
       setHealthMetrics(metrics);
+      
+      // 缓存30分钟（健康指标更新相对频繁）
+      await cache.set(cacheKey, metrics, 1800);
     }
   };
 
@@ -439,7 +466,7 @@ export const useInsightsStateWithDB = () => {
   };
 
   // 更新时间范围
-  const updateTimeRange = (newTimeRange: string) => {
+  const updateTimeRange = (newTimeRange: 'week' | 'month' | 'quarter') => {
     setTimeRange(newTimeRange);
   };
 
@@ -449,9 +476,7 @@ export const useInsightsStateWithDB = () => {
     
     try {
       // 清除所有健康相关缓存
-      await supabase.from('ai_insights').update({ is_active: false }).eq('user_id', user.id);
-      await supabase.from('health_metrics').update({ is_active: false }).eq('user_id', user.id);
-      await supabase.from('correlation_analyses').update({ is_active: false }).eq('user_id', user.id);
+      await cache.invalidatePattern(`health:${user.id}:*`);
       console.log('Health cache cleared successfully');
     } catch (error) {
       console.error('Error clearing health cache:', error);
@@ -612,7 +637,7 @@ export const useInsightsStateWithDB = () => {
       }
     ],
     handler: async ({ timeRange }) => {
-      updateTimeRange(timeRange);
+      updateTimeRange(timeRange as 'week' | 'month' | 'quarter');
       return `Updated time range to ${timeRange}`;
     },
   });

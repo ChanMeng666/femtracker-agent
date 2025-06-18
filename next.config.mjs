@@ -47,8 +47,9 @@ const nextConfig = {
         'node:tls': false,
       };
       
-      // External dependencies configuration
+      // 将redis标记为外部依赖，防止在客户端打包
       config.externals = config.externals || [];
+      config.externals.push('redis');
     }
 
     return config;

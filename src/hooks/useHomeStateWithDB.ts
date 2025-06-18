@@ -112,31 +112,15 @@ export const useHomeStateWithDB = () => {
     setError(null);
 
     try {
-      // 并行加载所有数据，避免阻塞
-      const promises = [
-        loadHealthOverview().catch(err => {
-          console.warn('Failed to load health overview:', err);
-          return null; // 不让单个失败影响整体
-        }),
-        loadQuickRecords().catch(err => {
-          console.warn('Failed to load quick records:', err);
-          return null;
-        }),
-        loadPersonalizedTips().catch(err => {
-          console.warn('Failed to load personalized tips:', err);
-          return null;
-        }),
-        loadHealthInsights().catch(err => {
-          console.warn('Failed to load health insights:', err);
-          return null;
-        })
-      ];
-
-      await Promise.allSettled(promises);
+      await Promise.all([
+        loadHealthOverview(),
+        loadQuickRecords(),
+        loadPersonalizedTips(),
+        loadHealthInsights()
+      ]);
     } catch (err) {
       console.error('Error loading home data:', err);
-      // 不设置错误状态，让用户看到部分数据
-      console.warn('Some data failed to load, but continuing with available data');
+      setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -145,33 +129,28 @@ export const useHomeStateWithDB = () => {
   const loadHealthOverview = async () => {
     if (!user) return;
 
-    try {
-      const { data, error } = await supabase
-        .from('health_overview')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+    const { data, error } = await supabase
+      .from('health_overview')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error loading health overview:', error);
-        return;
-      }
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error loading health overview:', error);
+      return;
+    }
 
-      if (data) {
-        setHealthOverview({
-          overallScore: data.overall_score,
-          cycleHealth: data.cycle_health,
-          nutritionScore: data.nutrition_score,
-          exerciseScore: data.exercise_score,
-          fertilityScore: data.fertility_score,
-          lifestyleScore: data.lifestyle_score,
-          symptomsScore: data.symptoms_score,
-          lastUpdated: data.last_updated
-        });
-      }
-    } catch (error) {
-      console.warn('Failed to load health overview, using defaults:', error);
-      // 使用默认值，不抛出错误
+    if (data) {
+      setHealthOverview({
+        overallScore: data.overall_score,
+        cycleHealth: data.cycle_health,
+        nutritionScore: data.nutrition_score,
+        exerciseScore: data.exercise_score,
+        fertilityScore: data.fertility_score,
+        lifestyleScore: data.lifestyle_score,
+        symptomsScore: data.symptoms_score,
+        lastUpdated: data.last_updated
+      });
     }
   };
 

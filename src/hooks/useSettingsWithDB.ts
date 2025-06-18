@@ -4,6 +4,7 @@ import { SettingTab, UserProfile, NotificationSettings, PrivacySettings } from "
 import { settingTabs } from "@/constants/settings";
 import { useAuth } from "./auth/useAuth";
 import { supabase, Profile } from "@/lib/supabase/client";
+import { cache } from "@/lib/redis/client";
 
 export const useSettingsWithDB = () => {
   const { user } = useAuth();
@@ -39,7 +40,24 @@ export const useSettingsWithDB = () => {
     const loadUserData = async () => {
       setLoading(true);
       try {
-        // Load profile data from database directly (no cache)
+        // 尝试从缓存加载用户设置
+        const cacheKey = cache.userKey(user.id, 'settings');
+        const cachedSettings = await cache.get<{
+          profile: UserProfile;
+          notifications: NotificationSettings;
+          privacy: PrivacySettings;
+        }>(cacheKey);
+
+        if (cachedSettings) {
+          console.log('Loading user settings from cache');
+          setUserProfile(cachedSettings.profile);
+          setNotificationSettings(cachedSettings.notifications);
+          setPrivacySettings(cachedSettings.privacy);
+          setLoading(false);
+          return;
+        }
+
+        // Load profile data from database
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
@@ -107,6 +125,13 @@ export const useSettingsWithDB = () => {
         setNotificationSettings(notifications);
         setPrivacySettings(privacy);
 
+        // Cache settings for 1 hour
+        await cache.set(cacheKey, {
+          profile,
+          notifications,
+          privacy
+        }, 3600);
+
       } catch (error) {
         console.error('Error loading user data:', error);
       } finally {
@@ -158,6 +183,9 @@ export const useSettingsWithDB = () => {
       // Update local state
       setUserProfile(prev => ({ ...prev, ...updates }));
       
+      // Clear settings cache
+      await cache.del(cache.userKey(user.id, 'settings'));
+      
       console.log('Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -186,6 +214,9 @@ export const useSettingsWithDB = () => {
 
       // Update local state
       setNotificationSettings(prev => ({ ...prev, ...updates }));
+      
+      // Clear settings cache
+      await cache.del(cache.userKey(user.id, 'settings'));
       
       console.log('Notification settings updated successfully');
     } catch (error) {
