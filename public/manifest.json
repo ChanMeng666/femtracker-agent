@@ -1,33 +1,27 @@
 {
-  "name": "FemTracker - 女性健康助手",
+  "name": "FemTracker - Women's Health Assistant",
   "short_name": "FemTracker",
-  "description": "专业的女性健康追踪和管理应用，提供周期跟踪、症状记录、营养指导、运动建议和健康洞察",
+  "description": "Professional women's health tracking and management app, providing cycle tracking, symptom recording, nutrition guidance, exercise advice and health insights",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ec4899",
   "orientation": "portrait-primary",
   "scope": "/",
-  "lang": "zh-CN",
+  "lang": "en",
   "dir": "ltr",
   "categories": ["health", "lifestyle", "medical"],
   "icons": [
     {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/chan-meng-banner.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512x512.png", 
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-180x180.png",
-      "sizes": "180x180", 
-      "type": "image/png",
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ],
@@ -56,47 +50,28 @@
   ],
   "features": [
     "cross-platform",
-    "offline-capable", 
     "responsive-design",
     "ai-powered",
     "data-export"
   ],
   "shortcuts": [
     {
-      "name": "记录症状",
-      "short_name": "症状记录",
-      "description": "快速记录今天的症状和情绪",
-      "url": "/symptom-mood",
-      "icons": [
-        {
-          "src": "/icon-shortcut-symptoms.png",
-          "sizes": "96x96"
-        }
-      ]
+      "name": "Record Symptoms",
+      "short_name": "Symptoms",
+      "description": "Quickly record today's symptoms and mood",
+      "url": "/symptom-mood"
     },
     {
-      "name": "周期追踪",
-      "short_name": "周期",
-      "description": "查看和记录月经周期",
-      "url": "/cycle-tracker",
-      "icons": [
-        {
-          "src": "/icon-shortcut-cycle.png", 
-          "sizes": "96x96"
-        }
-      ]
+      "name": "Cycle Tracking",
+      "short_name": "Cycle",
+      "description": "View and record menstrual cycle",
+      "url": "/cycle-tracker"
     },
     {
-      "name": "健康洞察",
-      "short_name": "洞察",
-      "description": "查看个性化健康分析",
-      "url": "/insights",
-      "icons": [
-        {
-          "src": "/icon-shortcut-insights.png",
-          "sizes": "96x96"
-        }
-      ]
+      "name": "Health Insights",
+      "short_name": "Insights",
+      "description": "View personalized health analysis",
+      "url": "/insights"
     }
   ],
   "prefer_related_applications": false,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core';
 import { useAuth } from './auth/useAuth';
 import { 
@@ -6,7 +6,7 @@ import {
   HealthOverview
 } from '@/lib/supabase/client';
 
-// 适配器接口 - 将数据库类型转换为前端类型
+// Adapter interfaces - Convert database types to frontend types
 interface FrontendHealthOverview {
   overallScore: number;
   cycleHealth: number;
@@ -46,8 +46,10 @@ export const useHomeStateWithDB = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isInitialLoad = useRef(true);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 状态定义
+  // State definitions
   const [healthOverview, setHealthOverview] = useState<FrontendHealthOverview>({
     overallScore: 75,
     cycleHealth: 75,
@@ -80,115 +82,164 @@ export const useHomeStateWithDB = () => {
     }
   });
 
-  // 从数据库加载数据
-  useEffect(() => {
+  // Load data from database - Use useCallback to prevent infinite loops
+  const loadAllData = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
     }
-    loadAllData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const loadAllData = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    setError(null);
 
     try {
-      await Promise.all([
+      setLoading(true);
+      setError(null);
+
+      // Set loading timeout to prevent infinite loading
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.warn('[HOME] Data loading timeout, using cached data');
+        setLoading(false);
+             }, 15000); // 15 second timeout
+
+             // Load all data in parallel for better performance
+      const results = await Promise.allSettled([
         loadHealthOverview(),
         loadQuickRecords(),
         loadPersonalizedTips(),
         loadHealthInsights()
       ]);
+
+             // Check if there are any serious errors
+      const hasErrors = results.some(result => result.status === 'rejected');
+      if (hasErrors) {
+        console.warn('[HOME] Some data failed to load, continuing with available data');
+      }
+
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
+      }
+
     } catch (err) {
       console.error('Error loading home data:', err);
-      setError('Failed to load dashboard data');
+      setError('Failed to load dashboard data. Using cached information.');
     } finally {
       setLoading(false);
+      isInitialLoad.current = false;
     }
-  };
+  }, [user]);
+
+     // Only load data when user changes
+  useEffect(() => {
+    if (user && isInitialLoad.current) {
+      loadAllData();
+    } else if (!user) {
+      setLoading(false);
+      isInitialLoad.current = true;
+    }
+  }, [user, loadAllData]);
+
+     // Cleanup timers
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadHealthOverview = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('health_overview')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('health_overview')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error loading health overview:', error);
-      return;
-    }
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error loading health overview:', error);
+        return;
+      }
 
-    if (data) {
-      setHealthOverview({
-        overallScore: data.overall_score,
-        cycleHealth: data.cycle_health,
-        nutritionScore: data.nutrition_score,
-        exerciseScore: data.exercise_score,
-        fertilityScore: data.fertility_score,
-        lifestyleScore: data.lifestyle_score,
-        symptomsScore: data.symptoms_score,
-        lastUpdated: data.last_updated
-      });
+      if (data) {
+        setHealthOverview({
+          overallScore: data.overall_score,
+          cycleHealth: data.cycle_health,
+          nutritionScore: data.nutrition_score,
+          exerciseScore: data.exercise_score,
+          fertilityScore: data.fertility_score,
+          lifestyleScore: data.lifestyle_score,
+          symptomsScore: data.symptoms_score,
+          lastUpdated: data.last_updated
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load health overview:', err);
     }
   };
 
   const loadQuickRecords = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('quick_records')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(10);
+    try {
+      const { data, error } = await supabase
+        .from('quick_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+        .limit(10);
 
-    if (error) {
-      console.error('Error loading quick records:', error);
-      return;
-    }
+      if (error) {
+        console.error('Error loading quick records:', error);
+        return;
+      }
 
-    if (data) {
-      setQuickRecords(data.map(record => ({
-        date: record.date,
-        type: record.record_type as FrontendQuickRecord['type'],
-        value: record.value,
-        notes: record.notes || undefined
-      })));
+      if (data) {
+        setQuickRecords(data.map(record => ({
+          date: record.date,
+          type: record.record_type as FrontendQuickRecord['type'],
+          value: record.value,
+          notes: record.notes || undefined
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to load quick records:', err);
     }
   };
 
   const loadPersonalizedTips = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('personalized_tips')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    try {
+      const { data, error } = await supabase
+        .from('personalized_tips')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-    if (error) {
-      console.error('Error loading personalized tips:', error);
-      return;
-    }
+      if (error) {
+        console.error('Error loading personalized tips:', error);
+        return;
+      }
 
-    if (data) {
-      setPersonalizedTips(data.map(tip => ({
-        id: tip.id,
-        type: tip.tip_type,
-        category: tip.category,
-        message: tip.message,
-        actionText: tip.action_text || undefined,
-        actionLink: tip.action_link || undefined
-      })));
+      if (data) {
+        setPersonalizedTips(data.map(tip => ({
+          id: tip.id,
+          type: tip.tip_type,
+          category: tip.category,
+          message: tip.message,
+          actionText: tip.action_text || undefined,
+          actionLink: tip.action_link || undefined
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to load personalized tips:', err);
     }
   };
 
@@ -196,7 +247,7 @@ export const useHomeStateWithDB = () => {
     if (!user) return;
 
     try {
-      // 首先尝试从新的ai_insights表加载
+      // First try to load from the new ai_insights table
       const { data: aiData, error: aiError } = await supabase
         .from('ai_insights')
         .select('*')
@@ -242,7 +293,7 @@ export const useHomeStateWithDB = () => {
 
       setHealthInsights(insights);
     } catch (error) {
-      console.error('Error loading health insights:', error);
+      console.error('Failed to load health insights:', error);
     }
   };
 

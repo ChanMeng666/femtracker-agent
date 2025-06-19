@@ -1,13 +1,13 @@
 "use client";
 
 import { HomeLayout } from '@/components/home/HomeLayout'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, useMemo } from 'react'
 import { useAuth } from '@/hooks/auth/useAuth'
 import { useHomeStateWithDB } from '@/hooks/useHomeStateWithDB'
 import { CopilotKit } from '@copilotkit/react-core'
 import { CopilotSidebar } from '@copilotkit/react-ui'
 
-// 加载状态组件
+// Loading state component
 function LoadingSpinner({ message }: { message: string }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
@@ -20,32 +20,32 @@ function LoadingSpinner({ message }: { message: string }) {
   )
 }
 
-// CopilotKit包装器组件
+// CopilotKit wrapper component with improved error handling
 function CopilotKitWrapper({ children }: { children: React.ReactNode }) {
   const [copilotError, setCopilotError] = useState<string | null>(null)
   const [copilotReady, setCopilotReady] = useState(false)
+  const [shouldFallback, setShouldFallback] = useState(false)
 
   useEffect(() => {
+    // Faster timeout for better UX
     const timer = setTimeout(() => {
-      if (!copilotReady) {
-        console.warn('[COPILOT] CopilotKit initialization timeout, proceeding without AI features')
-        setCopilotError('AI features temporarily unavailable')
-        setCopilotReady(true) // 允许页面继续加载
+      if (!copilotReady && !copilotError) {
+        console.warn('[COPILOT] CopilotKit initialization timeout, falling back to basic mode')
+        setShouldFallback(true)
       }
-    }, 10000) // 10秒超时
+    }, 5000) // Reduced to 5 seconds
 
     return () => clearTimeout(timer)
-  }, [copilotReady])
+  }, [copilotReady, copilotError])
 
-  if (copilotError) {
-    // CopilotKit 失败时，显示不带 AI 功能的页面
-    console.warn('[COPILOT] Running in fallback mode:', copilotError)
+  // If we should fallback or there's an error, render without CopilotKit
+  if (shouldFallback || copilotError) {
     return (
       <div>
         {children}
         {process.env.NODE_ENV === 'development' && (
-          <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-300 text-yellow-800 px-3 py-2 rounded-lg text-sm">
-            ⚠️ AI features disabled: {copilotError}
+          <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-300 text-yellow-800 px-3 py-2 rounded-lg text-sm z-50">
+            ⚠️ AI features temporarily disabled
           </div>
         )}
       </div>
@@ -69,7 +69,7 @@ function CopilotKitWrapper({ children }: { children: React.ReactNode }) {
       <div>
         {children}
         {process.env.NODE_ENV === 'development' && (
-          <div className="fixed bottom-4 right-4 bg-red-100 border border-red-300 text-red-800 px-3 py-2 rounded-lg text-sm">
+          <div className="fixed bottom-4 right-4 bg-red-100 border border-red-300 text-red-800 px-3 py-2 rounded-lg text-sm z-50">
             ❌ CopilotKit Error: {error instanceof Error ? error.message : 'Unknown error'}
           </div>
         )}
@@ -78,7 +78,7 @@ function CopilotKitWrapper({ children }: { children: React.ReactNode }) {
   }
 }
 
-// 主页内容组件
+// Main page content component with memoization
 function HomeContent() {
   const {
     healthOverview,
@@ -89,6 +89,15 @@ function HomeContent() {
     removeTip,
     removeHealthInsight
   } = useHomeStateWithDB()
+
+  // Memoize the props to prevent unnecessary re-renders
+  const memoizedProps = useMemo(() => ({
+    healthOverview,
+    personalizedTips,
+    healthInsights,
+    onRemoveTip: removeTip,
+    onRemoveInsight: removeHealthInsight
+  }), [healthOverview, personalizedTips, healthInsights, removeTip, removeHealthInsight])
 
   if (loading) {
     return <LoadingSpinner message="Loading your health dashboard..." />
@@ -118,33 +127,34 @@ function HomeContent() {
 
   return (
     <Suspense fallback={<LoadingSpinner message="Loading dashboard components..." />}>
-      <HomeLayout 
-        healthOverview={healthOverview}
-        personalizedTips={personalizedTips}
-        healthInsights={healthInsights}
-        onRemoveTip={removeTip}
-        onRemoveInsight={removeHealthInsight}
-      />
+      <HomeLayout {...memoizedProps} />
     </Suspense>
   )
 }
 
 export default function Home() {
   const { user, loading } = useAuth()
+  const [hasInitialized, setHasInitialized] = useState(false)
 
-  // 认证加载中
+  // Only log authentication once per session
+  useEffect(() => {
+    if (user && !hasInitialized) {
+      console.log('[HOME] User authenticated, initializing dashboard...')
+      setHasInitialized(true)
+    }
+  }, [user, hasInitialized])
+
+  // Authentication loading
   if (loading) {
     return <LoadingSpinner message="Authenticating..." />
   }
 
-  // 用户未登录（这种情况应该由 AuthProvider 处理）
+  // User not logged in (should be handled by AuthProvider)
   if (!user) {
     return <LoadingSpinner message="Please sign in to continue..." />
   }
 
-  // 用户已认证，显示主页
-  console.log('[HOME] User authenticated, initializing dashboard...')
-
+  // User authenticated, show main page
   return (
     <CopilotKitWrapper>
       <HomeContent />

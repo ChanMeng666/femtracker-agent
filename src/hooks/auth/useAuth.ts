@@ -1,33 +1,67 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const mounted = useRef(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    mounted.current = true
+    
+    const initAuth = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (mounted.current) {
+          setUser(session?.user ?? null)
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err)
+        if (mounted.current) {
+          setError('Authentication failed')
+          setLoading(false)
+        }
+      }
+    }
+
+    initAuth()
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
+        if (!mounted.current) return
         
-        // Handle email confirmation - create profile when user confirms email
-        if (event === 'SIGNED_IN' && session?.user) {
-          await ensureUserProfile(session.user)
+        try {
+          setUser(session?.user ?? null)
+          setError(null)
+          
+          // Handle email confirmation - create profile when user confirms email
+          if (event === 'SIGNED_IN' && session?.user) {
+            await ensureUserProfile(session.user)
+          }
+          
+          setLoading(false)
+        } catch (err) {
+          console.error('Auth state change error:', err)
+          if (mounted.current) {
+            setError('Authentication error')
+          }
         }
-        
-        setLoading(false)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted.current = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const ensureUserProfile = async (user: User) => {
@@ -77,15 +111,18 @@ export function useAuth() {
   }
 
   const signIn = async (email: string, password: string) => {
+    setError(null)
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
+    if (error) setError(error.message)
     return { data, error }
   }
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
+      setError(null)
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -95,30 +132,34 @@ export function useAuth() {
           }
         }
       })
-
-      // Note: Don't create profile here immediately
-      // Wait for email confirmation and handle it in onAuthStateChange
-
+      if (error) setError(error.message)
       return { data, error }
     } catch (err) {
       console.error('Signup error:', err)
-      return { data: null, error: err as Error }
+      const errorMessage = 'Signup failed'
+      setError(errorMessage)
+      return { data: null, error: new Error(errorMessage) }
     }
   }
 
   const signOut = async () => {
+    setError(null)
     const { error } = await supabase.auth.signOut()
+    if (error) setError(error.message)
     return { error }
   }
 
   const resetPassword = async (email: string) => {
+    setError(null)
     const { data, error } = await supabase.auth.resetPasswordForEmail(email)
+    if (error) setError(error.message)
     return { data, error }
   }
 
   return {
     user,
     loading,
+    error,
     signIn,
     signUp,
     signOut,
