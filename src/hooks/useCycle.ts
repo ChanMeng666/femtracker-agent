@@ -34,7 +34,7 @@ export const useCycle = () => {
 
   // AI Action: Update cycle day
   useCopilotAction({
-    name: "updateCycleDay",
+    name: "updateCycleDayLocal",
     description: "Update the current day of the menstrual cycle (1-28)",
     parameters: [{
       name: "day",
@@ -51,7 +51,7 @@ export const useCycle = () => {
 
   // AI Action: Update mood
   useCopilotAction({
-    name: "updateMood",
+    name: "updateMoodLocal",
     description: "Update the current mood",
     parameters: [{
       name: "mood",

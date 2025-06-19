@@ -47,7 +47,7 @@ export const useSettings = () => {
 
   // AI Action: Switch tab
   useCopilotAction({
-    name: "switchSettingsTab",
+    name: "switchSettingsTabLocal",
     description: "Switch to a different settings tab",
     parameters: [{
       name: "tabId",
@@ -65,7 +65,7 @@ export const useSettings = () => {
 
   // AI Action: Update user profile
   useCopilotAction({
-    name: "updateUserProfile",
+    name: "updateUserProfileLocal",
     description: "Update user profile information",
     parameters: [
       {
@@ -113,7 +113,7 @@ export const useSettings = () => {
 
   // AI Action: Update notification settings
   useCopilotAction({
-    name: "updateNotificationSettings",
+    name: "updateNotificationSettingsLocal",
     description: "Update notification preferences",
     parameters: [
       {

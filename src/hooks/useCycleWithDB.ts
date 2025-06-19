@@ -98,10 +98,10 @@ export const useCycleWithDB = () => {
     },
   });
 
-  // AI Action: Add symptom
+  // AI Action: Add symptom for cycle tracking
   useCopilotAction({
-    name: "addSymptom",
-    description: "Add a symptom for today",
+    name: "addCycleSymptom",
+    description: "Add a symptom for today's cycle tracking",
     parameters: [
       {
         name: "symptom",
@@ -135,10 +135,10 @@ export const useCycleWithDB = () => {
     },
   });
 
-  // AI Action: Update mood
+  // AI Action: Update mood for cycle tracking
   useCopilotAction({
-    name: "updateMood",
-    description: "Update the current mood for today",
+    name: "updateCycleMood",
+    description: "Update the current mood for today's cycle tracking",
     parameters: [{
       name: "mood",
       type: "string",
