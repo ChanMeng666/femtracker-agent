@@ -7,6 +7,7 @@ import { PerformancePanel } from "@/components/UnifiedPerformanceOptimizer";
 import { AccessibilityProvider } from "@/components/AccessibilityEnhancements";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { AuthGuard } from "@/components/auth/AuthGuard";
+import { AuthDebug } from "@/components/auth/AuthDebug";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -86,6 +87,7 @@ export default function RootLayout({
                 </main>
                 <MobileNavigation />
                 <PerformancePanel />
+                <AuthDebug />
               </div>
             </AccessibilityProvider>
           </AuthGuard>
