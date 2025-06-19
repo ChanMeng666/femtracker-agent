@@ -42,7 +42,7 @@ export const useLifestyleWithDB = () => {
     if (!user) return;
     loadAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.id]);
 
   const loadAllData = async () => {
     if (!user) return;

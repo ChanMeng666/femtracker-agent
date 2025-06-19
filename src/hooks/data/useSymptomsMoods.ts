@@ -116,7 +116,7 @@ export function useSymptomsMoods() {
     if (!user) return
     fetchData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]) // fetchData is stable, no need to include in deps
+  }, [user?.id]) // Only re-fetch when user ID changes, not user object reference
 
   const fetchData = async () => {
     if (!user) return

@@ -46,6 +46,7 @@ export const useHomeStateWithDB = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 状态定义
   const [healthOverview, setHealthOverview] = useState<FrontendHealthOverview>({
@@ -84,11 +85,20 @@ export const useHomeStateWithDB = () => {
   useEffect(() => {
     if (!user) {
       setLoading(false);
+      setIsInitialized(true);
       return;
     }
+    
+    // 避免重复加载：如果已经初始化过且用户ID没有变化，则不重新加载
+    if (isInitialized && user.id) {
+      console.log('Data already loaded for user, skipping reload');
+      return;
+    }
+    
+    console.log('Loading dashboard data for user:', user.id);
     loadAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.id, isInitialized]);
 
   const loadAllData = async () => {
     if (!user) return;
@@ -108,6 +118,7 @@ export const useHomeStateWithDB = () => {
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
+      setIsInitialized(true);
     }
   };
 
@@ -539,6 +550,10 @@ export const useHomeStateWithDB = () => {
     removeTip,
     addHealthInsight,
     removeHealthInsight,
-    refetch: loadAllData
+    refetch: () => {
+      console.log('Manual refetch requested');
+      setIsInitialized(false);
+      loadAllData();
+    }
   };
 };

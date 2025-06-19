@@ -80,7 +80,7 @@ export const useRecipeWithDB = () => {
     if (!user) return;
     loadRecipes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.id]);
 
   const loadRecipes = async () => {
     if (!user) return;

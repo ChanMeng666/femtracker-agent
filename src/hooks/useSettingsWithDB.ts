@@ -99,7 +99,7 @@ export const useSettingsWithDB = () => {
     };
 
     loadUserData();
-  }, [user]);
+  }, [user?.id]);
 
   // Save profile updates to database
   const updateUserProfile = async (updates: Partial<UserProfile>) => {

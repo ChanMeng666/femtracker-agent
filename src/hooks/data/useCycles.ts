@@ -35,7 +35,7 @@ export function useCycles() {
     if (!user) return
     fetchCycles()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]) // fetchCycles is stable, no need to include in deps
+  }, [user?.id]) // Only re-fetch when user ID changes, not user object reference
 
   const fetchCycles = async () => {
     if (!user) return
