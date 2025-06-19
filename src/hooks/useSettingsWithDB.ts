@@ -5,10 +5,16 @@ import { settingTabs } from "@/constants/settings";
 import { useAuth } from "./auth/useAuth";
 import { supabase, Profile } from "@/lib/supabase/client";
 
+// 全局缓存设置数据加载状态，避免页面切换时重复加载
+const settingsDataCache = new Map<string, boolean>();
+
 export const useSettingsWithDB = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingTab>('personal');
   const [loading, setLoading] = useState(true);
+  
+  // 使用用户ID作为key检查是否已经初始化过
+  const isInitialized = user?.id ? settingsDataCache.get(user.id) || false : false;
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: "",
     email: "",
@@ -34,9 +40,20 @@ export const useSettingsWithDB = () => {
 
   // Load user profile and preferences from database
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    // 避免重复加载：如果已经初始化过且用户ID没有变化，则不重新加载
+    if (isInitialized && user.id) {
+      console.log('Settings already loaded for user, skipping reload');
+      setLoading(false);
+      return;
+    }
     
     const loadUserData = async () => {
+      console.log('Loading settings data for user:', user.id);
       setLoading(true);
       try {
         // Load profile data
@@ -95,11 +112,15 @@ export const useSettingsWithDB = () => {
         console.error('Error loading user data:', error);
       } finally {
         setLoading(false);
+        // 标记设置数据已经加载过
+        if (user?.id) {
+          settingsDataCache.set(user.id, true);
+        }
       }
     };
 
     loadUserData();
-  }, [user?.id]);
+  }, [user?.id, isInitialized]);
 
   // Save profile updates to database
   const updateUserProfile = async (updates: Partial<UserProfile>) => {

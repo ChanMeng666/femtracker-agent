@@ -42,11 +42,16 @@ interface FrontendHealthInsight {
   actionLink?: string;
 }
 
+// 全局缓存用户数据加载状态，避免页面切换时重复加载
+const userDataCache = new Map<string, boolean>();
+
 export const useHomeStateWithDB = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // 使用用户ID作为key检查是否已经初始化过
+  const isInitialized = user?.id ? userDataCache.get(user.id) || false : false;
 
   // 状态定义
   const [healthOverview, setHealthOverview] = useState<FrontendHealthOverview>({
@@ -85,13 +90,13 @@ export const useHomeStateWithDB = () => {
   useEffect(() => {
     if (!user) {
       setLoading(false);
-      setIsInitialized(true);
       return;
     }
     
     // 避免重复加载：如果已经初始化过且用户ID没有变化，则不重新加载
     if (isInitialized && user.id) {
       console.log('Data already loaded for user, skipping reload');
+      setLoading(false);
       return;
     }
     
@@ -118,7 +123,10 @@ export const useHomeStateWithDB = () => {
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
-      setIsInitialized(true);
+      // 标记用户数据已经加载过
+      if (user?.id) {
+        userDataCache.set(user.id, true);
+      }
     }
   };
 
@@ -552,7 +560,10 @@ export const useHomeStateWithDB = () => {
     removeHealthInsight,
     refetch: () => {
       console.log('Manual refetch requested');
-      setIsInitialized(false);
+      // 清除缓存并重新加载
+      if (user?.id) {
+        userDataCache.delete(user.id);
+      }
       loadAllData();
     }
   };
