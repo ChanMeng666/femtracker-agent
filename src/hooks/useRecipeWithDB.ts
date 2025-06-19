@@ -16,7 +16,7 @@ interface DatabaseRecipe {
   skill_level: string;
   cooking_time: string;
   special_preferences: string[];
-  ingredients: any;
+  ingredients: Ingredient[];
   instructions: string[];
   calories_per_serving?: number;
   servings?: number;
@@ -79,6 +79,7 @@ export const useRecipeWithDB = () => {
   useEffect(() => {
     if (!user) return;
     loadRecipes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadRecipes = async () => {

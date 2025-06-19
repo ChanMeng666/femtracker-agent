@@ -47,6 +47,7 @@ export const useExerciseWithDB = () => {
   useEffect(() => {
     if (!user) return;
     loadAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadAllData = async () => {

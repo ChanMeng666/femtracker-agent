@@ -82,6 +82,7 @@ export const useInsightsStateWithDB = () => {
       return;
     }
     loadAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, timeRange]);
 
   const loadAllData = async () => {

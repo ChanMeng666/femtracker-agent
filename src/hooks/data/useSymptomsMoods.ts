@@ -115,6 +115,7 @@ export function useSymptomsMoods() {
   useEffect(() => {
     if (!user) return
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]) // fetchData is stable, no need to include in deps
 
   const fetchData = async () => {
