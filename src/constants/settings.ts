@@ -1,4 +1,4 @@
-import { Moon, Sun, Monitor, User, Download, Bell, Eye, Shield, Info } from 'lucide-react';
+import { Moon, Sun, Monitor, User, Download, Bell, Eye, Shield, Info, UserCheck } from 'lucide-react';
 import type { UserPreferences, ThemeOption, ColorOption, FontSizeOption } from '../types/settings';
 import { SettingTabItem } from '@/types/settings';
 
@@ -65,6 +65,13 @@ export const settingTabs: SettingTabItem[] = [
     description: 'Personal info, themes, app behavior',
     icon: User,
     color: 'text-blue-600'
+  },
+  {
+    id: 'account',
+    name: 'Account Management',
+    description: 'Sign out, password reset, auth tests',
+    icon: UserCheck,
+    color: 'text-orange-600'
   },
   {
     id: 'data',

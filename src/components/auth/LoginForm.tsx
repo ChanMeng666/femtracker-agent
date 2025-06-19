@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/auth/useAuth'
+import { simpleAuth } from '@/lib/supabase/authTest'
 
 export default function LoginForm() {
   const { signIn, signUp } = useAuth()
@@ -16,17 +17,41 @@ export default function LoginForm() {
     setLoading(true)
     setMessage('')
 
-    const { error } = isSignUp 
+    console.log('LoginForm: Submitting form', { email, isSignUp });
+
+    const result = isSignUp 
       ? await signUp(email, password, fullName)
       : await signIn(email, password)
 
-    if (error) {
-      setMessage(error.message)
+    console.log('LoginForm: Auth result:', {
+      hasData: !!result.data,
+      hasError: !!result.error,
+      errorMessage: result.error?.message
+    });
+
+    if (result.error) {
+      setMessage(result.error.message || 'Authentication failed')
+      console.error('LoginForm: Authentication error:', result.error);
     } else if (isSignUp) {
       setMessage('Please check your email to confirm your account!')
+    } else {
+      console.log('LoginForm: Login successful');
+      setMessage('Login successful! Redirecting...')
     }
 
     setLoading(false)
+  }
+
+  const handleTestAuth = async () => {
+    console.log('=== STARTING AUTH TEST ===');
+    simpleAuth.testEnvironment();
+    
+    if (email && password) {
+      const result = await simpleAuth.testLogin(email, password);
+      setMessage(`Test result: ${result.success ? 'SUCCESS' : 'FAILED: ' + result.error}`);
+    } else {
+      setMessage('Please enter email and password for test');
+    }
   }
 
   return (
@@ -129,7 +154,16 @@ export default function LoginForm() {
             )}
           </button>
           
-          <div className="text-center">
+          {/* Debug Test Button */}
+          <button
+            type="button"
+            onClick={handleTestAuth}
+            className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
+          >
+            🔧 Test Auth (Debug)
+          </button>
+          
+          <div className="text-center space-y-2">
             <button
               type="button"
               onClick={() => {
@@ -146,6 +180,17 @@ export default function LoginForm() {
                 : 'Need an account? Sign Up'
               }
             </button>
+            
+            {!isSignUp && (
+              <div>
+                <a
+                  href="/auth/forgot-password"
+                  className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+            )}
           </div>
         </form>
         

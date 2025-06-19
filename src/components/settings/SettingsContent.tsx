@@ -4,6 +4,7 @@ import { useSettingsWithDB } from '@/hooks/useSettingsWithDB';
 import { SettingsNavigation } from './SettingsNavigation';
 import { PersonalSettingsTab } from './PersonalSettingsTab';
 import { NotificationSettingsTab } from './NotificationSettingsTab';
+import { AccountManagementTab } from './AccountManagementTab';
 import { DataExportImportContent } from '../data-export-import/DataExportImportContent';
 
 export const SettingsContent: React.FC = () => {
@@ -35,6 +36,8 @@ export const SettingsContent: React.FC = () => {
             onUpdateProfile={handleUpdateProfile}
           />
         );
+      case 'account':
+        return <AccountManagementTab />;
       case 'notifications':
         return (
           <NotificationSettingsTab

@@ -1,4 +1,4 @@
-export type SettingTab = 'personal' | 'data' | 'notifications' | 'accessibility' | 'privacy' | 'about';
+export type SettingTab = 'personal' | 'account' | 'data' | 'notifications' | 'accessibility' | 'privacy' | 'about';
 
 export interface SettingTabItem {
   id: SettingTab;

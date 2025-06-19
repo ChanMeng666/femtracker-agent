@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase/client'
+import { supabaseRest } from '@/lib/supabase/restClient'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
@@ -8,14 +8,14 @@ export function useAuth() {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabaseRest.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    const { data: { subscription } } = supabaseRest.auth.onAuthStateChange(
+      async (event: string, session: any) => {
         setUser(session?.user ?? null)
         
         // Handle email confirmation - create profile when user confirms email
@@ -33,18 +33,18 @@ export function useAuth() {
   const ensureUserProfile = async (user: User) => {
     try {
       // Check if profile already exists
-      const { data: existingProfile, error: fetchError } = await supabase
+      const { data: existingProfile, error: fetchError } = await supabaseRest
         .from('profiles')
         .select('id')
         .eq('id', user.id)
-        .maybeSingle()
+        .single()
 
       // If there's an error fetching or no profile exists, create one
       if (fetchError || !existingProfile) {
         console.log('Creating user profile...')
         
         // Create profile
-        const { error: profileError } = await supabase
+        const { error: profileError } = await supabaseRest
           .from('profiles')
           .insert([{
             id: user.id,
@@ -59,7 +59,7 @@ export function useAuth() {
         }
 
         // Create default user preferences
-        const { error: prefsError } = await supabase
+        const { error: prefsError } = await supabaseRest
           .from('user_preferences')
           .insert([{
             user_id: user.id
@@ -77,16 +77,24 @@ export function useAuth() {
   }
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    console.log('useAuth: Starting signIn process');
+    const { data, error } = await supabaseRest.auth.signInWithPassword({
       email,
       password,
     })
+    
+    console.log('useAuth: signIn result:', {
+      hasData: !!data,
+      hasError: !!error,
+      errorMessage: error?.message
+    });
+    
     return { data, error }
   }
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabaseRest.auth.signUp({
         email,
         password,
         options: {
@@ -107,12 +115,21 @@ export function useAuth() {
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
+    const { error } = await supabaseRest.auth.signOut()
     return { error }
   }
 
   const resetPassword = async (email: string) => {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email)
+    const { data, error } = await supabaseRest.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`
+    })
+    return { data, error }
+  }
+
+  const updatePassword = async (password: string) => {
+    const { data, error } = await supabaseRest.auth.updateUser({
+      password: password
+    })
     return { data, error }
   }
 
@@ -123,5 +140,6 @@ export function useAuth() {
     signUp,
     signOut,
     resetPassword,
+    updatePassword,
   }
 } 

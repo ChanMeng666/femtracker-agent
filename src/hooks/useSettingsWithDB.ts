@@ -3,7 +3,8 @@ import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { SettingTab, UserProfile, NotificationSettings, PrivacySettings } from "@/types/settings";
 import { settingTabs } from "@/constants/settings";
 import { useAuth } from "./auth/useAuth";
-import { supabase, Profile } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/restClient";
+import { Profile } from "@/lib/supabase/client";
 import { cache } from "@/lib/redis/client";
 
 export const useSettingsWithDB = () => {
@@ -58,7 +59,7 @@ export const useSettingsWithDB = () => {
         }
 
         // Load profile data from database
-        const { data: profileData } = await supabase
+        const { data: profileData } = await supabaseRest
           .from('profiles')
           .select('*')
           .eq('id', user.id)
@@ -85,7 +86,7 @@ export const useSettingsWithDB = () => {
         }
 
         // Load user preferences
-        const { data: preferencesData } = await supabase
+        const { data: preferencesData } = await supabaseRest
           .from('user_preferences')
           .select('*')
           .eq('user_id', user.id)
