@@ -130,34 +130,11 @@ function HomeContent() {
 }
 
 export default function Home() {
-  const { user, loading, error } = useAuth()
+  const { user, loading } = useAuth()
 
   // 认证加载中
   if (loading) {
     return <LoadingSpinner message="Authenticating..." />
-  }
-
-  // 认证错误
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
-        <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-500 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    )
   }
 
   // 用户未登录（这种情况应该由 AuthProvider 处理）
