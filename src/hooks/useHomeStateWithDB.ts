@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core';
 import { useAuth } from './auth/useAuth';
 import { 
-  supabase, 
+  supabaseRest, 
   HealthOverview
-} from '@/lib/supabase/client';
+} from '@/lib/supabase/rest-client';
 
 // 适配器接口 - 将数据库类型转换为前端类型
 interface FrontendHealthOverview {
@@ -46,7 +46,7 @@ interface FrontendHealthInsight {
 const userDataCache = new Map<string, boolean>();
 
 export const useHomeStateWithDB = () => {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   

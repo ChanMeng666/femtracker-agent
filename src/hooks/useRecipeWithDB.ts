@@ -4,7 +4,7 @@ import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
 import { useCopilotChatSuggestions } from "@copilotkit/react-ui";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/rest-client";
 import { Recipe, RecipeAgentState, Ingredient, SkillLevel, SpecialPreferences, CookingTime } from "@/types/recipe";
 import { INITIAL_STATE, chatSuggestions, cookingTimeValues } from "@/constants/recipe";
 
@@ -32,11 +32,38 @@ interface DatabaseRecipe {
 }
 
 export const useRecipeWithDB = () => {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [savedRecipes, setSavedRecipes] = useState<DatabaseRecipe[]>([]);
-  const [currentRecipeId, setCurrentRecipeId] = useState<string | null>(null);
+  
+  // Recipe State
+  const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([]);
+  const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
+  
+  // Form State
+  const [recipeForm, setRecipeForm] = useState<RecipeFormData>({
+    name: "",
+    description: "",
+    servings: 2,
+    cookingTime: 30,
+    difficulty: "beginner",
+    ingredients: [],
+    instructions: [],
+    dietaryTags: [],
+    nutritionInfo: {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0
+    },
+    notes: ""
+  });
+
+  // UI State
+  const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filterByDietary, setFilterByDietary] = useState<string[]>([]);
 
   // CopilotKit integration
   const { state: agentState, setState: setAgentState } = useCoAgent<RecipeAgentState>({
@@ -75,31 +102,56 @@ export const useRecipeWithDB = () => {
     }
   });
 
-  // Load user's recipes on mount
+  // Load data on mount
   useEffect(() => {
-    if (!user) return;
-    loadRecipes();
+    if (!user || !accessToken) return;
+    loadSavedRecipes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, accessToken]);
 
-  const loadRecipes = async () => {
-    if (!user) return;
+  const loadSavedRecipes = async () => {
+    if (!user || !accessToken) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error } = await supabase
-        .from('recipes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+      const result = await supabaseRest.select(
+        'recipes',
+        '*',
+        { user_id: user.id },
+        { limit: 50, accessToken }
+      );
 
-      if (error) {
-        console.error('Error loading recipes:', error);
+      if (result.error) {
+        console.error('Error loading recipes:', result.error);
         setError('Failed to load recipes');
-      } else {
-        setSavedRecipes(data || []);
+        return;
+      }
+
+      if (result.data) {
+        const recipes = result.data.map((recipe: any) => ({
+          id: recipe.id,
+          name: recipe.name,
+          description: recipe.description,
+          servings: recipe.servings,
+          cookingTime: recipe.cooking_time,
+          difficulty: recipe.difficulty,
+          ingredients: recipe.ingredients || [],
+          instructions: recipe.instructions || [],
+          dietaryTags: recipe.dietary_tags || [],
+          nutritionInfo: recipe.nutrition_info || {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0
+          },
+          notes: recipe.notes || "",
+          createdAt: recipe.created_at
+        }));
+        
+        setSavedRecipes(recipes);
       }
     } catch (err) {
       console.error('Error loading recipes:', err);
@@ -109,69 +161,55 @@ export const useRecipeWithDB = () => {
     }
   };
 
-  // Save current recipe to database
-  const saveRecipe = async () => {
-    if (!user || !recipe.title.trim()) {
-      setError('Recipe title is required');
-      return null;
-    }
-
-    setError(null);
+  // Save recipe to database
+  const saveRecipe = async (recipeData: RecipeFormData) => {
+    if (!user || !accessToken) return;
 
     try {
-      const recipeData = {
+      const result = await supabaseRest.insert('recipes', {
         user_id: user.id,
-        title: recipe.title,
-        skill_level: recipe.skill_level,
-        cooking_time: recipe.cooking_time,
-        special_preferences: recipe.special_preferences,
-        ingredients: recipe.ingredients,
-        instructions: recipe.instructions,
-        servings: 1, // Default servings
-        notes: `Recipe created with AI assistance`,
-        tags: ['ai-generated']
-      };
-
-      let result;
-
-      if (currentRecipeId) {
-        // Update existing recipe
-        result = await supabase
-          .from('recipes')
-          .update(recipeData)
-          .eq('id', currentRecipeId)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-      } else {
-        // Create new recipe
-        result = await supabase
-          .from('recipes')
-          .insert([recipeData])
-          .select()
-          .single();
-      }
+        name: recipeData.name,
+        description: recipeData.description,
+        servings: recipeData.servings,
+        cooking_time: recipeData.cookingTime,
+        difficulty: recipeData.difficulty,
+        ingredients: recipeData.ingredients,
+        instructions: recipeData.instructions,
+        dietary_tags: recipeData.dietaryTags,
+        nutrition_info: recipeData.nutritionInfo,
+        notes: recipeData.notes
+      }, accessToken);
 
       if (result.error) {
         console.error('Error saving recipe:', result.error);
-        setError('Failed to save recipe');
-        return null;
-      } else {
-        // Update local state
-        if (currentRecipeId) {
-          setSavedRecipes(prev => prev.map(r => 
-            r.id === currentRecipeId ? result.data : r
-          ));
-        } else {
-          setSavedRecipes(prev => [result.data, ...prev]);
-          setCurrentRecipeId(result.data.id);
-        }
-        return result.data;
+        return;
       }
+
+      // Reload recipes
+      await loadSavedRecipes();
+      
+      // Reset form
+      setRecipeForm({
+        name: "",
+        description: "",
+        servings: 2,
+        cookingTime: 30,
+        difficulty: "beginner",
+        ingredients: [],
+        instructions: [],
+        dietaryTags: [],
+        nutritionInfo: {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          fiber: 0
+        },
+        notes: ""
+      });
+      
     } catch (err) {
       console.error('Error saving recipe:', err);
-      setError('Failed to save recipe');
-      return null;
     }
   };
 
@@ -181,16 +219,16 @@ export const useRecipeWithDB = () => {
     if (!savedRecipe) return;
 
     const loadedRecipe: Recipe = {
-      title: savedRecipe.title,
-      skill_level: savedRecipe.skill_level as SkillLevel,
-      cooking_time: savedRecipe.cooking_time as CookingTime,
-      special_preferences: savedRecipe.special_preferences as SpecialPreferences[],
+      title: savedRecipe.name,
+      skill_level: savedRecipe.difficulty as SkillLevel,
+      cooking_time: savedRecipe.cookingTime as CookingTime,
+      special_preferences: savedRecipe.dietaryTags as SpecialPreferences[],
       ingredients: savedRecipe.ingredients,
       instructions: savedRecipe.instructions
     };
 
     setRecipe(loadedRecipe);
-    setCurrentRecipeId(recipeId);
+    setCurrentRecipe(loadedRecipe);
     setAgentState({
       ...agentState,
       recipe: loadedRecipe,
@@ -199,23 +237,23 @@ export const useRecipeWithDB = () => {
 
   // Delete a recipe
   const deleteRecipe = async (recipeId: string) => {
-    if (!user) return false;
+    if (!user || !accessToken) return false;
 
     try {
-      const { error } = await supabase
-        .from('recipes')
-        .delete()
-        .eq('id', recipeId)
-        .eq('user_id', user.id);
+      const result = await supabaseRest.delete('recipes', {
+        id: recipeId,
+        user_id: user.id,
+        accessToken
+      });
 
-      if (error) {
-        console.error('Error deleting recipe:', error);
+      if (result.error) {
+        console.error('Error deleting recipe:', result.error);
         setError('Failed to delete recipe');
         return false;
       } else {
         setSavedRecipes(prev => prev.filter(r => r.id !== recipeId));
-        if (currentRecipeId === recipeId) {
-          setCurrentRecipeId(null);
+        if (currentRecipe && currentRecipe.id === recipeId) {
+          setCurrentRecipe(null);
           setRecipe(INITIAL_STATE.recipe);
         }
         return true;
@@ -233,9 +271,9 @@ export const useRecipeWithDB = () => {
     description: "Save the current recipe to the database",
     parameters: [],
     handler: async () => {
-      const savedRecipe = await saveRecipe();
+      const savedRecipe = await saveRecipe(recipeForm);
       return savedRecipe 
-        ? `Recipe "${savedRecipe.title}" saved successfully!`
+        ? `Recipe "${recipeForm.name}" saved successfully!`
         : "Failed to save recipe";
     },
   });
@@ -276,7 +314,7 @@ export const useRecipeWithDB = () => {
     parameters: [],
     handler: () => {
       setRecipe(INITIAL_STATE.recipe);
-      setCurrentRecipeId(null);
+      setCurrentRecipe(null);
       setAgentState({
         ...agentState,
         recipe: INITIAL_STATE.recipe,
@@ -443,7 +481,16 @@ export const useRecipeWithDB = () => {
     loading,
     error,
     savedRecipes,
-    currentRecipeId,
+    currentRecipe,
+    setCurrentRecipe,
+    recipeForm,
+    setRecipeForm,
+    selectedDietary,
+    setSelectedDietary,
+    searchTerm,
+    setSearchTerm,
+    filterByDietary,
+    setFilterByDietary,
     
     // Recipe handlers
     handleTitleChange,
@@ -462,6 +509,6 @@ export const useRecipeWithDB = () => {
     saveRecipe,
     loadRecipe,
     deleteRecipe,
-    loadRecipes,
+    loadSavedRecipes,
   };
 }; 

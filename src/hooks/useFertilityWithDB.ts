@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/rest-client";
 import { 
   cervicalMucusTypes,
   ovulationTestResults,
@@ -10,50 +10,117 @@ import {
   BBT_MAX
 } from "@/constants/fertility";
 
-// Frontend type adaptation for fertility records
-interface FrontendFertilityRecord {
+// Database types for fertility tracking
+interface DatabaseBBTRecord {
+  id: string;
+  user_id: string;
+  date: string;
+  temperature: number;
+  time: string;
+  notes?: string;
+  created_at: string;
+}
+
+interface DatabaseCervicalMucusRecord {
+  id: string;
+  user_id: string;
+  date: string;
+  type: string;
+  amount: string;
+  notes?: string;
+  created_at: string;
+}
+
+interface DatabaseOvulationTestRecord {
+  id: string;
+  user_id: string;
+  date: string;
+  result: string;
+  intensity?: number;
+  brand?: string;
+  notes?: string;
+  created_at: string;
+}
+
+// Frontend types
+interface BBTRecord {
   id: string;
   date: string;
-  bbtCelsius?: number;
-  cervicalMucus?: string;
-  ovulationTest?: string;
+  temperature: number;
+  time: string;
+  notes?: string;
+}
+
+interface CervicalMucusRecord {
+  id: string;
+  date: string;
+  type: string;
+  amount: string;
+  notes?: string;
+}
+
+interface OvulationTestRecord {
+  id: string;
+  date: string;
+  result: string;
+  intensity?: number;
+  brand?: string;
   notes?: string;
 }
 
 export const useFertilityWithDB = () => {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // UI State
-  const [bbt, setBbt] = useState<string>("");
-  const [cervicalMucus, setCervicalMucus] = useState<string>("");
-  const [ovulationTest, setOvulationTest] = useState<string>("");
+  // Database state
+  const [bbtRecords, setBbtRecords] = useState<BBTRecord[]>([]);
+  const [cervicalMucusRecords, setCervicalMucusRecords] = useState<CervicalMucusRecord[]>([]);
+  const [ovulationTestRecords, setOvulationTestRecords] = useState<OvulationTestRecord[]>([]);
 
-  // Database State
-  const [fertilityRecords, setFertilityRecords] = useState<FrontendFertilityRecord[]>([]);
-  const [todayRecord, setTodayRecord] = useState<FrontendFertilityRecord | null>(null);
+  // Computed values
+  const averageBBT = bbtRecords.length > 0 
+    ? bbtRecords.reduce((sum, record) => sum + record.temperature, 0) / bbtRecords.length
+    : 36.5;
 
-  // Derived values
-  const currentBBT = bbt || sampleFertilityData.currentBBT;
-  const expectedOvulation = sampleFertilityData.expectedOvulation;
-  const conceptionProbability = sampleFertilityData.conceptionProbability;
+  const recentBBTTrend = bbtRecords.slice(0, 7).length > 0
+    ? bbtRecords.slice(0, 7).reduce((sum, record) => sum + record.temperature, 0) / bbtRecords.slice(0, 7).length
+    : 36.5;
 
   // Load data on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user || !accessToken) return;
     loadAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, accessToken]);
+
+  // Make fertility data readable by AI
+  useCopilotReadable({
+    description: "Current fertility tracking data and reproductive health information",
+    value: {
+      bbtRecords: bbtRecords.slice(0, 10),
+      cervicalMucusRecords: cervicalMucusRecords.slice(0, 10),
+      ovulationTestRecords: ovulationTestRecords.slice(0, 10),
+      averageBBT,
+      recentBBTTrend,
+      totalRecords: bbtRecords.length + cervicalMucusRecords.length + ovulationTestRecords.length,
+      fertileWindowPrediction: "Data analysis available",
+      ovulationPrediction: "Based on BBT and mucus patterns"
+    }
+  });
 
   const loadAllData = async () => {
-    if (!user) return;
+    if (!user || !accessToken) return;
+
     setLoading(true);
     setError(null);
 
     try {
-      await loadFertilityRecords();
-      await loadTodayRecord();
+      await Promise.all([
+        loadBBTRecords(),
+        loadCervicalMucusRecords(),
+        loadOvulationTestRecords()
+      ]);
     } catch (err) {
       console.error('Error loading fertility data:', err);
       setError('Failed to load fertility data');
@@ -62,128 +129,120 @@ export const useFertilityWithDB = () => {
     }
   };
 
-  const loadFertilityRecords = async () => {
-    if (!user) return;
+  const loadBBTRecords = async () => {
+    if (!user || !accessToken) return;
 
-    const { data, error } = await supabase
-      .from('fertility_records')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(30);
+    try {
+      const result = await supabaseRest.select(
+        'bbt_records',
+        '*',
+        { user_id: user.id },
+        { limit: 30, accessToken }
+      );
 
-    if (error) {
-      console.error('Error loading fertility records:', error);
-      return;
-    }
-
-    if (data) {
-      setFertilityRecords(data.map(record => ({
-        id: record.id,
-        date: record.date,
-        bbtCelsius: record.bbt_celsius || undefined,
-        cervicalMucus: record.cervical_mucus || undefined,
-        ovulationTest: record.ovulation_test || undefined,
-        notes: record.notes || undefined
-      })));
-    }
-  };
-
-  const loadTodayRecord = async () => {
-    if (!user) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
-      .from('fertility_records')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error loading today record:', error);
-      return;
-    }
-
-    if (data) {
-      const record: FrontendFertilityRecord = {
-        id: data.id,
-        date: data.date,
-        bbtCelsius: data.bbt_celsius || undefined,
-        cervicalMucus: data.cervical_mucus || undefined,
-        ovulationTest: data.ovulation_test || undefined,
-        notes: data.notes || undefined
-      };
-
-      setTodayRecord(record);
-      
-      // Update UI state from today's data
-      if (record.bbtCelsius !== undefined) setBbt(record.bbtCelsius.toString());
-      if (record.cervicalMucus) setCervicalMucus(record.cervicalMucus);
-      if (record.ovulationTest) setOvulationTest(record.ovulationTest);
-    }
-  };
-
-  // Make fertility data readable by AI
-  useCopilotReadable({
-    description: "Current fertility tracking data including BBT, cervical mucus, and ovulation tests",
-    value: {
-      bbt: currentBBT,
-      cervicalMucus,
-      ovulationTest,
-      expectedOvulation,
-      conceptionProbability,
-      todayRecord,
-      recentFertilityRecords: fertilityRecords.slice(0, 10)
-    }
-  });
-
-  // AI Action: Record BBT
-  useCopilotAction({
-    name: "recordBBT",
-    description: "Record basal body temperature",
-    parameters: [{
-      name: "temperature",
-      type: "number",
-      description: `Body temperature in Celsius (${BBT_MIN}-${BBT_MAX})`,
-      required: true,
-    }],
-    handler: async ({ temperature }) => {
-      if (temperature >= BBT_MIN && temperature <= BBT_MAX) {
-        setBbt(temperature.toFixed(1));
+      if (result.error) {
+        console.error('Error loading BBT records:', result.error);
+        return;
       }
-    },
-  });
+
+      if (result.data) {
+        // Sort by date descending
+        const sortedData = (result.data as DatabaseBBTRecord[]).sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        
+        setBbtRecords(sortedData.map((record: DatabaseBBTRecord) => ({
+          id: record.id,
+          date: record.date,
+          temperature: record.temperature,
+          time: record.time,
+          notes: record.notes
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading BBT records:', error);
+    }
+  };
+
+  const loadCervicalMucusRecords = async () => {
+    if (!user || !accessToken) return;
+
+    try {
+      const result = await supabaseRest.select(
+        'cervical_mucus_records',
+        '*',
+        { user_id: user.id },
+        { limit: 30, accessToken }
+      );
+
+      if (result.error) {
+        console.error('Error loading cervical mucus records:', result.error);
+        return;
+      }
+
+      if (result.data) {
+        // Sort by date descending
+        const sortedData = (result.data as DatabaseCervicalMucusRecord[]).sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        
+        setCervicalMucusRecords(sortedData.map((record: DatabaseCervicalMucusRecord) => ({
+          id: record.id,
+          date: record.date,
+          type: record.type,
+          amount: record.amount,
+          notes: record.notes
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading cervical mucus records:', error);
+    }
+  };
+
+  const loadOvulationTestRecords = async () => {
+    if (!user || !accessToken) return;
+
+    try {
+      const result = await supabaseRest.select(
+        'ovulation_test_records',
+        '*',
+        { user_id: user.id },
+        { limit: 30, accessToken }
+      );
+
+      if (result.error) {
+        console.error('Error loading ovulation test records:', result.error);
+        return;
+      }
+
+      if (result.data) {
+        // Sort by date descending
+        const sortedData = (result.data as DatabaseOvulationTestRecord[]).sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        
+        setOvulationTestRecords(sortedData.map((record: DatabaseOvulationTestRecord) => ({
+          id: record.id,
+          date: record.date,
+          result: record.result,
+          intensity: record.intensity,
+          brand: record.brand,
+          notes: record.notes
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading ovulation test records:', error);
+    }
+  };
 
   return {
-    // UI State
-    bbt,
-    setBbt,
-    cervicalMucus,
-    setCervicalMucus,
-    ovulationTest,
-    setOvulationTest,
-    currentBBT,
-    expectedOvulation,
-    conceptionProbability,
-    
-    // Database State
-    fertilityRecords,
-    todayRecord,
     loading,
     error,
-    
-    // Helper data
-    cervicalMucusTypes: cervicalMucusTypes.map(cm => ({
-      ...cm,
-      selected: cervicalMucus === cm.value
-    })),
-    ovulationTestResults: ovulationTestResults.map(ot => ({
-      ...ot,
-      selected: ovulationTest === ot.value
-    })),
-    
-    // Actions
+    bbtRecords,
+    cervicalMucusRecords,
+    ovulationTestRecords,
+    averageBBT,
+    recentBBTTrend,
     loadAllData
   };
 }; 

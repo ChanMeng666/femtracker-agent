@@ -1,9 +1,30 @@
 import { useState, useEffect } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/rest-client";
 import { Meal } from "@/types/nutrition";
 import { nutritionFocus } from "@/constants/nutrition";
+
+// Database types
+interface DatabaseMeal {
+  id: string;
+  user_id: string;
+  date: string;
+  meal_time: string;
+  foods: string[];
+  calories?: number;
+  nutrients?: string[];
+  notes?: string;
+  created_at: string;
+}
+
+interface DatabaseWaterIntake {
+  id: string;
+  user_id: string;
+  date: string;
+  amount_ml: number;
+  recorded_at: string;
+}
 
 // Frontend type adaptation for water intake
 interface FrontendWaterIntake {
@@ -14,7 +35,7 @@ interface FrontendWaterIntake {
 }
 
 export const useNutritionWithDB = () => {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -37,13 +58,13 @@ export const useNutritionWithDB = () => {
 
   // Load data on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user || !accessToken) return;
     loadAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, accessToken]);
 
   const loadAllData = async () => {
-    if (!user) return;
+    if (!user || !accessToken) return;
 
     setLoading(true);
     setError(null);
@@ -62,84 +83,99 @@ export const useNutritionWithDB = () => {
   };
 
   const loadTodayMeals = async () => {
-    if (!user) return;
+    if (!user || !accessToken) return;
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
-      .from('meals')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .order('created_at', { ascending: true });
+    try {
+      const result = await supabaseRest.select(
+        'meals',
+        '*',
+        { user_id: user.id, date: today },
+        { accessToken }
+      );
 
-    if (error) {
+      if (result.error) {
+        console.error('Error loading meals:', result.error);
+        return;
+      }
+
+      if (result.data) {
+        // Sort by created_at ascending
+        const sortedData = (result.data as DatabaseMeal[]).sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        
+        setTodayMeals(sortedData.map((meal: DatabaseMeal) => ({
+          time: meal.meal_time,
+          foods: meal.foods,
+          calories: meal.calories || 0,
+          nutrients: meal.nutrients || []
+        })));
+      }
+    } catch (error) {
       console.error('Error loading meals:', error);
-      return;
-    }
-
-    if (data) {
-      setTodayMeals(data.map(meal => ({
-        time: meal.meal_time,
-        foods: meal.foods,
-        calories: meal.calories || 0,
-        nutrients: meal.nutrients || []
-      })));
     }
   };
 
   const loadWaterIntake = async () => {
-    if (!user) return;
+    if (!user || !accessToken) return;
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
-      .from('water_intake')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .order('recorded_at', { ascending: true });
+    try {
+      const result = await supabaseRest.select(
+        'water_intake',
+        '*',
+        { user_id: user.id, date: today },
+        { accessToken }
+      );
 
-    if (error) {
+      if (result.error) {
+        console.error('Error loading water intake:', result.error);
+        return;
+      }
+
+      if (result.data) {
+        // Sort by recorded_at ascending
+        const sortedData = (result.data as DatabaseWaterIntake[]).sort((a, b) =>
+          new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
+        );
+        
+        const intakeHistory = sortedData.map((intake: DatabaseWaterIntake) => ({
+          id: intake.id,
+          date: intake.date,
+          amountMl: intake.amount_ml,
+          recordedAt: intake.recorded_at
+        }));
+        
+        setWaterIntakeHistory(intakeHistory);
+        setTodayWaterIntake(sortedData.reduce((sum, intake) => sum + intake.amount_ml, 0));
+      }
+    } catch (error) {
       console.error('Error loading water intake:', error);
-      return;
-    }
-
-    if (data) {
-      const intakeHistory = data.map(intake => ({
-        id: intake.id,
-        date: intake.date,
-        amountMl: intake.amount_ml,
-        recordedAt: intake.recorded_at
-      }));
-      
-      setWaterIntakeHistory(intakeHistory);
-      setTodayWaterIntake(data.reduce((sum, intake) => sum + intake.amount_ml, 0));
     }
   };
 
   // Add water intake to database
   const addWaterIntake = async (amount: number) => {
-    if (!user || amount <= 0) return;
+    if (!user || !accessToken || amount <= 0) return;
 
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const { data, error } = await supabase
-        .from('water_intake')
-        .insert([{
-          user_id: user.id,
-          date: today,
-          amount_ml: amount
-        }])
-        .select()
-        .single();
+      const result = await supabaseRest.insert('water_intake', {
+        user_id: user.id,
+        date: today,
+        amount_ml: amount
+      }, accessToken);
 
-      if (error) {
-        console.error('Error adding water intake:', error);
+      if (result.error) {
+        console.error('Error adding water intake:', result.error);
         return;
       }
 
+      const data = Array.isArray(result.data) ? result.data[0] : result.data;
       const newIntake: FrontendWaterIntake = {
         id: data.id,
         date: data.date,
@@ -157,30 +193,27 @@ export const useNutritionWithDB = () => {
 
   // Add meal to database
   const addMeal = async (mealTime: string, foods: string[], calories?: number, nutrients?: string[], notes?: string) => {
-    if (!user || foods.length === 0) return;
+    if (!user || !accessToken || foods.length === 0) return;
 
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const { data, error } = await supabase
-        .from('meals')
-        .insert([{
-          user_id: user.id,
-          date: today,
-          meal_time: mealTime,
-          foods,
-          calories,
-          nutrients,
-          notes
-        }])
-        .select()
-        .single();
+      const result = await supabaseRest.insert('meals', {
+        user_id: user.id,
+        date: today,
+        meal_time: mealTime,
+        foods,
+        calories,
+        nutrients,
+        notes
+      }, accessToken);
 
-      if (error) {
-        console.error('Error adding meal:', error);
+      if (result.error) {
+        console.error('Error adding meal:', result.error);
         return;
       }
 
+      const data = Array.isArray(result.data) ? result.data[0] : result.data;
       const newMeal: Meal = {
         time: data.meal_time,
         foods: data.foods,

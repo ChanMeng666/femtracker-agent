@@ -3,233 +3,260 @@ import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { SettingTab, UserProfile, NotificationSettings, PrivacySettings } from "@/types/settings";
 import { settingTabs } from "@/constants/settings";
 import { useAuth } from "./auth/useAuth";
-import { supabase, Profile } from "@/lib/supabase/client";
+import { supabaseRest, Profile } from "@/lib/supabase/rest-client";
+
+// Database types
+interface DatabaseUserPreferences {
+  id: string;
+  user_id: string;
+  language: string;
+  timezone: string;
+  units: string;
+  notifications_enabled: boolean;
+  data_sharing: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Frontend types
+interface PersonalInfo {
+  displayName: string;
+  email: string;
+  dateOfBirth: string;
+  heightCm: number;
+  cycleLength: number;
+  periodLength: number;
+}
+
+interface NotificationSettings {
+  periodReminders: boolean;
+  ovulationAlerts: boolean;
+  medicationReminders: boolean;
+  appointmentAlerts: boolean;
+  healthInsights: boolean;
+  dataExportReady: boolean;
+}
+
+interface PrivacySettings {
+  dataSharing: boolean;
+  analytics: boolean;
+  crashReports: boolean;
+  personalizedAds: boolean;
+}
+
+interface UserPreferences {
+  language: string;
+  timezone: string;
+  units: string;
+}
 
 // 全局缓存设置数据加载状态，避免页面切换时重复加载
 const settingsDataCache = new Map<string, boolean>();
 
 export const useSettingsWithDB = () => {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingTab>('personal');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // 使用用户ID作为key检查是否已经初始化过
-  const isInitialized = user?.id ? settingsDataCache.get(user.id) || false : false;
-  const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: "",
+  // State management
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
+    displayName: "",
     email: "",
-    age: 0,
-    language: "English",
-    theme: "light"
+    dateOfBirth: "",
+    heightCm: 160,
+    cycleLength: 28,
+    periodLength: 5
   });
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
-    cycleReminders: true,
-    symptomTracking: true,
-    exerciseGoals: false,
-    nutritionTips: true,
-    healthInsights: true
+
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    periodReminders: true,
+    ovulationAlerts: true,
+    medicationReminders: false,
+    appointmentAlerts: true,
+    healthInsights: true,
+    dataExportReady: true
   });
-  const [privacySettings, setPrivacySettings] = useState<PrivacySettings>({
+
+  const [privacy, setPrivacy] = useState<PrivacySettings>({
     dataSharing: false,
-    analyticsTracking: true,
-    biometricLock: false,
-    autoBackup: true
+    analytics: true,
+    crashReports: true,
+    personalizedAds: false
   });
+
+  const [preferences, setPreferences] = useState<UserPreferences>({
+    language: "en",
+    timezone: "UTC",
+    units: "metric"
+  });
+
+  // Load data on mount
+  useEffect(() => {
+    if (!user || !accessToken) return;
+    loadAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, accessToken]);
+
+  const loadAllData = async () => {
+    if (!user || !accessToken) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await Promise.all([
+        loadProfile(),
+        loadPreferences()
+      ]);
+    } catch (err) {
+      console.error('Error loading settings data:', err);
+      setError('Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadProfile = async () => {
+    if (!user || !accessToken) return;
+
+    try {
+      const result = await supabaseRest.select(
+        'profiles',
+        '*',
+        { id: user.id },
+        { accessToken }
+      );
+
+      if (result.error) {
+        console.error('Error loading profile:', result.error);
+        return;
+      }
+
+      if (result.data && result.data.length > 0) {
+        const profile = result.data[0] as Profile;
+        
+        setPersonalInfo({
+          displayName: profile.display_name || "",
+          email: user.email || "",
+          dateOfBirth: profile.date_of_birth || "",
+          heightCm: profile.height_cm || 160,
+          cycleLength: profile.cycle_length || 28,
+          periodLength: profile.period_length || 5
+        });
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
+
+  const loadPreferences = async () => {
+    if (!user || !accessToken) return;
+
+    try {
+      const result = await supabaseRest.select(
+        'user_preferences',
+        '*',
+        { user_id: user.id },
+        { accessToken }
+      );
+
+      if (result.error) {
+        console.error('Error loading preferences:', result.error);
+        return;
+      }
+
+      if (result.data && result.data.length > 0) {
+        const prefs = result.data[0] as DatabaseUserPreferences;
+        
+        setPreferences({
+          language: prefs.language,
+          timezone: prefs.timezone,
+          units: prefs.units
+        });
+        
+        setNotifications(prev => ({
+          ...prev,
+          periodReminders: prefs.notifications_enabled,
+          ovulationAlerts: prefs.notifications_enabled,
+          healthInsights: prefs.notifications_enabled
+        }));
+        
+        setPrivacy(prev => ({
+          ...prev,
+          dataSharing: prefs.data_sharing
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading preferences:', error);
+    }
+  };
+
+  // Update profile information
+  const updatePersonalInfo = async (updates: Partial<PersonalInfo>) => {
+    if (!user || !accessToken) return;
+
+    try {
+      const profileUpdates: Partial<Profile> = {};
+      
+      if (updates.displayName !== undefined) profileUpdates.display_name = updates.displayName;
+      if (updates.dateOfBirth !== undefined) profileUpdates.date_of_birth = updates.dateOfBirth;
+      if (updates.heightCm !== undefined) profileUpdates.height_cm = updates.heightCm;
+      if (updates.cycleLength !== undefined) profileUpdates.cycle_length = updates.cycleLength;
+      if (updates.periodLength !== undefined) profileUpdates.period_length = updates.periodLength;
+
+      const result = await supabaseRest.update(
+        'profiles',
+        profileUpdates,
+        { id: user.id },
+        accessToken
+      );
+
+      if (result.error) {
+        console.error('Error updating profile:', result.error);
+        return;
+      }
+
+      setPersonalInfo(prev => ({ ...prev, ...updates }));
+    } catch (error) {
+      console.error('Error updating personal info:', error);
+    }
+  };
+
+  // Update user preferences
+  const updatePreferences = async (updates: Partial<UserPreferences>) => {
+    if (!user || !accessToken) return;
+
+    try {
+      const result = await supabaseRest.update(
+        'user_preferences',
+        updates,
+        { user_id: user.id },
+        accessToken
+      );
+
+      if (result.error) {
+        console.error('Error updating preferences:', result.error);
+        return;
+      }
+
+      setPreferences(prev => ({ ...prev, ...updates }));
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+    }
+  };
 
   const currentTab = settingTabs.find(tab => tab.id === activeTab);
-
-  // Load user profile and preferences from database
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    
-    // 避免重复加载：如果已经初始化过且用户ID没有变化，则不重新加载
-    if (isInitialized && user.id) {
-      console.log('Settings already loaded for user, skipping reload');
-      setLoading(false);
-      return;
-    }
-    
-    const loadUserData = async () => {
-      console.log('Loading settings data for user:', user.id);
-      setLoading(true);
-      try {
-        // Load profile data
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profileData) {
-          setUserProfile({
-            name: profileData.full_name || user.user_metadata?.full_name || '',
-            email: profileData.email || user.email || '',
-            age: profileData.age || 0,
-            language: "English", // Default for now
-            theme: "light" // Default for now
-          });
-        }
-
-        // Load user preferences
-        const { data: preferencesData } = await supabase
-          .from('user_preferences')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (preferencesData) {
-          // Update theme and other app preferences
-          setUserProfile(prev => ({
-            ...prev,
-            theme: preferencesData.theme || 'light'
-          }));
-
-          // Update notification settings
-          if (preferencesData.notifications) {
-            setNotificationSettings({
-              cycleReminders: preferencesData.notifications.cycleReminders ?? true,
-              symptomTracking: preferencesData.notifications.symptomTracking ?? true,
-              exerciseGoals: preferencesData.notifications.exerciseGoals ?? false,
-              nutritionTips: preferencesData.notifications.nutritionTips ?? true,
-              healthInsights: preferencesData.notifications.healthInsights ?? true
-            });
-          }
-
-          // Update privacy settings
-          if (preferencesData.privacy) {
-            setPrivacySettings({
-              dataSharing: preferencesData.privacy.dataSharing ?? false,
-              analyticsTracking: preferencesData.privacy.analyticsTracking ?? true,
-              biometricLock: preferencesData.privacy.biometricLock ?? false,
-              autoBackup: preferencesData.privacy.autoBackup ?? true
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setLoading(false);
-        // 标记设置数据已经加载过
-        if (user?.id) {
-          settingsDataCache.set(user.id, true);
-        }
-      }
-    };
-
-    loadUserData();
-  }, [user?.id, isInitialized]);
-
-  // Save profile updates to database
-  const updateUserProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return;
-
-    try {
-      // Update profile table
-      const profileUpdates: Partial<Profile> = {};
-      if (updates.name !== undefined) profileUpdates.full_name = updates.name;
-      if (updates.email !== undefined) profileUpdates.email = updates.email;
-      if (updates.age !== undefined) profileUpdates.age = updates.age;
-
-      if (Object.keys(profileUpdates).length > 0) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update(profileUpdates)
-          .eq('id', user.id);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-          return;
-        }
-      }
-
-      // Update user preferences for theme
-      if (updates.theme !== undefined) {
-        const { error: prefsError } = await supabase
-          .from('user_preferences')
-          .update({ theme: updates.theme })
-          .eq('user_id', user.id);
-
-        if (prefsError) {
-          console.error('Error updating theme:', prefsError);
-          return;
-        }
-      }
-
-      // Update local state
-      setUserProfile(prev => ({ ...prev, ...updates }));
-      console.log('Profile updated successfully');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-    }
-  };
-
-  // Save notification settings to database
-  const updateNotificationSettings = async (updates: Partial<NotificationSettings>) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('user_preferences')
-        .update({ 
-          notifications: {
-            ...notificationSettings,
-            ...updates
-          }
-        })
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error updating notification settings:', error);
-        return;
-      }
-
-      // Update local state
-      setNotificationSettings(prev => ({ ...prev, ...updates }));
-      console.log('Notification settings updated successfully');
-    } catch (error) {
-      console.error('Error updating notification settings:', error);
-    }
-  };
-
-  // Save privacy settings to database
-  const updatePrivacySettings = async (updates: Partial<PrivacySettings>) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('user_preferences')
-        .update({ 
-          privacy: {
-            ...privacySettings,
-            ...updates
-          }
-        })
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error updating privacy settings:', error);
-        return;
-      }
-
-      // Update local state
-      setPrivacySettings(prev => ({ ...prev, ...updates }));
-      console.log('Privacy settings updated successfully');
-    } catch (error) {
-      console.error('Error updating privacy settings:', error);
-    }
-  };
 
   // Make settings data readable by AI
   useCopilotReadable({
     description: "Current app settings and user preferences with database persistence",
     value: {
       activeTab,
-      userProfile,
-      notificationSettings,
-      privacySettings,
+      personalInfo,
+      notifications,
+      privacy,
+      preferences,
       availableTabs: settingTabs.map(tab => ({
         id: tab.id,
         name: tab.name,
@@ -298,16 +325,16 @@ export const useSettingsWithDB = () => {
       }
     ],
     handler: async ({ name, email, age, language, theme }) => {
-      const updates: Partial<UserProfile> = {};
+      const updates: Partial<PersonalInfo> = {};
       
-      if (name) updates.name = name;
+      if (name) updates.displayName = name;
       if (email) updates.email = email;
-      if (age && age >= 18 && age <= 100) updates.age = age;
+      if (age && age >= 18 && age <= 100) updates.heightCm = age;
       if (language) updates.language = language;
       if (theme && ['light', 'dark', 'auto'].includes(theme)) updates.theme = theme;
 
       if (Object.keys(updates).length > 0) {
-        await updateUserProfile(updates);
+        await updatePersonalInfo(updates);
         return `Profile updated: ${Object.keys(updates).join(', ')}`;
       }
       return "No valid updates provided";
@@ -353,14 +380,18 @@ export const useSettingsWithDB = () => {
     handler: async ({ cycleReminders, symptomTracking, exerciseGoals, nutritionTips, healthInsights }) => {
       const updates: Partial<NotificationSettings> = {};
       
-      if (cycleReminders !== undefined) updates.cycleReminders = cycleReminders;
-      if (symptomTracking !== undefined) updates.symptomTracking = symptomTracking;
-      if (exerciseGoals !== undefined) updates.exerciseGoals = exerciseGoals;
-      if (nutritionTips !== undefined) updates.nutritionTips = nutritionTips;
+      if (cycleReminders !== undefined) updates.periodReminders = cycleReminders;
+      if (symptomTracking !== undefined) updates.ovulationAlerts = symptomTracking;
+      if (exerciseGoals !== undefined) updates.medicationReminders = exerciseGoals;
+      if (nutritionTips !== undefined) updates.appointmentAlerts = nutritionTips;
       if (healthInsights !== undefined) updates.healthInsights = healthInsights;
 
       if (Object.keys(updates).length > 0) {
-        await updateNotificationSettings(updates);
+        await updatePreferences({
+          language: preferences.language,
+          timezone: preferences.timezone,
+          units: preferences.units
+        });
         return `Notification settings updated: ${Object.keys(updates).join(', ')}`;
       }
       return "No notification settings to update";
@@ -370,13 +401,19 @@ export const useSettingsWithDB = () => {
   return {
     activeTab,
     setActiveTab,
-    userProfile,
-    setUserProfile: updateUserProfile,
-    notificationSettings,
-    setNotificationSettings: updateNotificationSettings,
-    privacySettings,
-    setPrivacySettings: updatePrivacySettings,
+    personalInfo,
+    notifications,
+    privacy,
+    preferences,
+    setPersonalInfo,
+    setNotifications,
+    setPrivacy,
+    setPreferences,
+    updatePersonalInfo,
+    updatePreferences,
+    loadAllData,
     currentTab,
     loading,
+    error
   };
 }; 

@@ -15,7 +15,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [timeoutReached, setTimeoutReached] = useState(false)
 
   // Define routes that don't require authentication
-  const publicRoutes = ['/login', '/auth']
+  const publicRoutes = ['/login', '/auth', '/test-db', '/debug-connection']
   const isPublicRoute = publicRoutes.includes(pathname)
 
   // Set up a timeout to prevent infinite loading

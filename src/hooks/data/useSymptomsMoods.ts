@@ -1,213 +1,166 @@
 import { useState, useEffect } from 'react'
-import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core'
-import { supabase, Symptom, Mood } from '@/lib/supabase/client'
-import { useAuth } from '../auth/useAuth'
+import { useAuth } from '@/hooks/auth/useAuth'
+import { supabaseRest } from '@/lib/supabase/rest-client'
+
+export interface Symptom {
+  id: string
+  user_id: string
+  date: string
+  symptom_type: string
+  severity: number
+  notes?: string
+  created_at: string
+}
+
+export interface Mood {
+  id: string
+  user_id: string
+  date: string
+  mood_type: string
+  intensity: number
+  notes?: string
+  created_at: string
+}
 
 export function useSymptomsMoods() {
-  const { user } = useAuth()
+  const { user, accessToken } = useAuth()
   const [symptoms, setSymptoms] = useState<Symptom[]>([])
   const [moods, setMoods] = useState<Mood[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Make symptoms and moods data readable by AI
-  useCopilotReadable({
-    description: "Current symptoms and mood tracking data",
-    value: {
-      symptoms,
-      moods,
-      recentSymptoms: symptoms.slice(0, 10),
-      recentMoods: moods.slice(0, 10),
-      symptomTypes: [...new Set(symptoms.map(s => s.symptom_type))],
-      moodTypes: [...new Set(moods.map(m => m.mood_type))],
-      averageMoodIntensity: moods.length > 0 
-        ? Math.round(moods.reduce((sum, m) => sum + m.intensity, 0) / moods.length)
-        : 0,
-      averageSymptomSeverity: symptoms.length > 0 
-        ? Math.round(symptoms.reduce((sum, s) => sum + s.severity, 0) / symptoms.length)
-        : 0,
-      todaySymptoms: symptoms.filter(s => s.date === new Date().toISOString().split('T')[0]),
-      todayMoods: moods.filter(m => m.date === new Date().toISOString().split('T')[0])
-    }
-  })
+  const fetchSymptomsMoods = async () => {
+    if (!user || !accessToken) return
 
-  // Add CopilotKit actions for AI to interact with data
-  useCopilotAction({
-    name: "addSymptom",
-    description: "Add a new symptom record",
-    parameters: [
-      {
-        name: "symptomType",
-        type: "string",
-        description: "Type of symptom (e.g., cramps, headache, bloating)",
-        required: true,
-      },
-      {
-        name: "severity",
-        type: "number",
-        description: "Severity level from 1-10",
-        required: true,
-      },
-      {
-        name: "date",
-        type: "string",
-        description: "Date in YYYY-MM-DD format, defaults to today",
-        required: false,
-      },
-      {
-        name: "notes",
-        type: "string",
-        description: "Optional notes about the symptom",
-        required: false,
-      },
-    ],
-    handler: async ({ symptomType, severity, date, notes }) => {
-      const result = await addSymptom({
-        symptom_type: symptomType,
-        severity: Math.min(Math.max(severity, 1), 10), // Ensure 1-10 range
-        date: date || new Date().toISOString().split('T')[0],
-        notes
-      })
-      return result.error ? `Error: ${result.error}` : "Symptom added successfully"
-    },
-  })
-
-  useCopilotAction({
-    name: "addMood",
-    description: "Add a new mood record",
-    parameters: [
-      {
-        name: "moodType",
-        type: "string",
-        description: "Type of mood (e.g., happy, sad, anxious, irritable)",
-        required: true,
-      },
-      {
-        name: "intensity",
-        type: "number",
-        description: "Mood intensity from 1-10",
-        required: true,
-      },
-      {
-        name: "date",
-        type: "string",
-        description: "Date in YYYY-MM-DD format, defaults to today",
-        required: false,
-      },
-      {
-        name: "notes",
-        type: "string",
-        description: "Optional notes about the mood",
-        required: false,
-      },
-    ],
-    handler: async ({ moodType, intensity, date, notes }) => {
-      const result = await addMood({
-        mood_type: moodType,
-        intensity: Math.min(Math.max(intensity, 1), 10), // Ensure 1-10 range
-        date: date || new Date().toISOString().split('T')[0],
-        notes
-      })
-      return result.error ? `Error: ${result.error}` : "Mood added successfully"
-    },
-  })
-
-  useEffect(() => {
-    if (!user) return
-    fetchData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]) // Only re-fetch when user ID changes, not user object reference
-
-  const fetchData = async () => {
-    if (!user) return
-
+    console.log('useSymptomsMoods: Loading symptoms and moods for user:', user.id)
     setLoading(true)
     setError(null)
 
     try {
-      await fetchFreshData()
-    } catch (err) {
-      console.error('Error fetching symptoms/moods:', err)
-      setError('Failed to load data')
+      console.log('useSymptomsMoods: Starting to fetch symptoms and moods using REST API...')
+      
+      const startTime = Date.now()
+      
+      // Fetch symptoms and moods in parallel with access token
+      const [symptomsResult, moodsResult] = await Promise.all([
+        supabaseRest.select('symptoms', '*', { user_id: user.id }, { accessToken }),
+        supabaseRest.select('moods', '*', { user_id: user.id }, { accessToken })
+      ])
+      
+      const duration = Date.now() - startTime
+      console.log(`useSymptomsMoods: REST queries completed in ${duration}ms`)
+      
+      if (symptomsResult.error || moodsResult.error) {
+        console.error('useSymptomsMoods: Query failed:', symptomsResult.error || moodsResult.error)
+        setError('Failed to load symptoms and moods')
+      } else {
+        console.log(`useSymptomsMoods: Successfully loaded ${symptomsResult.data?.length || 0} symptoms and ${moodsResult.data?.length || 0} moods`)
+        setSymptoms(symptomsResult.data || [])
+        setMoods(moodsResult.data || [])
+      }
+      
+    } catch (error) {
+      console.error('useSymptomsMoods: Exception occurred:', error)
+      setError('Failed to connect to database')
+    } finally {
       setLoading(false)
+      console.log('useSymptomsMoods: Finished loading symptoms and moods, loading state set to false')
     }
   }
 
-  const fetchFreshData = async () => {
-    const [symptomsResult, moodsResult] = await Promise.all([
-      supabase
-        .from('symptoms')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('date', { ascending: false })
-        .limit(100),
-      supabase
-        .from('moods')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('date', { ascending: false })
-        .limit(100)
-    ])
-
-    if (symptomsResult.error || moodsResult.error) {
-      console.error('Error fetching data:', symptomsResult.error || moodsResult.error)
-      setError('Failed to load data')
-    } else {
-      setSymptoms(symptomsResult.data || [])
-      setMoods(moodsResult.data || [])
+  useEffect(() => {
+    if (user?.id && accessToken) {
+      fetchSymptomsMoods()
     }
-    setLoading(false)
-  }
+  }, [user?.id, accessToken])
 
-  const addSymptom = async (symptomData: Omit<Symptom, 'id' | 'user_id' | 'created_at'>) => {
-    if (!user) return { error: 'User not authenticated' }
-
-    setError(null)
+  const addSymptom = async (symptomData: Omit<Symptom, 'id' | 'created_at' | 'user_id'>) => {
+    if (!user || !accessToken) return
 
     try {
-      const { data, error } = await supabase
-        .from('symptoms')
-        .insert([{ ...symptomData, user_id: user.id }])
-        .select()
+      const result = await supabaseRest.insert('symptoms', {
+        ...symptomData,
+        user_id: user.id
+      }, accessToken)
 
-      if (error) {
-        console.error('Error adding symptom:', error)
+      if (result.error) {
         setError('Failed to add symptom')
-        return { error }
-      } else {
-        setSymptoms(prev => [data[0], ...prev])
-        return { data: data[0] }
+        return null
       }
-    } catch (err) {
-      console.error('Error adding symptom:', err)
+
+      // Refresh the data
+      await fetchSymptomsMoods()
+      return result.data
+    } catch (error) {
+      console.error('Error adding symptom:', error)
       setError('Failed to add symptom')
-      return { error: 'Failed to add symptom' }
+      return null
     }
   }
 
-  const addMood = async (moodData: Omit<Mood, 'id' | 'user_id' | 'created_at'>) => {
-    if (!user) return { error: 'User not authenticated' }
-
-    setError(null)
+  const addMood = async (moodData: Omit<Mood, 'id' | 'created_at' | 'user_id'>) => {
+    if (!user || !accessToken) return
 
     try {
-      const { data, error } = await supabase
-        .from('moods')
-        .insert([{ ...moodData, user_id: user.id }])
-        .select()
+      const result = await supabaseRest.insert('moods', {
+        ...moodData,
+        user_id: user.id
+      }, accessToken)
 
-      if (error) {
-        console.error('Error adding mood:', error)
+      if (result.error) {
         setError('Failed to add mood')
-        return { error }
-      } else {
-        setMoods(prev => [data[0], ...prev])
-        return { data: data[0] }
+        return null
       }
-    } catch (err) {
-      console.error('Error adding mood:', err)
+
+      // Refresh the data
+      await fetchSymptomsMoods()
+      return result.data
+    } catch (error) {
+      console.error('Error adding mood:', error)
       setError('Failed to add mood')
-      return { error: 'Failed to add mood' }
+      return null
+    }
+  }
+
+  const updateSymptom = async (id: string, updates: Partial<Symptom>) => {
+    if (!user || !accessToken) return
+
+    try {
+      const result = await supabaseRest.update('symptoms', updates, { id }, accessToken)
+
+      if (result.error) {
+        setError('Failed to update symptom')
+        return null
+      }
+
+      // Refresh the data
+      await fetchSymptomsMoods()
+      return result.data
+    } catch (error) {
+      console.error('Error updating symptom:', error)
+      setError('Failed to update symptom')
+      return null
+    }
+  }
+
+  const updateMood = async (id: string, updates: Partial<Mood>) => {
+    if (!user || !accessToken) return
+
+    try {
+      const result = await supabaseRest.update('moods', updates, { id }, accessToken)
+
+      if (result.error) {
+        setError('Failed to update mood')
+        return null
+      }
+
+      // Refresh the data
+      await fetchSymptomsMoods()
+      return result.data
+    } catch (error) {
+      console.error('Error updating mood:', error)
+      setError('Failed to update mood')
+      return null
     }
   }
 
@@ -218,6 +171,8 @@ export function useSymptomsMoods() {
     error,
     addSymptom,
     addMood,
-    refetch: fetchData,
+    updateSymptom,
+    updateMood,
+    refetch: fetchSymptomsMoods
   }
 } 

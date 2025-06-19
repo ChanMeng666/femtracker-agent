@@ -11,6 +11,14 @@ export const useCycleWithDB = () => {
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [selectedMood, setSelectedMood] = useState<string>('');
 
+  // Combined loading state
+  const loading = cyclesLoading || symptomsLoading;
+  
+  // Add debug logging
+  useEffect(() => {
+    console.log('useCycleWithDB: Loading states - cycles:', cyclesLoading, 'symptoms:', symptomsLoading, 'combined:', loading);
+  }, [cyclesLoading, symptomsLoading, loading]);
+
   // Get current cycle or create one if none exists
   const currentCycle = useMemo(() => {
     return cycles.find(cycle => !cycle.end_date) || cycles[0];
@@ -117,21 +125,25 @@ export const useCycleWithDB = () => {
       }
     ],
     handler: async ({ symptom, severity = 5 }) => {
+      const today = new Date().toISOString().split('T')[0];
+      
       const result = await addSymptom({
+        user_id: '', // Will be set by the hook
+        date: today,
         symptom_type: symptom,
         severity: Math.min(Math.max(severity, 1), 10),
-        date: new Date().toISOString().split('T')[0]
+        notes: `Added via AI assistant`
       });
       
-      if (result.error) {
-        return `Error adding symptom: ${result.error}`;
-      } else {
-        // Update local state
-        setSelectedSymptoms(prev => 
-          prev.includes(symptom) ? prev : [...prev, symptom]
-        );
-        return `Added symptom: ${symptom} (severity ${severity})`;
+      if (!result) {
+        return `Error adding symptom: Failed to create entry`;
       }
+      
+      // Update local state
+      setSelectedSymptoms(prev => 
+        prev.includes(symptom) ? prev : [...prev, symptom]
+      );
+      return `Added symptom: ${symptom} (severity ${severity})`;
     },
   });
 
@@ -146,18 +158,22 @@ export const useCycleWithDB = () => {
       required: true,
     }],
     handler: async ({ mood }) => {
+      const today = new Date().toISOString().split('T')[0];
+      
       const result = await addMood({
+        user_id: '', // Will be set by the hook
+        date: today,
         mood_type: mood,
         intensity: 5, // Default intensity
-        date: new Date().toISOString().split('T')[0]
+        notes: `Updated via AI assistant`
       });
       
-      if (result.error) {
-        return `Error updating mood: ${result.error}`;
-      } else {
-        setSelectedMood(mood);
-        return `Mood updated to: ${mood}`;
+      if (!result) {
+        return `Error updating mood: Failed to create entry`;
       }
+      
+      setSelectedMood(mood);
+      return `Mood updated to: ${mood}`;
     },
   });
 
@@ -178,6 +194,7 @@ export const useCycleWithDB = () => {
 
     // Create new cycle
     await addCycle({
+      user_id: '', // Will be set by the hook
       start_date: startDate,
       notes: `Started on day ${currentDay}`
     });
@@ -187,20 +204,25 @@ export const useCycleWithDB = () => {
 
   const toggleSymptom = async (symptom: string) => {
     const today = new Date().toISOString().split('T')[0];
-    const existingSymptom = symptoms.find(s => s.date === today && s.symptom_type === symptom);
+    const existingSymptom = symptoms.find(s => 
+      s.date === today && s.symptom_type === symptom
+    );
     
     if (existingSymptom) {
-      // Remove symptom (would need a deleteSymptom function)
+      // Remove symptom - we would need a delete function for this
+      // For now, just update local state
       setSelectedSymptoms(prev => prev.filter(s => s !== symptom));
     } else {
       // Add symptom
       const result = await addSymptom({
+        user_id: '', // Will be set by the hook
+        date: today,
         symptom_type: symptom,
         severity: 5, // Default severity
-        date: today
+        notes: 'Added via toggle'
       });
       
-      if (!result.error) {
+      if (result) {
         setSelectedSymptoms(prev => [...prev, symptom]);
       }
     }
@@ -210,12 +232,14 @@ export const useCycleWithDB = () => {
     const today = new Date().toISOString().split('T')[0];
     
     const result = await addMood({
+      user_id: '', // Will be set by the hook
+      date: today,
       mood_type: mood,
       intensity: 5, // Default intensity
-      date: today
+      notes: 'Updated via handler'
     });
     
-    if (!result.error) {
+    if (result) {
       setSelectedMood(mood);
     }
   };

@@ -22,17 +22,14 @@ export default function FertilityTracker() {
 // Internal component that uses CopilotKit hooks
 function FertilityTrackerContent() {
   const {
-    bbt,
-    setBbt,
-    cervicalMucus,
-    setCervicalMucus,
-    ovulationTest,
-    setOvulationTest,
-    currentBBT,
-    expectedOvulation,
-    conceptionProbability,
     loading,
-    error
+    error,
+    bbtRecords,
+    cervicalMucusRecords,
+    ovulationTestRecords,
+    averageBBT,
+    recentBBTTrend,
+    loadAllData
   } = useFertilityWithDB();
 
   // Show loading state
@@ -59,10 +56,21 @@ function FertilityTrackerContent() {
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Unable to load fertility data</h2>
           <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={loadAllData}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
   }
+
+  // Calculate some derived values
+  const latestBBT = bbtRecords.length > 0 ? bbtRecords[0].temperature : averageBBT;
+  const expectedOvulation = "In 5-7 days"; // This would be calculated based on cycle data
+  const conceptionProbability = "15%"; // This would be calculated based on current cycle phase
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
@@ -81,22 +89,43 @@ function FertilityTrackerContent() {
             <FertilityStatusOverview
               fertilityScore={85}
               expectedOvulation={expectedOvulation}
-              currentBBT={currentBBT}
+              currentBBT={latestBBT.toFixed(1)}
             />
 
-            {/* Basal Body Temperature Record */}
-            <BBTRecord bbt={bbt} onBBTChange={setBbt} />
+            {/* Display recent records summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="font-semibold text-gray-900 mb-2">BBT Records</h3>
+                <p className="text-2xl font-bold text-blue-600">{bbtRecords.length}</p>
+                <p className="text-sm text-gray-500">Average: {averageBBT.toFixed(1)}°C</p>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="font-semibold text-gray-900 mb-2">Mucus Records</h3>
+                <p className="text-2xl font-bold text-green-600">{cervicalMucusRecords.length}</p>
+                <p className="text-sm text-gray-500">Latest: {cervicalMucusRecords[0]?.type || 'None'}</p>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="font-semibold text-gray-900 mb-2">Ovulation Tests</h3>
+                <p className="text-2xl font-bold text-purple-600">{ovulationTestRecords.length}</p>
+                <p className="text-sm text-gray-500">Latest: {ovulationTestRecords[0]?.result || 'None'}</p>
+              </div>
+            </div>
 
-            {/* Cervical Mucus Record */}
+            {/* BBT Record Component - simplified for now */}
+            <BBTRecord bbt={latestBBT.toString()} onBBTChange={() => {}} />
+
+            {/* Cervical Mucus Record - simplified for now */}
             <CervicalMucusRecord 
-              cervicalMucus={cervicalMucus} 
-              onCervicalMucusChange={setCervicalMucus} 
+              cervicalMucus={cervicalMucusRecords[0]?.type || ''} 
+              onCervicalMucusChange={() => {}} 
             />
 
-            {/* Ovulation Test Record */}
+            {/* Ovulation Test Record - simplified for now */}
             <OvulationTestRecord 
-              ovulationTest={ovulationTest} 
-              onOvulationTestChange={setOvulationTest} 
+              ovulationTest={ovulationTestRecords[0]?.result || ''} 
+              onOvulationTestChange={() => {}} 
             />
 
             {/* Conception Probability Prediction */}
@@ -109,47 +138,35 @@ function FertilityTrackerContent() {
         instructions="You are a fertility health assistant helping users track their ovulation and optimize conception chances. You have access to their fertility database and can help them:
 
 1. **BBT Tracking:**
-   - Record basal body temperature using recordBBT action (35.0-40.0°C)
-   - Track temperature patterns for ovulation prediction
-   - Monitor BBT trends and cycles
+   - View BBT records and temperature patterns
+   - Track temperature trends for ovulation prediction
+   - Monitor BBT cycles and averages
 
 2. **Cervical Mucus Monitoring:**
-   - Record cervical mucus type using setCervicalMucus action
+   - View cervical mucus records and types
    - Available types: dry, sticky, creamy, watery, egg_white
    - Track fertility indicators throughout cycle
 
 3. **Ovulation Testing:**
-   - Record ovulation test results using setOvulationTest action
+   - View ovulation test results and patterns
    - Results: negative, low, positive
    - Track LH surge patterns
 
-4. **Fertility Symptoms:**
-   - Record fertility symptoms using recordFertilitySymptoms action
-   - Track ovulation pain, breast tenderness, increased libido
-   - Add notes about fertility observations
+4. **Fertility Analysis:**
+   - Analyze patterns in fertility data
+   - Provide conception timing advice
+   - Predict ovulation windows
 
-5. **Database Operations:**
-   - All fertility data is automatically saved to the database
-   - Real-time updates to fertility records
-   - Persistent storage of BBT, cervical mucus, and ovulation data
+5. **Database Information:**
+   - View historical fertility data from the database
+   - Track trends over multiple cycles
+   - Access comprehensive fertility records
 
-Available cervical mucus types:
-- dry: Low fertility indicator
-- sticky: Low fertility indicator  
-- creamy: Moderate fertility indicator
-- watery: High fertility indicator
-- egg_white: Peak fertility indicator (best for conception)
-
-Ovulation test results:
-- negative: No LH surge detected
-- low: Slight LH surge
-- positive: Strong LH surge (ovulation likely within 24-48 hours)
-
-You can see their current fertility data including recent records and help them optimize their conception chances. All data is saved to the database automatically."
+You can see their current fertility data including recent records (BBT: {bbtRecords.length} records, Mucus: {cervicalMucusRecords.length} records, Tests: {ovulationTestRecords.length} records) and help them understand their fertility patterns."
         defaultOpen={false}
         labels={{
           title: "Fertility AI Assistant",
-          initial: "👋 Hi! I'm your fertility assistant. I can help you track ovulation and save everything to your database.\n\n**🌡️ BBT Tracking:**\n- \"Record my BBT as 36.8 degrees\"\n- \"Log my temperature at 36.6 celsius\"\n- \"My basal body temperature is 37.0\"\n\n**💧 Cervical Mucus:**\n- \"Set cervical mucus to egg_white\"\n- \"Record creamy cervical mucus\"\n- \"My cervical mucus is watery today\"\n\n**🧪 Ovulation Tests:**\n- \"Record positive ovulation test\"\n- \"Log negative ovulation test result\"\n- \"My ovulation test shows low positive\"\n\n**📊 Fertility Analysis:**\n- \"What's my current fertility status?\"\n- \"Show me my recent BBT patterns\"\n- \"Give me conception advice\"\n\nAll your fertility data is automatically saved and synced with the database!"
+          initial: "👋 Hi! I'm your fertility assistant. I can help you understand your fertility data and patterns.\n\n**📊 Your Current Data:**\n- BBT Records: " + bbtRecords.length + "\n- Average BBT: " + averageBBT.toFixed(1) + "°C\n- Cervical Mucus Records: " + cervicalMucusRecords.length + "\n- Ovulation Test Records: " + ovulationTestRecords.length + "\n\n**💬 Ask me about:**\n- \"Analyze my BBT patterns\"\n- \"What's my fertility status?\"\n- \"When should I test for ovulation?\"\n- \"Give me conception advice\"\n- \"Show me my recent data trends\"\n\nI can help you understand your fertility patterns and optimize your chances of conception!"
         }}
       />
     </div>

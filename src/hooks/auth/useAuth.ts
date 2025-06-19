@@ -2,7 +2,7 @@ import { useSession } from '@/components/auth/SessionProvider'
 import { supabase } from '@/lib/supabase/client'
 
 export function useAuth() {
-  const { user, loading } = useSession()
+  const { user, session, loading } = useSession()
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -43,6 +43,8 @@ export function useAuth() {
 
   return {
     user,
+    session,
+    accessToken: session?.access_token,
     loading,
     signIn,
     signUp,

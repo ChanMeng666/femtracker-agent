@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/rest-client";
 import { 
   VALID_SLEEP_QUALITIES, 
   VALID_STRESS_LEVELS, 
@@ -10,50 +10,87 @@ import {
   DEFAULT_LIFESTYLE_SCORE 
 } from "@/constants/lifestyle";
 
-// Frontend type adaptation for lifestyle entries
-interface FrontendLifestyleEntry {
+// Database type for lifestyle entries
+interface DatabaseLifestyleEntry {
+  id: string;
+  user_id: string;
+  date: string;
+  sleep_hours?: number;
+  sleep_quality?: number;
+  stress_level?: number;
+  stress_triggers?: string[];
+  coping_methods?: string[];
+  weight_kg?: number;
+  created_at: string;
+}
+
+// Frontend types
+interface LifestyleEntry {
   id: string;
   date: string;
-  sleepHours?: number;
-  sleepQuality?: number;
-  stressLevel?: number;
-  stressTriggers?: string[];
-  copingMethods?: string[];
-  weightKg?: number;
+  sleepHours: number;
+  sleepQuality: number;
+  stressLevel: number;
+  stressTriggers: string[];
+  copingMethods: string[];
+  weight?: number;
+}
+
+interface TodayEntry {
+  sleepHours: number;
+  sleepQuality: number;
+  stressLevel: number;
+  stressTriggers: string[];
+  copingMethods: string[];
 }
 
 export const useLifestyleWithDB = () => {
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // UI State
-  const [sleepQuality, setSleepQuality] = useState<string>("");
-  const [stressLevel, setStressLevel] = useState<string>("");
-  const [sleepHours, setSleepHours] = useState<number>(7.5);
-  const [lifestyleScore, setLifestyleScore] = useState<number>(DEFAULT_LIFESTYLE_SCORE);
+  const [sleepDuration, setSleepDuration] = useState<number>(7.5);
+  const [sleepQuality, setSleepQuality] = useState<number>(8);
+  const [stressLevel, setStressLevel] = useState<number>(4);
+  const [selectedStressTriggers, setSelectedStressTriggers] = useState<string[]>([]);
+  const [selectedCopingMethods, setSelectedCopingMethods] = useState<string[]>([]);
+  const [lifestyleScore, setLifestyleScore] = useState<number>(76);
 
-  // Database State
-  const [lifestyleEntries, setLifestyleEntries] = useState<FrontendLifestyleEntry[]>([]);
-  const [todayEntry, setTodayEntry] = useState<FrontendLifestyleEntry | null>(null);
+  // Database state
+  const [todayEntry, setTodayEntry] = useState<TodayEntry>({
+    sleepHours: 0,
+    sleepQuality: 0,
+    stressLevel: 0,
+    stressTriggers: [],
+    copingMethods: []
+  });
+  const [lifestyleEntries, setLifestyleEntries] = useState<LifestyleEntry[]>([]);
+
+  // Weekly averages
+  const [weeklyAverages, setWeeklyAverages] = useState({
+    sleep: 7.2,
+    sleepQuality: 7.8,
+    stress: 4.2
+  });
 
   // Load data on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user || !accessToken) return;
     loadAllData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, accessToken]);
 
   const loadAllData = async () => {
-    if (!user) return;
+    if (!user || !accessToken) return;
 
     setLoading(true);
     setError(null);
 
     try {
       await Promise.all([
-        loadRecentEntries(),
-        loadTodayEntry()
+        loadTodayEntry(),
+        loadRecentEntries()
       ]);
     } catch (err) {
       console.error('Error loading lifestyle data:', err);
@@ -63,175 +100,175 @@ export const useLifestyleWithDB = () => {
     }
   };
 
-  const loadRecentEntries = async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('lifestyle_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false })
-      .limit(30);
-
-    if (error) {
-      console.error('Error loading lifestyle entries:', error);
-      return;
-    }
-
-    if (data) {
-      setLifestyleEntries(data.map(entry => ({
-        id: entry.id,
-        date: entry.date,
-        sleepHours: entry.sleep_hours || undefined,
-        sleepQuality: entry.sleep_quality || undefined,
-        stressLevel: entry.stress_level || undefined,
-        stressTriggers: entry.stress_triggers || undefined,
-        copingMethods: entry.coping_methods || undefined,
-        weightKg: entry.weight_kg || undefined
-      })));
-    }
-  };
-
   const loadTodayEntry = async () => {
-    if (!user) return;
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const { data, error } = await supabase
-      .from('lifestyle_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .single();
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error loading today entry:', error);
-      return;
-    }
-
-    if (data) {
-      const entry: FrontendLifestyleEntry = {
-        id: data.id,
-        date: data.date,
-        sleepHours: data.sleep_hours || undefined,
-        sleepQuality: data.sleep_quality || undefined,
-        stressLevel: data.stress_level || undefined,
-        stressTriggers: data.stress_triggers || undefined,
-        copingMethods: data.coping_methods || undefined,
-        weightKg: data.weight_kg || undefined
-      };
-
-      setTodayEntry(entry);
-      
-      // Update UI state from today's data
-      if (entry.sleepHours !== undefined) setSleepHours(entry.sleepHours);
-      if (entry.sleepQuality !== undefined) {
-        const qualityMap = { 1: 'poor', 2: 'poor', 3: 'fair', 4: 'fair', 5: 'fair', 6: 'good', 7: 'good', 8: 'good', 9: 'excellent', 10: 'excellent' };
-        setSleepQuality(qualityMap[entry.sleepQuality as keyof typeof qualityMap] || '');
-      }
-      if (entry.stressLevel !== undefined) {
-        const stressMap = { 1: 'low', 2: 'low', 3: 'low', 4: 'moderate', 5: 'moderate', 6: 'moderate', 7: 'high', 8: 'high', 9: 'very_high', 10: 'very_high' };
-        setStressLevel(stressMap[entry.stressLevel as keyof typeof stressMap] || '');
-      }
-    }
-  };
-
-  // Create or update today's lifestyle entry
-  const updateTodayEntry = async (updates: Partial<{
-    sleepHours: number;
-    sleepQuality: number;
-    stressLevel: number;
-    stressTriggers: string[];
-    copingMethods: string[];
-    weightKg: number;
-  }>) => {
-    if (!user) return;
+    if (!user || !accessToken) return;
 
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      if (todayEntry) {
-        // Update existing entry
-        const { data, error } = await supabase
-          .from('lifestyle_entries')
-          .update({
-            sleep_hours: updates.sleepHours,
-            sleep_quality: updates.sleepQuality,
-            stress_level: updates.stressLevel,
-            stress_triggers: updates.stressTriggers,
-            coping_methods: updates.copingMethods,
-            weight_kg: updates.weightKg
-          })
-          .eq('id', todayEntry.id)
-          .eq('user_id', user.id)
-          .select()
-          .single();
+      const result = await supabaseRest.select(
+        'lifestyle_entries',
+        '*',
+        { user_id: user.id, date: today },
+        { accessToken }
+      );
 
-        if (error) {
-          console.error('Error updating lifestyle entry:', error);
-          return;
-        }
+      if (result.error) {
+        console.error('Error loading today entry:', result.error);
+        return;
+      }
 
-        if (data) {
-          const updatedEntry: FrontendLifestyleEntry = {
-            id: data.id,
-            date: data.date,
-            sleepHours: data.sleep_hours || undefined,
-            sleepQuality: data.sleep_quality || undefined,
-            stressLevel: data.stress_level || undefined,
-            stressTriggers: data.stress_triggers || undefined,
-            copingMethods: data.coping_methods || undefined,
-            weightKg: data.weight_kg || undefined
-          };
+      if (result.data && result.data.length > 0) {
+        const entry = result.data[0] as DatabaseLifestyleEntry;
+        setTodayEntry({
+          sleepHours: entry.sleep_hours || 0,
+          sleepQuality: entry.sleep_quality || 0,
+          stressLevel: entry.stress_level || 0,
+          stressTriggers: entry.stress_triggers || [],
+          copingMethods: entry.coping_methods || []
+        });
 
-          setTodayEntry(updatedEntry);
+        // Sync with UI state
+        setSleepDuration(entry.sleep_hours || 7.5);
+        setSleepQuality(entry.sleep_quality || 8);
+        setStressLevel(entry.stress_level || 4);
+        setSelectedStressTriggers(entry.stress_triggers || []);
+        setSelectedCopingMethods(entry.coping_methods || []);
+      }
+    } catch (error) {
+      console.error('Error loading today entry:', error);
+    }
+  };
+
+  const loadRecentEntries = async () => {
+    if (!user || !accessToken) return;
+
+    try {
+      const result = await supabaseRest.select(
+        'lifestyle_entries',
+        '*',
+        { user_id: user.id },
+        { limit: 30, accessToken }
+      );
+
+      if (result.error) {
+        console.error('Error loading recent entries:', result.error);
+        return;
+      }
+
+      if (result.data) {
+        // Sort by date descending
+        const sortedData = (result.data as DatabaseLifestyleEntry[]).sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        
+        const entries = sortedData.map((entry: DatabaseLifestyleEntry) => ({
+          id: entry.id,
+          date: entry.date,
+          sleepHours: entry.sleep_hours || 0,
+          sleepQuality: entry.sleep_quality || 0,
+          stressLevel: entry.stress_level || 0,
+          stressTriggers: entry.stress_triggers || [],
+          copingMethods: entry.coping_methods || [],
+          weight: entry.weight_kg
+        }));
+
+        setLifestyleEntries(entries);
+
+        // Calculate weekly averages from last 7 entries
+        const recentEntries = entries.slice(0, 7);
+        if (recentEntries.length > 0) {
+          const avgSleep = recentEntries.reduce((sum, e) => sum + e.sleepHours, 0) / recentEntries.length;
+          const avgSleepQuality = recentEntries.reduce((sum, e) => sum + e.sleepQuality, 0) / recentEntries.length;
+          const avgStress = recentEntries.reduce((sum, e) => sum + e.stressLevel, 0) / recentEntries.length;
           
-          // Update entries list
-          setLifestyleEntries(prev => prev.map(entry => 
-            entry.id === updatedEntry.id ? updatedEntry : entry
-          ));
-        }
-      } else {
-        // Create new entry
-        const { data, error } = await supabase
-          .from('lifestyle_entries')
-          .insert([{
-            user_id: user.id,
-            date: today,
-            sleep_hours: updates.sleepHours,
-            sleep_quality: updates.sleepQuality,
-            stress_level: updates.stressLevel,
-            stress_triggers: updates.stressTriggers,
-            coping_methods: updates.copingMethods,
-            weight_kg: updates.weightKg
-          }])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error creating lifestyle entry:', error);
-          return;
-        }
-
-        if (data) {
-          const newEntry: FrontendLifestyleEntry = {
-            id: data.id,
-            date: data.date,
-            sleepHours: data.sleep_hours || undefined,
-            sleepQuality: data.sleep_quality || undefined,
-            stressLevel: data.stress_level || undefined,
-            stressTriggers: data.stress_triggers || undefined,
-            copingMethods: data.coping_methods || undefined,
-            weightKg: data.weight_kg || undefined
-          };
-
-          setTodayEntry(newEntry);
-          setLifestyleEntries(prev => [newEntry, ...prev]);
+          setWeeklyAverages({
+            sleep: Number(avgSleep.toFixed(1)),
+            sleepQuality: Number(avgSleepQuality.toFixed(1)),
+            stress: Number(avgStress.toFixed(1))
+          });
         }
       }
-    } catch (err) {
-      console.error('Error updating lifestyle entry:', err);
+    } catch (error) {
+      console.error('Error loading recent entries:', error);
     }
+  };
+
+  // Save today's lifestyle data
+  const saveLifestyleEntry = async (
+    sleepHours: number,
+    sleepQuality: number,
+    stressLevel: number,
+    stressTriggers: string[],
+    copingMethods: string[],
+    weight?: number
+  ) => {
+    if (!user || !accessToken) return;
+
+    const today = new Date().toISOString().split('T')[0];
+
+    try {
+      const result = await supabaseRest.insert('lifestyle_entries', {
+        user_id: user.id,
+        date: today,
+        sleep_hours: sleepHours,
+        sleep_quality: sleepQuality,
+        stress_level: stressLevel,
+        stress_triggers: stressTriggers,
+        coping_methods: copingMethods,
+        weight_kg: weight
+      }, accessToken);
+
+      if (result.error) {
+        console.error('Error saving lifestyle entry:', result.error);
+        return;
+      }
+
+      // Update local state
+      setTodayEntry({
+        sleepHours,
+        sleepQuality,
+        stressLevel,
+        stressTriggers,
+        copingMethods
+      });
+
+      // Reload recent entries to update averages
+      loadRecentEntries();
+      
+    } catch (err) {
+      console.error('Error saving lifestyle entry:', err);
+    }
+  };
+
+  // Update individual lifestyle metrics
+  const updateSleepData = async (hours: number, quality: number) => {
+    setSleepDuration(hours);
+    setSleepQuality(quality);
+
+    // Auto-save
+    await saveLifestyleEntry(
+      hours,
+      quality,
+      stressLevel,
+      selectedStressTriggers,
+      selectedCopingMethods
+    );
+  };
+
+  const updateStressData = async (level: number, triggers: string[], methods: string[]) => {
+    setStressLevel(level);
+    setSelectedStressTriggers(triggers);
+    setSelectedCopingMethods(methods);
+
+    // Auto-save
+    await saveLifestyleEntry(
+      sleepDuration,
+      sleepQuality,
+      level,
+      triggers,
+      methods
+    );
   };
 
   // Make lifestyle data readable by AI
@@ -240,7 +277,7 @@ export const useLifestyleWithDB = () => {
     value: {
       sleepQuality,
       stressLevel,
-      sleepHours,
+      sleepHours: sleepDuration,
       lifestyleScore,
       todayEntry,
       recentEntries: lifestyleEntries.slice(0, 7), // Last 7 days
@@ -271,7 +308,7 @@ export const useLifestyleWithDB = () => {
         const qualityMap = { 'poor': 2, 'fair': 5, 'good': 7, 'excellent': 9 };
         const numericQuality = qualityMap[quality as keyof typeof qualityMap];
         
-        await updateTodayEntry({ sleepQuality: numericQuality });
+        await updateSleepData(sleepDuration, numericQuality);
       }
     },
   });
@@ -294,7 +331,7 @@ export const useLifestyleWithDB = () => {
         const stressMap = { 'low': 2, 'moderate': 5, 'high': 7, 'very_high': 9 };
         const numericStress = stressMap[level as keyof typeof stressMap];
         
-        await updateTodayEntry({ stressLevel: numericStress });
+        await updateStressData(numericStress, selectedStressTriggers, selectedCopingMethods);
       }
     },
   });
@@ -311,8 +348,8 @@ export const useLifestyleWithDB = () => {
     }],
     handler: async ({ hours }) => {
       if (hours >= SLEEP_MIN && hours <= SLEEP_MAX) {
-        setSleepHours(hours);
-        await updateTodayEntry({ sleepHours: hours });
+        setSleepDuration(hours);
+        await updateSleepData(hours, sleepQuality);
       }
     },
   });
@@ -329,7 +366,14 @@ export const useLifestyleWithDB = () => {
     }],
     handler: async ({ weightKg }) => {
       if (weightKg >= 30 && weightKg <= 200) {
-        await updateTodayEntry({ weightKg });
+        await saveLifestyleEntry(
+          sleepDuration,
+          sleepQuality,
+          stressLevel,
+          selectedStressTriggers,
+          selectedCopingMethods,
+          weightKg
+        );
       }
     },
   });
@@ -353,10 +397,7 @@ export const useLifestyleWithDB = () => {
       }
     ],
     handler: async ({ triggers, copingMethods }) => {
-      await updateTodayEntry({ 
-        stressTriggers: triggers,
-        copingMethods: copingMethods
-      });
+      await updateStressData(stressLevel, triggers, copingMethods);
     },
   });
 
@@ -379,12 +420,12 @@ export const useLifestyleWithDB = () => {
 
   return {
     // UI State
+    sleepDuration,
+    setSleepDuration,
     sleepQuality,
     setSleepQuality,
     stressLevel,
     setStressLevel,
-    sleepHours,
-    setSleepHours,
     lifestyleScore,
     
     // Database State
@@ -394,7 +435,8 @@ export const useLifestyleWithDB = () => {
     error,
     
     // Actions
-    updateTodayEntry,
+    updateSleepData,
+    updateStressData,
     loadAllData
   };
 }; 
