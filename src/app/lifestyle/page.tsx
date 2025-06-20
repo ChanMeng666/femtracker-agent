@@ -48,12 +48,6 @@ export default function LifestyleTracker() {
 // Internal component that uses CopilotKit hooks
 function LifestyleTrackerContent() {
   const {
-    sleepQuality,
-    setSleepQuality,
-    stressLevel,
-    setStressLevel,
-    sleepHours,
-    setSleepHours,
     loading,
     error
   } = useLifestyleWithDB();
@@ -125,7 +119,7 @@ function LifestyleTrackerContent() {
 
   const handleSaveRecord = async (recordId: string) => {
     try {
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         sleep_hours: Number(tempSleepHours),
         sleep_quality: tempSleepQuality,
         stress_level: tempStressLevel,
@@ -167,7 +161,7 @@ function LifestyleTrackerContent() {
 
   const handleAddRecord = async () => {
     try {
-      const recordData: any = {
+      const recordData: Record<string, unknown> = {
         date: today,
         sleep_hours: Number(tempSleepHours),
         sleep_quality: tempSleepQuality,

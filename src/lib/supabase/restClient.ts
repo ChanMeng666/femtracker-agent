@@ -257,7 +257,7 @@ class QueryBuilder {
 class AuthClient {
   constructor(private baseUrl: string, private anonKey: string) {}
 
-  async getSession(): Promise<{ data: { session: any }; error: any }> {
+  async getSession(): Promise<{ data: { session: unknown }; error: unknown }> {
     try {
       const token = localStorage.getItem('supabase.auth.token');
       if (!token) {
@@ -305,7 +305,7 @@ class AuthClient {
     }
   }
 
-  onAuthStateChange(callback: (event: string, session: any) => void) {
+  onAuthStateChange(callback: (event: string, session: unknown) => void) {
     // 初始检查
     this.getSession().then(({ data: { session } }) => {
       callback(session ? 'SIGNED_IN' : 'SIGNED_OUT', session);
@@ -399,7 +399,7 @@ class AuthClient {
     }
   }
 
-  async signUp(credentials: { email: string; password: string; options?: any }) {
+  async signUp(credentials: { email: string; password: string; options?: Record<string, unknown> }) {
     try {
       const response = await fetch(`${this.baseUrl}/auth/v1/signup`, {
         method: 'POST',
@@ -466,7 +466,7 @@ class AuthClient {
 
   async resetPasswordForEmail(email: string, options?: { redirectTo?: string }) {
     try {
-      const body: any = { email };
+      const body: Record<string, unknown> = { email };
       if (options?.redirectTo) {
         body.redirect_to = options.redirectTo;
       }
@@ -494,7 +494,7 @@ class AuthClient {
     }
   }
 
-  async updateUser(updates: { password?: string; data?: any }) {
+  async updateUser(updates: { password?: string; data?: Record<string, unknown> }) {
     try {
       const token = localStorage.getItem('supabase.auth.token');
       if (!token) {

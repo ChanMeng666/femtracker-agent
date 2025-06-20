@@ -13,14 +13,14 @@ export function useAuth() {
       setLoading(false)
     })
 
-    // Listen for auth changes
+        // Listen for auth changes
     const { data: { subscription } } = supabaseRest.auth.onAuthStateChange(
-      async (event: string, session: any) => {
+      async (event: string, session: { user?: User } | null) => {
         setUser(session?.user ?? null)
         
         // Handle email confirmation - create profile when user confirms email
         if (event === 'SIGNED_IN' && session?.user) {
-          await ensureUserProfile(session.user)
+          await ensureUserProfile(session.user as User)
         }
         
         setLoading(false)

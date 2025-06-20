@@ -84,7 +84,7 @@ export const ExerciseTrackerContent: React.FC = () => {
 
   const handleSaveExercise = async (exerciseId: string) => {
     try {
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         duration_minutes: tempDuration,
         intensity: tempIntensity,
         notes: tempNotes || 'Updated manually'
@@ -125,7 +125,7 @@ export const ExerciseTrackerContent: React.FC = () => {
 
   const handleAddExercise = async (exerciseType: string) => {
     try {
-      const exerciseData: any = {
+      const exerciseData: Record<string, unknown> = {
         date: today,
         exercise_type: exerciseType,
         duration_minutes: tempDuration,
@@ -435,19 +435,19 @@ export const ExerciseTrackerContent: React.FC = () => {
         <h3 className="text-sm font-medium text-blue-800 mb-2">🤖 Ask your AI Assistant</h3>
         <div className="text-xs text-blue-700 space-y-1">
           <p><strong>Workout Recording:</strong></p>
-          <p>• &ldquo;Record a 45-minute cardio workout with intensity 7&rdquo;</p>
-          <p>• &ldquo;Log 30 minutes of yoga with 250 calories burned&rdquo;</p>
-          <p>• &ldquo;Add strength training session for 60 minutes&rdquo;</p>
+          <p>• &quot;Record a 45-minute cardio workout with intensity 7&quot;</p>
+          <p>• &quot;Log 30 minutes of yoga with 250 calories burned&quot;</p>
+          <p>• &quot;Add strength training session for 60 minutes&quot;</p>
           
           <p className="pt-2"><strong>Goal Management:</strong></p>
-          <p>• &ldquo;Set my weekly exercise goal to 200 minutes&rdquo;</p>
-          <p>• &ldquo;What&apos;s my current goal achievement?&rdquo;</p>
-          <p>• &ldquo;Update my exercise score to 85&rdquo;</p>
+          <p>• &quot;Set my weekly exercise goal to 200 minutes&quot;</p>
+          <p>• &quot;What&apos;s my current goal achievement?&quot;</p>
+          <p>• &quot;Update my exercise score to 85&quot;</p>
           
           <p className="pt-2"><strong>Data Analysis:</strong></p>
-          <p>• &ldquo;Show me my workout patterns this week&rdquo;</p>
-          <p>• &ldquo;What&apos;s my average exercise intensity?&rdquo;</p>
-          <p>• &ldquo;Analyze my exercise consistency&rdquo;</p>
+          <p>• &quot;Show me my workout patterns this week&quot;</p>
+          <p>• &quot;What&apos;s my average exercise intensity?&quot;</p>
+          <p>• &quot;Analyze my exercise consistency&quot;</p>
         </div>
       </div>
     </PageLayout>

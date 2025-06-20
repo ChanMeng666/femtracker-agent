@@ -79,7 +79,7 @@ export const useNutritionWithDB = () => {
     }
 
     if (data) {
-      setTodayMeals(data.map((meal: any) => ({
+      setTodayMeals(data.map((meal: Record<string, unknown>) => ({
         time: meal.meal_time,
         foods: meal.foods,
         calories: meal.calories || 0,
@@ -106,7 +106,7 @@ export const useNutritionWithDB = () => {
     }
 
     if (data) {
-      const intakeHistory = data.map((intake: any) => ({
+      const intakeHistory = data.map((intake: Record<string, unknown>) => ({
         id: intake.id,
         date: intake.date,
         amountMl: intake.amount_ml,
@@ -114,7 +114,7 @@ export const useNutritionWithDB = () => {
       }));
       
       setWaterIntakeHistory(intakeHistory);
-      setTodayWaterIntake(data.reduce((sum: number, intake: any) => sum + intake.amount_ml, 0));
+      setTodayWaterIntake(data.reduce((sum: number, intake: Record<string, unknown>) => sum + Number(intake.amount_ml), 0));
     }
   };
 

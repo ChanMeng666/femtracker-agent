@@ -42,7 +42,6 @@ export const NutritionTrackerContent: React.FC = () => {
     todayWaterIntake,
     waterPercentage,
     selectedFoodTypes,
-    todayMeals,
     calorieGoal,
     nutritionScore,
     proteinData,
@@ -58,7 +57,6 @@ export const NutritionTrackerContent: React.FC = () => {
   // Local state for enhanced features
   const [meals, setMeals] = useState<Meal[]>([]);
   const [waterIntakes, setWaterIntakes] = useState<WaterIntake[]>([]);
-  const [editingMeal, setEditingMeal] = useState<string | null>(null);
   const [showAddMealForm, setShowAddMealForm] = useState<boolean>(false);
   const [tempFoods, setTempFoods] = useState<string>('');
   const [tempCalories, setTempCalories] = useState<string>('');
@@ -112,20 +110,10 @@ export const NutritionTrackerContent: React.FC = () => {
   // Get recent data (last 7 days)
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentMeals = meals.filter(m => new Date(m.date) >= sevenDaysAgo);
-
-  // Handle meal editing
-  const handleEditMeal = (meal: Meal) => {
-    setEditingMeal(meal.id);
-    setTempFoods(meal.foods.join(', '));
-    setTempCalories(meal.calories?.toString() || '');
-    setTempNutrients(meal.nutrients?.join(', ') || '');
-    setTempNotes(meal.notes || '');
-  };
 
   const handleSaveMeal = async (mealId: string) => {
     try {
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         foods: tempFoods.split(',').map(f => f.trim()).filter(f => f),
         notes: tempNotes || 'Updated manually'
       };
@@ -169,7 +157,7 @@ export const NutritionTrackerContent: React.FC = () => {
 
   const handleAddMeal = async (mealTime: string) => {
     try {
-      const mealData: any = {
+      const mealData: Record<string, unknown> = {
         date: today,
         meal_time: mealTime,
         foods: tempFoods.split(',').map(f => f.trim()).filter(f => f),
@@ -538,19 +526,19 @@ export const NutritionTrackerContent: React.FC = () => {
               <h3 className="text-sm font-medium text-green-800 mb-2">🤖 Ask your AI Assistant</h3>
               <div className="text-xs text-green-700 space-y-1">
                 <p><strong>Meal Recording:</strong></p>
-                <p>• &ldquo;Record breakfast: oatmeal, banana, milk with 350 calories&rdquo;</p>
-                <p>• &ldquo;Log lunch: salmon, rice, vegetables with omega3 nutrients&rdquo;</p>
-                <p>• &ldquo;Add dinner: chicken, broccoli, sweet potato&rdquo;</p>
+                <p>• &quot;Record breakfast: oatmeal, banana, milk with 350 calories&quot;</p>
+                <p>• &quot;Log lunch: salmon, rice, vegetables with omega3 nutrients&quot;</p>
+                <p>• &quot;Add dinner: chicken, broccoli, sweet potato&quot;</p>
                 
                 <p className="pt-2"><strong>Water Tracking:</strong></p>
-                <p>• &ldquo;Add 500ml of water to my intake&rdquo;</p>
-                <p>• &ldquo;I drank a 750ml bottle of water&rdquo;</p>
-                <p>• &ldquo;Record 250ml water intake&rdquo;</p>
+                <p>• &quot;Add 500ml of water to my intake&quot;</p>
+                <p>• &quot;I drank a 750ml bottle of water&quot;</p>
+                <p>• &quot;Record 250ml water intake&quot;</p>
                 
                 <p className="pt-2"><strong>Nutrition Management:</strong></p>
-                <p>• &ldquo;Set my calorie goal to 1600&rdquo;</p>
-                <p>• &ldquo;Add iron and calcium to my nutrition focus&rdquo;</p>
-                <p>• &ldquo;What foods are good for omega3?&rdquo;</p>
+                <p>• &quot;Set my calorie goal to 1600&quot;</p>
+                <p>• &quot;Add iron and calcium to my nutrition focus&quot;</p>
+                <p>• &quot;What foods are good for omega3?&quot;</p>
               </div>
             </div>
 
