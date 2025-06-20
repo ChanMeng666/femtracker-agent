@@ -45,8 +45,7 @@ interface DatabaseRecord {
   [key: string]: unknown;
 }
 
-// Removed unused interface
-// interface DatabaseHealthOverview {
+interface DatabaseHealthOverview {
   overall_score: number;
   cycle_health: number;
   nutrition_score: number;

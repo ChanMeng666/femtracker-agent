@@ -65,10 +65,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  experimental: {
-    // 启用服务器组件
-    serverComponentsExternalPackages: ['@copilotkit/runtime'],
-  }
+  // 外部包配置（Next.js 15+的新配置方式）
+  serverExternalPackages: ['@copilotkit/runtime']
 };
 
 export default nextConfig; 
