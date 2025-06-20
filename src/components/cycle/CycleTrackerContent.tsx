@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCycleWithDB } from '@/hooks/useCycleWithDB';
+import { useSymptomsMoods } from '@/hooks/data/useSymptomsMoods';
+import { supabaseRest } from '@/lib/supabase/restClient';
 import { symptoms, moods } from '@/constants/cycle';
 import { PageLayout } from '@/components/shared/PageLayout';
 
@@ -7,17 +9,174 @@ export const CycleTrackerContent: React.FC = () => {
   const {
     currentDay,
     setCurrentDay,
-    selectedSymptoms,
-    selectedMood,
-    setSelectedMood,
     currentPhase,
     nextPeriodDays,
     ovulationDays,
-    toggleSymptom,
     loading,
     currentCycle,
     startNewCycle,
   } = useCycleWithDB();
+
+  const { 
+    symptoms: todaySymptoms, 
+    moods: todayMoods, 
+    upsertSymptom, 
+    upsertMood, 
+    deleteSymptom, 
+    deleteMood 
+  } = useSymptomsMoods();
+
+  // Local state for editing
+  const [editingSymptom, setEditingSymptom] = useState<string | null>(null);
+  const [editingMood, setEditingMood] = useState<string | null>(null);
+  const [tempSeverity, setTempSeverity] = useState<number>(5);
+  const [tempIntensity, setTempIntensity] = useState<number>(5);
+  const [tempNotes, setTempNotes] = useState<string>('');
+
+  // Quick records state
+  const [waterAmount, setWaterAmount] = useState<string>('');
+  const [sleepHours, setSleepHours] = useState<string>('');
+  const [sleepQuality, setSleepQuality] = useState<number>(5);
+  const [stressLevel, setStressLevel] = useState<number>(5);
+  const [selectedFlow, setSelectedFlow] = useState<string>('');
+
+  // Get today's data
+  const today = new Date().toISOString().split('T')[0];
+  const todaySymptomsData = todaySymptoms.filter(s => s.date === today);
+  const todayMoodsData = todayMoods.filter(m => m.date === today);
+
+  // Handle symptom editing
+  const handleEditSymptom = (symptomType: string) => {
+    const existingSymptom = todaySymptomsData.find(s => s.symptom_type === symptomType);
+    setEditingSymptom(symptomType);
+    setTempSeverity(existingSymptom?.severity || 5);
+    setTempNotes(existingSymptom?.notes || '');
+  };
+
+  const handleSaveSymptom = async (symptomType: string) => {
+    await upsertSymptom({
+      symptom_type: symptomType,
+      severity: tempSeverity,
+      date: today,
+      notes: tempNotes || 'Updated manually'
+    });
+    setEditingSymptom(null);
+  };
+
+  const handleDeleteSymptom = async (symptomType: string) => {
+    const existingSymptom = todaySymptomsData.find(s => s.symptom_type === symptomType);
+    if (existingSymptom) {
+      await deleteSymptom(existingSymptom.id);
+    }
+  };
+
+  // Handle mood editing
+  const handleEditMood = (moodType: string) => {
+    const existingMood = todayMoodsData.find(m => m.mood_type === moodType);
+    setEditingMood(moodType);
+    setTempIntensity(existingMood?.intensity || 5);
+    setTempNotes(existingMood?.notes || '');
+  };
+
+  const handleSaveMood = async (moodType: string) => {
+    await upsertMood({
+      mood_type: moodType,
+      intensity: tempIntensity,
+      date: today,
+      notes: tempNotes || 'Updated manually'
+    });
+    setEditingMood(null);
+  };
+
+  const handleDeleteMood = async (moodType: string) => {
+    const existingMood = todayMoodsData.find(m => m.mood_type === moodType);
+    if (existingMood) {
+      await deleteMood(existingMood.id);
+    }
+  };
+
+  // Handle quick records
+  const handleRecordFlow = async (flow: string) => {
+    setSelectedFlow(flow);
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      const { error } = await supabaseRest
+        .from('quick_records')
+        .insert([{
+          date: today,
+          record_type: 'period_flow',
+          value: flow,
+          notes: 'Updated manually'
+        }]);
+      
+      if (!error) {
+        alert(`Period flow recorded as ${flow}`);
+      } else {
+        console.error('Error recording flow:', error);
+      }
+    } catch (error) {
+      console.error('Error recording flow:', error);
+    }
+  };
+
+  const handleRecordWater = async () => {
+    if (!waterAmount || Number(waterAmount) <= 0) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      const { error } = await supabaseRest
+        .from('water_intake')
+        .insert([{
+          date: today,
+          amount_ml: Number(waterAmount)
+        }]);
+      
+      if (!error) {
+        alert(`Water intake of ${waterAmount}ml recorded`);
+        setWaterAmount('');
+      } else {
+        console.error('Error recording water:', error);
+      }
+    } catch (error) {
+      console.error('Error recording water:', error);
+    }
+  };
+
+  const handleRecordLifestyle = async () => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const lifestyleData: {
+      date: string;
+      sleep_hours?: number;
+      sleep_quality?: number;
+      stress_level?: number;
+    } = {
+      date: today
+    };
+    
+    if (sleepHours) lifestyleData.sleep_hours = Number(sleepHours);
+    if (sleepQuality) lifestyleData.sleep_quality = sleepQuality;
+    if (stressLevel) lifestyleData.stress_level = stressLevel;
+    
+    try {
+      const { error } = await supabaseRest
+        .from('lifestyle_entries')
+        .upsert([lifestyleData]);
+      
+      if (!error) {
+        alert('Lifestyle data saved successfully');
+        setSleepHours('');
+        setSleepQuality(5);
+        setStressLevel(5);
+      } else {
+        console.error('Error recording lifestyle:', error);
+      }
+    } catch (error) {
+      console.error('Error recording lifestyle:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -121,68 +280,387 @@ export const CycleTrackerContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Symptom Tracking */}
+      {/* Enhanced Symptom Tracking */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-6">Today&apos;s Symptoms</h2>
+        
+        {/* Current Symptoms with Details */}
+        {todaySymptomsData.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Recorded Symptoms</h3>
+            <div className="space-y-3">
+              {todaySymptomsData.map((symptom) => (
+                <div key={symptom.id} className="flex items-center justify-between p-3 bg-pink-50 border border-pink-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xl">
+                      {symptoms.find(s => s.name === symptom.symptom_type)?.icon || '🩸'}
+                    </span>
+                    <div>
+                      <div className="font-medium text-gray-800">{symptom.symptom_type}</div>
+                      <div className="text-sm text-gray-600">
+                        Severity: <span className="font-medium text-pink-600">{symptom.severity}/10</span>
+                        {symptom.notes && (
+                          <span className="ml-2 text-xs text-gray-500">• {symptom.notes}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleEditSymptom(symptom.symptom_type)}
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSymptom(symptom.symptom_type)}
+                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Symptom Selection Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {symptoms.map((symptom) => (
-            <button
-              key={symptom.name}
-              onClick={() => toggleSymptom(symptom.name)}
-              className={`p-4 rounded-xl border-2 transition-all ${
-                selectedSymptoms.includes(symptom.name)
-                  ? 'border-pink-500 bg-pink-50 shadow-md'
-                  : `${symptom.color} border-2 hover:shadow-sm`
-              }`}
-            >
-              <div className="text-center">
-                <div className="text-2xl mb-2">{symptom.icon}</div>
-                <div className="text-sm font-medium text-gray-800">{symptom.name}</div>
+          {symptoms.map((symptom) => {
+            const existingSymptom = todaySymptomsData.find(s => s.symptom_type === symptom.name);
+            const isSelected = !!existingSymptom;
+            const isEditing = editingSymptom === symptom.name;
+
+            return (
+              <div key={symptom.name} className="relative">
+                {isEditing ? (
+                  // Editing Mode
+                  <div className="p-4 border-2 border-blue-500 bg-blue-50 rounded-xl">
+                    <div className="text-center mb-3">
+                      <div className="text-2xl mb-1">{symptom.icon}</div>
+                      <div className="text-sm font-medium text-gray-800">{symptom.name}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-gray-600">Severity (1-10)</label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={tempSeverity}
+                          onChange={(e) => setTempSeverity(Number(e.target.value))}
+                          className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="text-center text-xs font-medium text-blue-600">{tempSeverity}/10</div>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Notes (optional)"
+                        value={tempNotes}
+                        onChange={(e) => setTempNotes(e.target.value)}
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                      />
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => handleSaveSymptom(symptom.name)}
+                          className="flex-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingSymptom(null)}
+                          className="flex-1 px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Normal Mode
+                  <button
+                    onClick={() => isSelected ? handleEditSymptom(symptom.name) : handleEditSymptom(symptom.name)}
+                    className={`w-full p-4 rounded-xl border-2 transition-all ${
+                      isSelected
+                        ? 'border-pink-500 bg-pink-50 shadow-md'
+                        : `${symptom.color} border-2 hover:shadow-sm`
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl mb-2">{symptom.icon}</div>
+                      <div className="text-sm font-medium text-gray-800">{symptom.name}</div>
+                      {existingSymptom && (
+                        <div className="text-xs text-pink-600 mt-1 font-medium">
+                          {existingSymptom.severity}/10
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
         <p className="text-xs text-gray-500 mt-4">
-          💾 Symptoms are automatically saved to your database when selected
+          💾 Click to add/edit symptoms. All data is automatically saved to your database.
         </p>
       </div>
 
-      {/* Mood Tracking */}
+      {/* Enhanced Mood Tracking */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-6">Today&apos;s Mood</h2>
+        
+        {/* Current Moods with Details */}
+        {todayMoodsData.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Recorded Moods</h3>
+            <div className="space-y-3">
+              {todayMoodsData.map((mood) => (
+                <div key={mood.id} className="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xl">
+                      {moods.find(m => m.name === mood.mood_type)?.icon || '😊'}
+                    </span>
+                    <div>
+                      <div className="font-medium text-gray-800">{mood.mood_type}</div>
+                      <div className="text-sm text-gray-600">
+                        Intensity: <span className="font-medium text-purple-600">{mood.intensity}/10</span>
+                        {mood.notes && (
+                          <span className="ml-2 text-xs text-gray-500">• {mood.notes}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleEditMood(mood.mood_type)}
+                      className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMood(mood.mood_type)}
+                      className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mood Selection Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {moods.map((mood) => (
-            <button
-              key={mood.name}
-              onClick={() => setSelectedMood(mood.name)}
-              className={`p-4 rounded-xl border-2 transition-all ${
-                selectedMood === mood.name
-                  ? 'border-purple-500 bg-purple-50 shadow-md'
-                  : `${mood.color} border-2 hover:shadow-sm`
-              }`}
-            >
-              <div className="text-center">
-                <div className="text-2xl mb-2">{mood.icon}</div>
-                <div className="text-sm font-medium text-gray-800">{mood.name}</div>
+          {moods.map((mood) => {
+            const existingMood = todayMoodsData.find(m => m.mood_type === mood.name);
+            const isSelected = !!existingMood;
+            const isEditing = editingMood === mood.name;
+
+            return (
+              <div key={mood.name} className="relative">
+                {isEditing ? (
+                  // Editing Mode
+                  <div className="p-4 border-2 border-blue-500 bg-blue-50 rounded-xl">
+                    <div className="text-center mb-3">
+                      <div className="text-2xl mb-1">{mood.icon}</div>
+                      <div className="text-sm font-medium text-gray-800">{mood.name}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-gray-600">Intensity (1-10)</label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={tempIntensity}
+                          onChange={(e) => setTempIntensity(Number(e.target.value))}
+                          className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="text-center text-xs font-medium text-blue-600">{tempIntensity}/10</div>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Notes (optional)"
+                        value={tempNotes}
+                        onChange={(e) => setTempNotes(e.target.value)}
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                      />
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => handleSaveMood(mood.name)}
+                          className="flex-1 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingMood(null)}
+                          className="flex-1 px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Normal Mode
+                  <button
+                    onClick={() => handleEditMood(mood.name)}
+                    className={`w-full p-4 rounded-xl border-2 transition-all ${
+                      isSelected
+                        ? 'border-purple-500 bg-purple-50 shadow-md'
+                        : `${mood.color} border-2 hover:shadow-sm`
+                    }`}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl mb-2">{mood.icon}</div>
+                      <div className="text-sm font-medium text-gray-800">{mood.name}</div>
+                      {existingMood && (
+                        <div className="text-xs text-purple-600 mt-1 font-medium">
+                          {existingMood.intensity}/10
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
         <p className="text-xs text-gray-500 mt-4">
-          💾 Mood data is automatically saved to your database when selected
+          💾 Click to add/edit moods. All data is automatically saved to your database.
         </p>
+      </div>
+
+      {/* Quick Daily Records */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">Quick Daily Records</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Period Flow */}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-red-800 mb-3 flex items-center">
+              🩸 Period Flow
+            </h3>
+            <div className="space-y-2">
+              {['Light', 'Medium', 'Heavy', 'Spotting'].map((flow) => (
+                <button
+                  key={flow}
+                  onClick={() => handleRecordFlow(flow)}
+                  className={`w-full px-3 py-2 text-sm border border-red-300 rounded-md hover:bg-red-50 transition-colors text-left ${
+                    selectedFlow === flow ? 'bg-red-100 border-red-500' : 'bg-white'
+                  }`}
+                >
+                  {flow}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Water Intake */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-blue-800 mb-3 flex items-center">
+              💧 Water Intake
+            </h3>
+            <div className="space-y-2">
+              <input
+                type="number"
+                placeholder="Amount in ml"
+                value={waterAmount}
+                onChange={(e) => setWaterAmount(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+              />
+              <button 
+                onClick={handleRecordWater}
+                className="w-full px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Record Water
+              </button>
+            </div>
+          </div>
+
+          {/* Sleep & Stress */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-green-800 mb-3 flex items-center">
+              😴 Sleep & Stress
+            </h3>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs text-green-700">Sleep Hours</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="24"
+                  placeholder="8.0"
+                  value={sleepHours}
+                  onChange={(e) => setSleepHours(e.target.value)}
+                  className="w-full px-2 py-1 text-sm border border-green-300 rounded focus:outline-none focus:border-green-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-green-700">Sleep Quality: {sleepQuality}/10</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={sleepQuality}
+                  onChange={(e) => setSleepQuality(Number(e.target.value))}
+                  className="w-full h-1 bg-green-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-green-700">Stress Level: {stressLevel}/10</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={stressLevel}
+                  onChange={(e) => setStressLevel(Number(e.target.value))}
+                  className="w-full h-1 bg-green-200 rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+              <button 
+                onClick={handleRecordLifestyle}
+                className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              >
+                Save Lifestyle
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* AI Assistant Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-blue-800 mb-2">🤖 Ask your AI Assistant</h3>
         <div className="text-xs text-blue-700 space-y-1">
-          <p><strong>Try saying:</strong></p>
+          <p><strong>Cycle Management:</strong></p>
           <p>• &ldquo;Update my cycle to day 15&rdquo;</p>
-          <p>• &ldquo;I&apos;m experiencing cramps and fatigue today&rdquo;</p>
-          <p>• &ldquo;I&apos;m feeling anxious today&rdquo;</p>
-          <p>• &ldquo;What phase am I in and what should I expect?&rdquo;</p>
           <p>• &ldquo;Start a new cycle today&rdquo;</p>
+          
+          <p className="pt-2"><strong>Detailed Symptom Tracking:</strong></p>
+          <p>• &ldquo;I have cramps severity 8 with notes about location&rdquo;</p>
+          <p>• &ldquo;Update my headache to severity 6&rdquo;</p>
+          <p>• &ldquo;Remove my bloating symptom&rdquo;</p>
+          
+          <p className="pt-2"><strong>Detailed Mood Tracking:</strong></p>
+          <p>• &ldquo;I&apos;m feeling anxious intensity 7&rdquo;</p>
+          <p>• &ldquo;Update my mood to happy with intensity 9&rdquo;</p>
+          <p>• &ldquo;Add notes to my current mood&rdquo;</p>
+          
+          <p className="pt-2"><strong>Health Insights:</strong></p>
+          <p>• &ldquo;What phase am I in and what should I expect?&rdquo;</p>
+          <p>• &ldquo;Show me my symptom patterns&rdquo;</p>
+          <p>• &ldquo;Analyze my mood changes this cycle&rdquo;</p>
+          
+          <p className="pt-2"><strong>Quick Daily Records:</strong></p>
+          <p>• &ldquo;Record period flow as heavy today&rdquo;</p>
+          <p>• &ldquo;I drank 1500ml of water today&rdquo;</p>
+          <p>• &ldquo;I slept 8 hours with quality 7 and stress level 3&rdquo;</p>
+          <p>• &ldquo;Update my sleep to 7.5 hours with poor quality&rdquo;</p>
         </div>
       </div>
     </PageLayout>

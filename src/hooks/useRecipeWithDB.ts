@@ -4,7 +4,7 @@ import { useCoAgent, useCopilotChat } from "@copilotkit/react-core";
 import { useCopilotChatSuggestions } from "@copilotkit/react-ui";
 import { Role, TextMessage } from "@copilotkit/runtime-client-gql";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/restClient";
 import { Recipe, RecipeAgentState, Ingredient, SkillLevel, SpecialPreferences, CookingTime } from "@/types/recipe";
 import { INITIAL_STATE, chatSuggestions, cookingTimeValues } from "@/constants/recipe";
 
@@ -89,17 +89,35 @@ export const useRecipeWithDB = () => {
     setError(null);
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('recipes')
         .select('*')
         .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error loading recipes:', error);
         setError('Failed to load recipes');
       } else {
-        setSavedRecipes(data || []);
+        const recipes = data.map((recipe: any) => ({
+          id: recipe.id,
+          title: recipe.title,
+          description: recipe.description || '',
+          prepTime: recipe.prep_time || 0,
+          cookTime: recipe.cook_time || 0,
+          servings: recipe.servings || 1,
+          difficulty: recipe.difficulty || 'Easy',
+          cuisine: recipe.cuisine || '',
+          dietaryTags: recipe.dietary_tags || [],
+          ingredients: recipe.ingredients || [],
+          instructions: recipe.instructions || [],
+          nutritionInfo: recipe.nutrition_info || {},
+          notes: recipe.notes || '',
+          imageUrl: recipe.image_url || '',
+          createdAt: recipe.created_at
+        }));
+        
+        setSavedRecipes(recipes);
       }
     } catch (err) {
       console.error('Error loading recipes:', err);
@@ -110,68 +128,58 @@ export const useRecipeWithDB = () => {
   };
 
   // Save current recipe to database
-  const saveRecipe = async () => {
-    if (!user || !recipe.title.trim()) {
-      setError('Recipe title is required');
-      return null;
-    }
-
-    setError(null);
+  const saveRecipe = async (recipeData: any) => {
+    if (!user) return;
 
     try {
-      const recipeData = {
-        user_id: user.id,
-        title: recipe.title,
-        skill_level: recipe.skill_level,
-        cooking_time: recipe.cooking_time,
-        special_preferences: recipe.special_preferences,
-        ingredients: recipe.ingredients,
-        instructions: recipe.instructions,
-        servings: 1, // Default servings
-        notes: `Recipe created with AI assistance`,
-        tags: ['ai-generated']
+      const { data, error } = await supabaseRest
+        .from('recipes')
+        .insert([{
+          user_id: user.id,
+          title: recipeData.title,
+          description: recipeData.description,
+          prep_time: recipeData.prepTime,
+          cook_time: recipeData.cookTime,
+          servings: recipeData.servings,
+          difficulty: recipeData.difficulty,
+          cuisine: recipeData.cuisine,
+          dietary_tags: recipeData.dietaryTags,
+          ingredients: recipeData.ingredients,
+          instructions: recipeData.instructions,
+          nutrition_info: recipeData.nutritionInfo,
+          notes: recipeData.notes,
+          image_url: recipeData.imageUrl
+        }]);
+
+      if (error) {
+        console.error('Error saving recipe:', error);
+        return { error };
+      }
+
+      const savedRecipe = {
+        id: data[0].id,
+        title: data[0].title,
+        description: data[0].description || '',
+        prepTime: data[0].prep_time || 0,
+        cookTime: data[0].cook_time || 0,
+        servings: data[0].servings || 1,
+        difficulty: data[0].difficulty || 'Easy',
+        cuisine: data[0].cuisine || '',
+        dietaryTags: data[0].dietary_tags || [],
+        ingredients: data[0].ingredients || [],
+        instructions: data[0].instructions || [],
+        nutritionInfo: data[0].nutrition_info || {},
+        notes: data[0].notes || '',
+        imageUrl: data[0].image_url || '',
+        createdAt: data[0].created_at
       };
 
-      let result;
-
-      if (currentRecipeId) {
-        // Update existing recipe
-        result = await supabase
-          .from('recipes')
-          .update(recipeData)
-          .eq('id', currentRecipeId)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-      } else {
-        // Create new recipe
-        result = await supabase
-          .from('recipes')
-          .insert([recipeData])
-          .select()
-          .single();
-      }
-
-      if (result.error) {
-        console.error('Error saving recipe:', result.error);
-        setError('Failed to save recipe');
-        return null;
-      } else {
-        // Update local state
-        if (currentRecipeId) {
-          setSavedRecipes(prev => prev.map(r => 
-            r.id === currentRecipeId ? result.data : r
-          ));
-        } else {
-          setSavedRecipes(prev => [result.data, ...prev]);
-          setCurrentRecipeId(result.data.id);
-        }
-        return result.data;
-      }
+      setSavedRecipes(prev => [savedRecipe, ...prev]);
+      setCurrentRecipeId(savedRecipe.id);
+      return { data: savedRecipe };
     } catch (err) {
       console.error('Error saving recipe:', err);
-      setError('Failed to save recipe');
-      return null;
+      return { error: 'Failed to save recipe' };
     }
   };
 
@@ -202,7 +210,7 @@ export const useRecipeWithDB = () => {
     if (!user) return false;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('recipes')
         .delete()
         .eq('id', recipeId)
@@ -233,7 +241,7 @@ export const useRecipeWithDB = () => {
     description: "Save the current recipe to the database",
     parameters: [],
     handler: async () => {
-      const savedRecipe = await saveRecipe();
+      const savedRecipe = await saveRecipe(recipe);
       return savedRecipe 
         ? `Recipe "${savedRecipe.title}" saved successfully!`
         : "Failed to save recipe";

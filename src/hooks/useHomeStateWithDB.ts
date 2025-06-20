@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core';
 import { useAuth } from './auth/useAuth';
 import { 
-  supabase, 
-  HealthOverview
-} from '@/lib/supabase/client';
+  supabaseRest
+} from '@/lib/supabase/restClient';
 
 // 适配器接口 - 将数据库类型转换为前端类型
 interface FrontendHealthOverview {
@@ -40,6 +39,45 @@ interface FrontendHealthInsight {
   message: string;
   action?: string;
   actionLink?: string;
+}
+
+interface DatabaseRecord {
+  [key: string]: unknown;
+}
+
+interface DatabaseHealthOverview {
+  overall_score: number;
+  cycle_health: number;
+  nutrition_score: number;
+  exercise_score: number;
+  fertility_score: number;
+  lifestyle_score: number;
+  symptoms_score: number;
+  last_updated: string;
+}
+
+interface DatabaseQuickRecord {
+  date: string;
+  record_type: string;
+  value: string;
+  notes?: string;
+}
+
+interface DatabasePersonalizedTip {
+  id: string;
+  tip_type: string;
+  category: string;
+  message: string;
+  action_text?: string;
+  action_link?: string;
+}
+
+interface DatabaseInsight {
+  insight_type: string;
+  category: string;
+  description: string;
+  recommendation?: string;
+  action_required?: boolean;
 }
 
 export const useHomeStateWithDB = () => {
@@ -114,13 +152,13 @@ export const useHomeStateWithDB = () => {
   const loadHealthOverview = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('health_overview')
       .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    if (error && error.message !== 'No rows returned') {
       console.error('Error loading health overview:', error);
       return;
     }
@@ -142,7 +180,7 @@ export const useHomeStateWithDB = () => {
   const loadQuickRecords = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('quick_records')
       .select('*')
       .eq('user_id', user.id)
@@ -155,7 +193,7 @@ export const useHomeStateWithDB = () => {
     }
 
     if (data) {
-      setQuickRecords(data.map(record => ({
+      setQuickRecords((data as DatabaseQuickRecord[]).map(record => ({
         date: record.date,
         type: record.record_type as FrontendQuickRecord['type'],
         value: record.value,
@@ -167,7 +205,7 @@ export const useHomeStateWithDB = () => {
   const loadPersonalizedTips = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('personalized_tips')
       .select('*')
       .eq('user_id', user.id)
@@ -181,7 +219,7 @@ export const useHomeStateWithDB = () => {
     }
 
     if (data) {
-      setPersonalizedTips(data.map(tip => ({
+      setPersonalizedTips((data as DatabasePersonalizedTip[]).map(tip => ({
         id: tip.id,
         type: tip.tip_type,
         category: tip.category,
@@ -196,8 +234,8 @@ export const useHomeStateWithDB = () => {
     if (!user) return;
 
     try {
-      // 首先尝试从新的ai_insights表加载
-      const { data: aiData, error: aiError } = await supabase
+      // First try loading from new ai_insights table
+      const { data: aiData, error: aiError } = await supabaseRest
         .from('ai_insights')
         .select('*')
         .eq('user_id', user.id)
@@ -205,8 +243,8 @@ export const useHomeStateWithDB = () => {
         .order('generated_at', { ascending: false })
         .limit(3);
 
-      // 然后从原始health_insights表加载（检查is_active字段是否存在）
-      const { data: healthData, error: healthError } = await supabase
+      // Then load from original health_insights table
+      const { data: healthData, error: healthError } = await supabaseRest
         .from('health_insights')
         .select('*')
         .eq('user_id', user.id)
@@ -216,9 +254,9 @@ export const useHomeStateWithDB = () => {
 
       const insights: FrontendHealthInsight[] = [];
 
-      // 添加AI洞察（如果存在）
+      // Add AI insights if they exist
       if (aiData && !aiError) {
-        insights.push(...aiData.map(insight => ({
+        insights.push(...(aiData as DatabaseInsight[]).map(insight => ({
           type: (insight.insight_type === 'positive' ? 'positive' : 
                 insight.insight_type === 'warning' ? 'warning' : 'info') as FrontendHealthInsight['type'],
           category: insight.category,
@@ -228,21 +266,20 @@ export const useHomeStateWithDB = () => {
         })));
       }
 
-      // 添加健康洞察（如果存在且AI洞察数量不足）
-      if (healthData && !healthError && insights.length < 5) {
-        insights.push(...healthData.slice(0, 5 - insights.length).map(insight => ({
-          type: (insight.insight_type === 'tip' ? 'positive' : 
-                insight.insight_type === 'warning' ? 'warning' : 'info') as FrontendHealthInsight['type'],
+      // Add traditional health insights if they exist
+      if (healthData && !healthError) {
+        insights.push(...(healthData as DatabaseInsight[]).map(insight => ({
+          type: (insight.insight_type === 'warning' ? 'warning' : 'info') as FrontendHealthInsight['type'],
           category: insight.category,
           message: insight.description,
-          action: insight.action_required ? 'Take Action' : undefined,
+          action: insight.action_required ? 'Review' : undefined,
           actionLink: undefined
         })));
       }
 
       setHealthInsights(insights);
-    } catch (error) {
-      console.error('Error loading health insights:', error);
+    } catch (err) {
+      console.error('Error loading health insights:', err);
     }
   };
 
@@ -251,7 +288,7 @@ export const useHomeStateWithDB = () => {
     if (!user || score < 0 || score > 100) return;
 
     try {
-      const updates: Partial<HealthOverview> = {};
+      const updates: DatabaseRecord = {};
       
       if (scoreType === 'overall') updates.overall_score = score;
       else if (scoreType === 'cycle') updates.cycle_health = score;
@@ -263,7 +300,7 @@ export const useHomeStateWithDB = () => {
 
       if (Object.keys(updates).length === 0) return;
 
-      // 如果不是更新总分，需要重新计算总分
+      // If not updating overall score, need to recalculate overall score
       if (scoreType !== 'overall') {
         const currentOverview = { ...healthOverview };
         if (scoreType === 'cycle') currentOverview.cycleHealth = score;
@@ -283,26 +320,26 @@ export const useHomeStateWithDB = () => {
 
       updates.last_updated = new Date().toISOString().split('T')[0];
 
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('health_overview')
-        .upsert({ user_id: user.id, ...updates });
+        .upsert([{ user_id: user.id, ...updates }]);
 
       if (error) {
         console.error('Error updating health score:', error);
         return;
       }
 
-      // 更新本地状态
+      // Update local state
       setHealthOverview(prev => ({
         ...prev,
-        overallScore: updates.overall_score || prev.overallScore,
-        cycleHealth: updates.cycle_health || prev.cycleHealth,
-        nutritionScore: updates.nutrition_score || prev.nutritionScore,
-        exerciseScore: updates.exercise_score || prev.exerciseScore,
-        fertilityScore: updates.fertility_score || prev.fertilityScore,
-        lifestyleScore: updates.lifestyle_score || prev.lifestyleScore,
-        symptomsScore: updates.symptoms_score || prev.symptomsScore,
-        lastUpdated: updates.last_updated || prev.lastUpdated
+        overallScore: (updates.overall_score as number) || prev.overallScore,
+        cycleHealth: (updates.cycle_health as number) || prev.cycleHealth,
+        nutritionScore: (updates.nutrition_score as number) || prev.nutritionScore,
+        exerciseScore: (updates.exercise_score as number) || prev.exerciseScore,
+        fertilityScore: (updates.fertility_score as number) || prev.fertilityScore,
+        lifestyleScore: (updates.lifestyle_score as number) || prev.lifestyleScore,
+        symptomsScore: (updates.symptoms_score as number) || prev.symptomsScore,
+        lastUpdated: (updates.last_updated as string) || prev.lastUpdated
       }));
     } catch (err) {
       console.error('Error updating health score:', err);
@@ -317,7 +354,7 @@ export const useHomeStateWithDB = () => {
     if (!validTypes.includes(type)) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('quick_records')
         .insert([{
           user_id: user.id,
@@ -325,21 +362,19 @@ export const useHomeStateWithDB = () => {
           record_type: type,
           value,
           notes
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         console.error('Error adding quick record:', error);
         return;
       }
 
-      // 更新本地状态
+      // Update local state
       const newRecord: FrontendQuickRecord = {
-        date: data.date,
-        type: data.record_type as FrontendQuickRecord['type'],
-        value: data.value,
-        notes: data.notes || undefined
+        date: data[0].date,
+        type: data[0].record_type as FrontendQuickRecord['type'],
+        value: data[0].value,
+        notes: data[0].notes || undefined
       };
 
       setQuickRecords(prev => [newRecord, ...prev.slice(0, 9)]);
@@ -356,7 +391,7 @@ export const useHomeStateWithDB = () => {
     if (!validTypes.includes(type)) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('personalized_tips')
         .insert([{
           user_id: user.id,
@@ -365,9 +400,7 @@ export const useHomeStateWithDB = () => {
           message,
           action_text: actionText,
           action_link: actionLink
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         console.error('Error adding personalized tip:', error);
@@ -375,12 +408,12 @@ export const useHomeStateWithDB = () => {
       }
 
       const newTip: FrontendPersonalizedTip = {
-        id: data.id,
-        type: data.tip_type,
-        category: data.category,
-        message: data.message,
-        actionText: data.action_text || undefined,
-        actionLink: data.action_link || undefined
+        id: data[0].id,
+        type: data[0].tip_type,
+        category: data[0].category,
+        message: data[0].message,
+        actionText: data[0].action_text || undefined,
+        actionLink: data[0].action_link || undefined
       };
 
       setPersonalizedTips(prev => [newTip, ...prev]);
@@ -394,7 +427,7 @@ export const useHomeStateWithDB = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('personalized_tips')
         .update({ is_active: false })
         .eq('id', tipId)
@@ -417,7 +450,7 @@ export const useHomeStateWithDB = () => {
 
     try {
       // 尝试添加到新的ai_insights表
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('ai_insights')
         .insert([{
           user_id: user.id,
@@ -427,9 +460,7 @@ export const useHomeStateWithDB = () => {
           description: message,
           recommendation: action,
           confidence_score: 0.8
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         console.error('Error adding AI insight:', error);
@@ -438,9 +469,9 @@ export const useHomeStateWithDB = () => {
 
       const newInsight: FrontendHealthInsight = {
         type: type,
-        category: data.category,
-        message: data.description,
-        action: data.recommendation || undefined,
+        category: data[0].category,
+        message: data[0].description,
+        action: data[0].recommendation || undefined,
         actionLink: undefined
       };
 
@@ -456,7 +487,7 @@ export const useHomeStateWithDB = () => {
 
     try {
       // 从ai_insights表删除
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('ai_insights')
         .update({ is_active: false })
         .eq('category', category)

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/restClient";
 import { Meal } from "@/types/nutrition";
 import { nutritionFocus } from "@/constants/nutrition";
 
@@ -66,7 +66,7 @@ export const useNutritionWithDB = () => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('meals')
       .select('*')
       .eq('user_id', user.id)
@@ -79,7 +79,7 @@ export const useNutritionWithDB = () => {
     }
 
     if (data) {
-      setTodayMeals(data.map(meal => ({
+      setTodayMeals(data.map((meal: any) => ({
         time: meal.meal_time,
         foods: meal.foods,
         calories: meal.calories || 0,
@@ -93,7 +93,7 @@ export const useNutritionWithDB = () => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('water_intake')
       .select('*')
       .eq('user_id', user.id)
@@ -106,7 +106,7 @@ export const useNutritionWithDB = () => {
     }
 
     if (data) {
-      const intakeHistory = data.map(intake => ({
+      const intakeHistory = data.map((intake: any) => ({
         id: intake.id,
         date: intake.date,
         amountMl: intake.amount_ml,
@@ -114,7 +114,7 @@ export const useNutritionWithDB = () => {
       }));
       
       setWaterIntakeHistory(intakeHistory);
-      setTodayWaterIntake(data.reduce((sum, intake) => sum + intake.amount_ml, 0));
+      setTodayWaterIntake(data.reduce((sum: number, intake: any) => sum + intake.amount_ml, 0));
     }
   };
 
@@ -125,15 +125,13 @@ export const useNutritionWithDB = () => {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('water_intake')
         .insert([{
           user_id: user.id,
           date: today,
           amount_ml: amount
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         console.error('Error adding water intake:', error);
@@ -141,10 +139,10 @@ export const useNutritionWithDB = () => {
       }
 
       const newIntake: FrontendWaterIntake = {
-        id: data.id,
-        date: data.date,
-        amountMl: data.amount_ml,
-        recordedAt: data.recorded_at
+        id: data[0].id,
+        date: data[0].date,
+        amountMl: data[0].amount_ml,
+        recordedAt: data[0].recorded_at
       };
 
       setWaterIntakeHistory(prev => [...prev, newIntake]);
@@ -162,7 +160,7 @@ export const useNutritionWithDB = () => {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('meals')
         .insert([{
           user_id: user.id,
@@ -172,9 +170,7 @@ export const useNutritionWithDB = () => {
           calories,
           nutrients,
           notes
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         console.error('Error adding meal:', error);
@@ -182,10 +178,10 @@ export const useNutritionWithDB = () => {
       }
 
       const newMeal: Meal = {
-        time: data.meal_time,
-        foods: data.foods,
-        calories: data.calories || 0,
-        nutrients: data.nutrients || []
+        time: data[0].meal_time,
+        foods: data[0].foods,
+        calories: data[0].calories || 0,
+        nutrients: data[0].nutrients || []
       };
 
       setTodayMeals(prev => [...prev, newMeal]);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/restClient";
 import { WeeklyProgressDay } from "@/types/exercise";
 import { exerciseTypes, intensityLevels } from "@/constants/exercise";
 
@@ -72,7 +72,7 @@ export const useExerciseWithDB = () => {
   const loadRecentExercises = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('exercises')
       .select('*')
       .eq('user_id', user.id)
@@ -108,7 +108,7 @@ export const useExerciseWithDB = () => {
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('exercises')
       .select('*')
       .eq('user_id', user.id)
@@ -126,7 +126,7 @@ export const useExerciseWithDB = () => {
     const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     
     if (data) {
-      data.forEach(exercise => {
+      data.forEach((exercise: any) => {
         const exerciseDate = new Date(exercise.date);
         const dayIndex = (exerciseDate.getDay() + 6) % 7; // Convert to Monday = 0
         const dayName = dayNames[dayIndex];
@@ -161,7 +161,7 @@ export const useExerciseWithDB = () => {
     const exerciseDate = date || new Date().toISOString().split('T')[0];
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('exercises')
         .insert([{
           user_id: user.id,
@@ -171,9 +171,7 @@ export const useExerciseWithDB = () => {
           intensity,
           calories_burned: caloriesBurned,
           notes
-        }])
-        .select()
-        .single();
+        }]);
 
       if (error) {
         console.error('Error adding exercise:', error);
@@ -181,13 +179,13 @@ export const useExerciseWithDB = () => {
       }
 
       const newExercise: FrontendExercise = {
-        id: data.id,
-        date: data.date,
-        exerciseType: data.exercise_type,
-        durationMinutes: data.duration_minutes,
-        intensity: data.intensity,
-        caloriesBurned: data.calories_burned || undefined,
-        notes: data.notes || undefined
+        id: data[0].id,
+        date: data[0].date,
+        exerciseType: data[0].exercise_type,
+        durationMinutes: data[0].duration_minutes,
+        intensity: data[0].intensity,
+        caloriesBurned: data[0].calories_burned || undefined,
+        notes: data[0].notes || undefined
       };
 
       setExercises(prev => [newExercise, ...prev]);
@@ -369,7 +367,7 @@ export const useExerciseWithDB = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('exercises')
         .delete()
         .eq('id', exerciseId)
@@ -380,8 +378,8 @@ export const useExerciseWithDB = () => {
         return;
       }
 
-      setExercises(prev => prev.filter(ex => ex.id !== exerciseId));
-      loadWeeklyProgress(); // Refresh weekly progress
+      setExercises(prev => prev.filter(exercise => exercise.id !== exerciseId));
+      loadWeeklyProgress();
       
     } catch (err) {
       console.error('Error deleting exercise:', err);

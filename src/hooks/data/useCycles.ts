@@ -1,71 +1,143 @@
 import { useState, useEffect } from 'react'
-import { useCopilotReadable } from '@copilotkit/react-core'
-import { supabase, MenstrualCycle, PeriodDay } from '@/lib/supabase/client'
+import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core'
+import { supabaseRest } from '@/lib/supabase/restClient'
+import { MenstrualCycle, PeriodDay } from '@/lib/supabase/client'
 import { useAuth } from '../auth/useAuth'
-
-export interface CycleWithPeriodDays extends MenstrualCycle {
-  period_days?: PeriodDay[]
-}
 
 export function useCycles() {
   const { user } = useAuth()
-  const [cycles, setCycles] = useState<CycleWithPeriodDays[]>([])
+  const [cycles, setCycles] = useState<MenstrualCycle[]>([])
+  const [periodDays, setPeriodDays] = useState<PeriodDay[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Make cycle data readable by AI
+  // Make cycles data readable by AI
   useCopilotReadable({
-    description: "Current menstrual cycle tracking data and history",
+    description: "Menstrual cycle tracking data and history",
     value: {
       cycles,
-      currentCycle: cycles.find(c => !c.end_date),
+      periodDays,
       totalCycles: cycles.length,
+      currentCycle: cycles.find(c => !c.end_date),
       averageCycleLength: cycles.length > 0 
         ? Math.round(cycles.filter(c => c.cycle_length).reduce((sum, c) => sum + (c.cycle_length || 0), 0) / cycles.filter(c => c.cycle_length).length)
-        : 0,
-      recentSymptoms: cycles.slice(0, 3).map(c => ({
-        cycleId: c.id,
-        startDate: c.start_date,
-        periodDays: c.period_days?.length || 0
-      }))
+        : 28,
+      lastPeriodStart: cycles.length > 0 ? cycles[0].start_date : null,
+      recentPeriodDays: periodDays.slice(0, 30)
     }
+  })
+
+  // Add CopilotKit actions for AI to interact with data
+  useCopilotAction({
+    name: "addCycle",
+    description: "Add a new menstrual cycle",
+    parameters: [
+      {
+        name: "startDate",
+        type: "string",
+        description: "Start date in YYYY-MM-DD format",
+        required: true,
+      },
+      {
+        name: "notes",
+        type: "string",
+        description: "Optional notes about the cycle",
+        required: false,
+      },
+    ],
+    handler: async ({ startDate, notes }) => {
+      const result = await addCycle({
+        start_date: startDate,
+        notes
+      })
+      return result.error ? `Error: ${result.error}` : "Cycle added successfully"
+    },
+  })
+
+  useCopilotAction({
+    name: "addPeriodDay",
+    description: "Add a period day record",
+    parameters: [
+      {
+        name: "cycleId",
+        type: "string",
+        description: "ID of the cycle this period day belongs to",
+        required: true,
+      },
+      {
+        name: "date",
+        type: "string",
+        description: "Date in YYYY-MM-DD format",
+        required: true,
+      },
+      {
+        name: "flowIntensity",
+        type: "string",
+        description: "Flow intensity: Light, Medium, Heavy, or Spotting",
+        required: true,
+      },
+    ],
+    handler: async ({ cycleId, date, flowIntensity }) => {
+      const result = await addPeriodDay({
+        cycle_id: cycleId,
+        date,
+        flow_intensity: flowIntensity as 'Light' | 'Medium' | 'Heavy' | 'Spotting'
+      })
+      return result.error ? `Error: ${result.error}` : "Period day added successfully"
+    },
   })
 
   useEffect(() => {
     if (!user) return
-    fetchCycles()
+    fetchData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]) // fetchCycles is stable, no need to include in deps
+  }, [user])
 
-  const fetchCycles = async () => {
+  const fetchData = async () => {
     if (!user) return
 
     setLoading(true)
     setError(null)
 
     try {
-      // Fetch directly from Supabase (caching handled by API routes if needed)
-      const { data: cyclesData, error: cyclesError } = await supabase
-        .from('menstrual_cycles')
-        .select(`
-          *,
-          period_days (*)
-        `)
-        .eq('user_id', user.id)
-        .order('start_date', { ascending: false })
-
-      if (cyclesError) {
-        console.error('Error fetching cycles:', cyclesError)
-        setError('Failed to load cycle data')
-      } else {
-        setCycles(cyclesData || [])
-      }
+      await fetchFreshData()
     } catch (err) {
       console.error('Error fetching cycles:', err)
-      setError('Failed to load cycle data')
-    } finally {
+      setError('Failed to load data')
       setLoading(false)
     }
+  }
+
+  const fetchFreshData = async () => {
+    const [cyclesResult, periodDaysResult] = await Promise.all([
+      supabaseRest
+        .from('menstrual_cycles')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('start_date', { ascending: false })
+        .limit(50),
+      supabaseRest
+        .from('period_days')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(200)
+    ])
+
+    if (cyclesResult.error) {
+      console.error('Error fetching cycles:', cyclesResult.error)
+      setError('Failed to load cycles data')
+    } else {
+      setCycles(cyclesResult.data || [])
+    }
+
+    if (periodDaysResult.error) {
+      console.error('Error fetching period days:', periodDaysResult.error)
+      setError('Failed to load period days data')
+    } else {
+      setPeriodDays(periodDaysResult.data || [])
+    }
+
+    setLoading(false)
   }
 
   const addCycle = async (cycleData: Omit<MenstrualCycle, 'id' | 'user_id' | 'created_at'>) => {
@@ -74,19 +146,17 @@ export function useCycles() {
     setError(null)
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('menstrual_cycles')
         .insert([{ ...cycleData, user_id: user.id }])
-        .select()
 
       if (error) {
         console.error('Error adding cycle:', error)
         setError('Failed to add cycle')
         return { error }
       } else {
-        const newCycle = data[0] as CycleWithPeriodDays
-        setCycles(prev => [newCycle, ...prev])
-        return { data: newCycle }
+        setCycles(prev => [data[0], ...prev])
+        return { data: data[0] }
       }
     } catch (err) {
       console.error('Error adding cycle:', err)
@@ -95,18 +165,17 @@ export function useCycles() {
     }
   }
 
-  const updateCycle = async (id: string, updates: Partial<MenstrualCycle>) => {
+  const updateCycle = async (cycleId: string, updates: Partial<MenstrualCycle>) => {
     if (!user) return { error: 'User not authenticated' }
 
     setError(null)
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('menstrual_cycles')
         .update(updates)
-        .eq('id', id)
+        .eq('id', cycleId)
         .eq('user_id', user.id)
-        .select()
 
       if (error) {
         console.error('Error updating cycle:', error)
@@ -114,7 +183,7 @@ export function useCycles() {
         return { error }
       } else {
         setCycles(prev => prev.map(cycle => 
-          cycle.id === id ? { ...cycle, ...data[0] } : cycle
+          cycle.id === cycleId ? { ...cycle, ...updates } : cycle
         ))
         return { data: data[0] }
       }
@@ -125,55 +194,22 @@ export function useCycles() {
     }
   }
 
-  const deleteCycle = async (id: string) => {
+  const addPeriodDay = async (periodDayData: Omit<PeriodDay, 'id' | 'created_at'>) => {
     if (!user) return { error: 'User not authenticated' }
 
     setError(null)
 
     try {
-      const { error } = await supabase
-        .from('menstrual_cycles')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Error deleting cycle:', error)
-        setError('Failed to delete cycle')
-        return { error }
-      } else {
-        setCycles(prev => prev.filter(cycle => cycle.id !== id))
-        return { success: true }
-      }
-    } catch (err) {
-      console.error('Error deleting cycle:', err)
-      setError('Failed to delete cycle')
-      return { error: 'Failed to delete cycle' }
-    }
-  }
-
-  const addPeriodDay = async (cycleId: string, periodData: Omit<PeriodDay, 'id' | 'cycle_id' | 'created_at'>) => {
-    if (!user) return { error: 'User not authenticated' }
-
-    setError(null)
-
-    try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('period_days')
-        .insert([{ ...periodData, cycle_id: cycleId }])
-        .select()
+        .insert([periodDayData])
 
       if (error) {
         console.error('Error adding period day:', error)
         setError('Failed to add period day')
         return { error }
       } else {
-        // Update the cycle in state
-        setCycles(prev => prev.map(cycle => 
-          cycle.id === cycleId 
-            ? { ...cycle, period_days: [...(cycle.period_days || []), data[0]] }
-            : cycle
-        ))
+        setPeriodDays(prev => [data[0], ...prev])
         return { data: data[0] }
       }
     } catch (err) {
@@ -185,12 +221,12 @@ export function useCycles() {
 
   return {
     cycles,
+    periodDays,
     loading,
     error,
-    fetchCycles,
     addCycle,
     updateCycle,
-    deleteCycle,
     addPeriodDay,
+    refetch: fetchData,
   }
 } 

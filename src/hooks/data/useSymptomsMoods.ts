@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core'
-import { supabase, Symptom, Mood } from '@/lib/supabase/client'
+import { supabaseRest } from '@/lib/supabase/restClient'
+import { Symptom, Mood } from '@/lib/supabase/client'
 import { useAuth } from '../auth/useAuth'
 
 export function useSymptomsMoods() {
@@ -34,7 +35,7 @@ export function useSymptomsMoods() {
   // Add CopilotKit actions for AI to interact with data
   useCopilotAction({
     name: "addSymptom",
-    description: "Add a new symptom record",
+    description: "Add or update a symptom record for a specific date",
     parameters: [
       {
         name: "symptomType",
@@ -62,19 +63,25 @@ export function useSymptomsMoods() {
       },
     ],
     handler: async ({ symptomType, severity, date, notes }) => {
-      const result = await addSymptom({
+      const targetDate = date || new Date().toISOString().split('T')[0]
+      const aiNotes = notes ? `${notes} (Updated via AI assistant)` : 'Updated via AI assistant'
+      
+      const result = await upsertSymptom({
         symptom_type: symptomType,
         severity: Math.min(Math.max(severity, 1), 10), // Ensure 1-10 range
-        date: date || new Date().toISOString().split('T')[0],
-        notes
+        date: targetDate,
+        notes: aiNotes
       })
-      return result.error ? `Error: ${result.error}` : "Symptom added successfully"
+      if (result && result.error) {
+        return `Error: ${typeof result.error === 'string' ? result.error : 'Failed to add symptom'}`
+      }
+      return `Symptom "${symptomType}" recorded with severity ${severity} for ${targetDate}`
     },
   })
 
   useCopilotAction({
     name: "addMood",
-    description: "Add a new mood record",
+    description: "Add or update a mood record for a specific date",
     parameters: [
       {
         name: "moodType",
@@ -102,13 +109,19 @@ export function useSymptomsMoods() {
       },
     ],
     handler: async ({ moodType, intensity, date, notes }) => {
-      const result = await addMood({
+      const targetDate = date || new Date().toISOString().split('T')[0]
+      const aiNotes = notes ? `${notes} (Updated via AI assistant)` : 'Updated via AI assistant'
+      
+      const result = await upsertMood({
         mood_type: moodType,
         intensity: Math.min(Math.max(intensity, 1), 10), // Ensure 1-10 range
-        date: date || new Date().toISOString().split('T')[0],
-        notes
+        date: targetDate,
+        notes: aiNotes
       })
-      return result.error ? `Error: ${result.error}` : "Mood added successfully"
+      if (result && result.error) {
+        return `Error: ${typeof result.error === 'string' ? result.error : 'Failed to add mood'}`
+      }
+      return `Mood "${moodType}" recorded with intensity ${intensity} for ${targetDate}`
     },
   })
 
@@ -135,13 +148,13 @@ export function useSymptomsMoods() {
 
   const fetchFreshData = async () => {
     const [symptomsResult, moodsResult] = await Promise.all([
-      supabase
+      supabaseRest
         .from('symptoms')
         .select('*')
         .eq('user_id', user!.id)
         .order('date', { ascending: false })
         .limit(100),
-      supabase
+      supabaseRest
         .from('moods')
         .select('*')
         .eq('user_id', user!.id)
@@ -153,8 +166,11 @@ export function useSymptomsMoods() {
       console.error('Error fetching data:', symptomsResult.error || moodsResult.error)
       setError('Failed to load data')
     } else {
-      setSymptoms(symptomsResult.data || [])
-      setMoods(moodsResult.data || [])
+      // Ensure data is always an array
+      const symptomsData = Array.isArray(symptomsResult.data) ? symptomsResult.data : []
+      const moodsData = Array.isArray(moodsResult.data) ? moodsResult.data : []
+      setSymptoms(symptomsData)
+      setMoods(moodsData)
     }
     setLoading(false)
   }
@@ -165,23 +181,29 @@ export function useSymptomsMoods() {
     setError(null)
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('symptoms')
         .insert([{ ...symptomData, user_id: user.id }])
-        .select()
 
       if (error) {
         console.error('Error adding symptom:', error)
-        setError('Failed to add symptom')
-        return { error }
+        const errorMessage = typeof error === 'object' && error.message ? error.message : 'Failed to add symptom'
+        setError(errorMessage)
+        return { error: errorMessage }
+      } else if (data && Array.isArray(data) && data.length > 0) {
+        const newSymptom = data[0]
+        setSymptoms(prev => [newSymptom, ...prev])
+        return { data: newSymptom }
       } else {
-        setSymptoms(prev => [data[0], ...prev])
-        return { data: data[0] }
+        const errorMessage = 'No data returned from insert operation'
+        setError(errorMessage)
+        return { error: errorMessage }
       }
     } catch (err) {
       console.error('Error adding symptom:', err)
-      setError('Failed to add symptom')
-      return { error: 'Failed to add symptom' }
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add symptom'
+      setError(errorMessage)
+      return { error: errorMessage }
     }
   }
 
@@ -191,23 +213,207 @@ export function useSymptomsMoods() {
     setError(null)
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('moods')
         .insert([{ ...moodData, user_id: user.id }])
-        .select()
 
       if (error) {
         console.error('Error adding mood:', error)
-        setError('Failed to add mood')
-        return { error }
+        const errorMessage = typeof error === 'object' && error.message ? error.message : 'Failed to add mood'
+        setError(errorMessage)
+        return { error: errorMessage }
+      } else if (data && Array.isArray(data) && data.length > 0) {
+        const newMood = data[0]
+        setMoods(prev => [newMood, ...prev])
+        return { data: newMood }
       } else {
-        setMoods(prev => [data[0], ...prev])
-        return { data: data[0] }
+        const errorMessage = 'No data returned from insert operation'
+        setError(errorMessage)
+        return { error: errorMessage }
       }
     } catch (err) {
       console.error('Error adding mood:', err)
-      setError('Failed to add mood')
-      return { error: 'Failed to add mood' }
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add mood'
+      setError(errorMessage)
+      return { error: errorMessage }
+    }
+  }
+
+  // Upsert functions (insert or update existing records)
+  const upsertSymptom = async (symptomData: Omit<Symptom, 'id' | 'user_id' | 'created_at'>) => {
+    if (!user) return { error: 'User not authenticated' }
+
+    setError(null)
+
+    try {
+      // First, check if a symptom of the same type exists for the same date
+      const { data: existingData, error: selectError } = await supabaseRest
+        .from('symptoms')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', symptomData.date)
+        .eq('symptom_type', symptomData.symptom_type)
+
+      if (selectError) {
+        console.error('Error checking existing symptom:', selectError)
+        const errorMessage = typeof selectError === 'object' && selectError && 'message' in selectError ? (selectError as any).message : 'Failed to check existing symptom'
+        setError(errorMessage)
+        return { error: errorMessage }
+      }
+
+      if (existingData && Array.isArray(existingData) && existingData.length > 0) {
+        // Update existing record
+        const existingSymptom = existingData[0]
+        const { data, error } = await supabaseRest
+          .from('symptoms')
+          .update({
+            severity: symptomData.severity,
+            notes: symptomData.notes
+          })
+          .eq('id', existingSymptom.id)
+
+        if (error) {
+          console.error('Error updating symptom:', error)
+          const errorMessage = typeof error === 'object' && error && 'message' in error ? (error as any).message : 'Failed to update symptom'
+          setError(errorMessage)
+          return { error: errorMessage }
+        } else {
+          // Update local state
+          setSymptoms(prev => prev.map(s => 
+            s.id === existingSymptom.id 
+              ? { ...s, severity: symptomData.severity, notes: symptomData.notes }
+              : s
+          ))
+          return { data: { ...existingSymptom, severity: symptomData.severity, notes: symptomData.notes } }
+        }
+      } else {
+        // Insert new record
+        return await addSymptom(symptomData)
+      }
+    } catch (err) {
+      console.error('Error upserting symptom:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upsert symptom'
+      setError(errorMessage)
+      return { error: errorMessage }
+    }
+  }
+
+  const upsertMood = async (moodData: Omit<Mood, 'id' | 'user_id' | 'created_at'>) => {
+    if (!user) return { error: 'User not authenticated' }
+
+    setError(null)
+
+    try {
+      // First, check if a mood exists for the same date
+      const { data: existingData, error: selectError } = await supabaseRest
+        .from('moods')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', moodData.date)
+        .eq('mood_type', moodData.mood_type)
+
+      if (selectError) {
+        console.error('Error checking existing mood:', selectError)
+        const errorMessage = typeof selectError === 'object' && selectError && 'message' in selectError ? (selectError as any).message : 'Failed to check existing mood'
+        setError(errorMessage)
+        return { error: errorMessage }
+      }
+
+      if (existingData && Array.isArray(existingData) && existingData.length > 0) {
+        // Update existing record
+        const existingMood = existingData[0]
+        const { data, error } = await supabaseRest
+          .from('moods')
+          .update({
+            intensity: moodData.intensity,
+            notes: moodData.notes
+          })
+          .eq('id', existingMood.id)
+
+        if (error) {
+          console.error('Error updating mood:', error)
+          const errorMessage = typeof error === 'object' && error && 'message' in error ? (error as any).message : 'Failed to update mood'
+          setError(errorMessage)
+          return { error: errorMessage }
+        } else {
+          // Update local state
+          setMoods(prev => prev.map(m => 
+            m.id === existingMood.id 
+              ? { ...m, intensity: moodData.intensity, notes: moodData.notes }
+              : m
+          ))
+          return { data: { ...existingMood, intensity: moodData.intensity, notes: moodData.notes } }
+        }
+      } else {
+        // Insert new record
+        return await addMood(moodData)
+      }
+    } catch (err) {
+      console.error('Error upserting mood:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to upsert mood'
+      setError(errorMessage)
+      return { error: errorMessage }
+    }
+  }
+
+  // Delete functions
+  const deleteSymptom = async (symptomId: string) => {
+    if (!user) return { error: 'User not authenticated' }
+
+    setError(null)
+
+    try {
+      const { error } = await supabaseRest
+        .from('symptoms')
+        .delete()
+        .eq('id', symptomId)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error deleting symptom:', error)
+        const errorMessage = typeof error === 'object' && error && 'message' in error ? (error as any).message : 'Failed to delete symptom'
+        setError(errorMessage)
+        return { error: errorMessage }
+      } else {
+        // Update local state
+        setSymptoms(prev => prev.filter(s => s.id !== symptomId))
+        return { success: true }
+      }
+    } catch (err) {
+      console.error('Error deleting symptom:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete symptom'
+      setError(errorMessage)
+      return { error: errorMessage }
+    }
+  }
+
+  const deleteMood = async (moodId: string) => {
+    if (!user) return { error: 'User not authenticated' }
+
+    setError(null)
+
+    try {
+      const { error } = await supabaseRest
+        .from('moods')
+        .delete()
+        .eq('id', moodId)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error deleting mood:', error)
+        const errorMessage = typeof error === 'object' && error && 'message' in error ? (error as any).message : 'Failed to delete mood'
+        setError(errorMessage)
+        return { error: errorMessage }
+      } else {
+        // Update local state
+        setMoods(prev => prev.filter(m => m.id !== moodId))
+        return { success: true }
+      }
+    } catch (err) {
+      console.error('Error deleting mood:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete mood'
+      setError(errorMessage)
+      return { error: errorMessage }
     }
   }
 
@@ -218,6 +424,10 @@ export function useSymptomsMoods() {
     error,
     addSymptom,
     addMood,
+    upsertSymptom,
+    upsertMood,
+    deleteSymptom,
+    deleteMood,
     refetch: fetchData,
   }
 } 

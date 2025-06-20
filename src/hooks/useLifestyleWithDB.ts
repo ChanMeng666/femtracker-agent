@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/restClient";
 import { 
   VALID_SLEEP_QUALITIES, 
   VALID_STRESS_LEVELS, 
@@ -66,7 +66,7 @@ export const useLifestyleWithDB = () => {
   const loadRecentEntries = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('lifestyle_entries')
       .select('*')
       .eq('user_id', user.id)
@@ -79,16 +79,18 @@ export const useLifestyleWithDB = () => {
     }
 
     if (data) {
-      setLifestyleEntries(data.map(entry => ({
+      const entries = data.map((entry: any) => ({
         id: entry.id,
         date: entry.date,
         sleepHours: entry.sleep_hours || undefined,
         sleepQuality: entry.sleep_quality || undefined,
         stressLevel: entry.stress_level || undefined,
-        stressTriggers: entry.stress_triggers || undefined,
-        copingMethods: entry.coping_methods || undefined,
-        weightKg: entry.weight_kg || undefined
-      })));
+        stressTriggers: entry.stress_triggers || [],
+        copingMethods: entry.coping_methods || [],
+        weight: entry.weight_kg || undefined
+      }));
+      
+      setLifestyleEntries(entries);
     }
   };
 
@@ -97,7 +99,7 @@ export const useLifestyleWithDB = () => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('lifestyle_entries')
       .select('*')
       .eq('user_id', user.id)
@@ -152,7 +154,7 @@ export const useLifestyleWithDB = () => {
     try {
       if (todayEntry) {
         // Update existing entry
-        const { data, error } = await supabase
+        const { data, error } = await supabaseRest
           .from('lifestyle_entries')
           .update({
             sleep_hours: updates.sleepHours,
@@ -193,7 +195,7 @@ export const useLifestyleWithDB = () => {
         }
       } else {
         // Create new entry
-        const { data, error } = await supabase
+        const { data, error } = await supabaseRest
           .from('lifestyle_entries')
           .insert([{
             user_id: user.id,

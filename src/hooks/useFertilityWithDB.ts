@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useAuth } from "./auth/useAuth";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseRest } from "@/lib/supabase/restClient";
 import { 
   cervicalMucusTypes,
   ovulationTestResults,
@@ -65,7 +65,7 @@ export const useFertilityWithDB = () => {
   const loadFertilityRecords = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('fertility_records')
       .select('*')
       .eq('user_id', user.id)
@@ -93,7 +93,7 @@ export const useFertilityWithDB = () => {
     if (!user) return;
 
     const today = new Date().toISOString().split('T')[0];
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('fertility_records')
       .select('*')
       .eq('user_id', user.id)
@@ -155,6 +155,124 @@ export const useFertilityWithDB = () => {
     },
   });
 
+  const loadFertilityData = async () => {
+    if (!user) return;
+
+    try {
+      const [bbtResult, cmResult, ovulationResult] = await Promise.all([
+        supabaseRest
+          .from('bbt_records')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false })
+          .limit(90),
+        supabaseRest
+          .from('cervical_mucus_records')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false })
+          .limit(90),
+        supabaseRest
+          .from('ovulation_test_records')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false })
+          .limit(30)
+      ]);
+
+      if (bbtResult.data) {
+        setFertilityRecords(bbtResult.data.map(record => ({
+          id: record.id,
+          date: record.date,
+          bbtCelsius: record.temperature || undefined,
+          cervicalMucus: record.cervical_mucus || undefined,
+          ovulationTest: record.ovulation_test || undefined,
+          notes: record.notes || undefined
+        })));
+      }
+      if (cmResult.data) {
+        setCervicalMucusRecords(cmResult.data);
+      }
+      if (ovulationResult.data) {
+        setOvulationTestRecords(ovulationResult.data);
+      }
+    } catch (err) {
+      console.error('Error loading fertility data:', err);
+    }
+  };
+
+  const addBBTRecord = async (date: string, temperature: number, notes?: string) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabaseRest
+        .from('bbt_records')
+        .insert([{
+          user_id: user.id,
+          date,
+          temperature,
+          notes
+        }]);
+
+      if (error) {
+        console.error('Error adding BBT record:', error);
+        return;
+      }
+
+      setFertilityRecords(prev => [data[0], ...prev]);
+    } catch (err) {
+      console.error('Error adding BBT record:', err);
+    }
+  };
+
+  const addCervicalMucusRecord = async (date: string, type: string, notes?: string) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabaseRest
+        .from('cervical_mucus_records')
+        .insert([{
+          user_id: user.id,
+          date,
+          mucus_type: type,
+          notes
+        }]);
+
+      if (error) {
+        console.error('Error adding cervical mucus record:', error);
+        return;
+      }
+
+      setCervicalMucusRecords(prev => [data[0], ...prev]);
+    } catch (err) {
+      console.error('Error adding cervical mucus record:', err);
+    }
+  };
+
+  const addOvulationTestRecord = async (date: string, result: string, notes?: string) => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabaseRest
+        .from('ovulation_test_records')
+        .insert([{
+          user_id: user.id,
+          date,
+          test_result: result,
+          notes
+        }]);
+
+      if (error) {
+        console.error('Error adding ovulation test record:', error);
+        return;
+      }
+
+      setOvulationTestRecords(prev => [data[0], ...prev]);
+    } catch (err) {
+      console.error('Error adding ovulation test record:', err);
+    }
+  };
+
   return {
     // UI State
     bbt,
@@ -184,6 +302,10 @@ export const useFertilityWithDB = () => {
     })),
     
     // Actions
-    loadAllData
+    loadAllData,
+    loadFertilityData,
+    addBBTRecord,
+    addCervicalMucusRecord,
+    addOvulationTestRecord
   };
 }; 

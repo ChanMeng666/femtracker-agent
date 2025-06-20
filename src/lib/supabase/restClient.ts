@@ -10,6 +10,10 @@ interface UpdateOptions {
   select?: string;
 }
 
+interface QueryData {
+  [key: string]: unknown;
+}
+
 class TableQuery {
   constructor(
     private table: string,
@@ -57,15 +61,15 @@ class TableQuery {
     };
   }
 
-  async update(data: any, options?: UpdateOptions) {
+  update(data: QueryData, options?: UpdateOptions) {
     return new QueryBuilder(this.table, this.baseUrl, this.getAuthHeaders, 'update', data, options);
   }
 
-  async delete() {
+  delete() {
     return new QueryBuilder(this.table, this.baseUrl, this.getAuthHeaders, 'delete');
   }
 
-  async upsert(data: any[], options?: InsertOptions) {
+  async upsert(data: QueryData[], options?: InsertOptions) {
     const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/rest/v1/${this.table}`;
     
@@ -110,22 +114,22 @@ class QueryBuilder {
     private baseUrl: string,
     private getAuthHeaders: () => Promise<HeadersInit>,
     private operation: 'select' | 'update' | 'delete',
-    private updateData?: any,
+    private updateData?: QueryData,
     private updateOptions?: UpdateOptions
   ) {}
 
-  eq(column: string, value: any) {
-    this.conditions.push(`${column}=eq.${encodeURIComponent(value)}`);
+  eq(column: string, value: unknown) {
+    this.conditions.push(`${column}=eq.${encodeURIComponent(String(value))}`);
     return this;
   }
 
-  gte(column: string, value: any) {
-    this.conditions.push(`${column}=gte.${encodeURIComponent(value)}`);
+  gte(column: string, value: unknown) {
+    this.conditions.push(`${column}=gte.${encodeURIComponent(String(value))}`);
     return this;
   }
 
-  lte(column: string, value: any) {
-    this.conditions.push(`${column}=lte.${encodeURIComponent(value)}`);
+  lte(column: string, value: unknown) {
+    this.conditions.push(`${column}=lte.${encodeURIComponent(String(value))}`);
     return this;
   }
 
@@ -145,29 +149,29 @@ class QueryBuilder {
     return this;
   }
 
-  async execute(): Promise<{ data: any; error: any }> {
+  async execute(): Promise<{ data: unknown; error: unknown }> {
     const headers = await this.getAuthHeaders();
     let url = `${this.baseUrl}/rest/v1/${this.table}`;
 
-    // 构建查询参数
+    // Build query parameters
     const params: string[] = [];
     
-    // 对于select操作，处理列选择
+    // For select operations, handle column selection
     if (this.operation === 'select' && this.selectColumns) {
       params.push(`select=${encodeURIComponent(this.selectColumns)}`);
     }
     
-    // 添加条件
+    // Add conditions
     if (this.conditions.length > 0) {
       params.push(...this.conditions);
     }
     
-    // 添加排序
+    // Add ordering
     if (this.orderBy) {
       params.push(this.orderBy);
     }
     
-    // 添加限制
+    // Add limit
     if (this.limitCount) {
       params.push(`limit=${this.limitCount}`);
     }
@@ -241,10 +245,10 @@ class QueryBuilder {
     }
   }
 
-  // 为了与现有代码兼容，添加then方法
-  then<TResult1 = { data: any; error: any }, TResult2 = never>(
-    onfulfilled?: ((value: { data: any; error: any }) => TResult1 | PromiseLike<TResult1>) | undefined | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null
+  // For compatibility with existing code, add then method
+  then<TResult1 = { data: unknown; error: unknown }, TResult2 = never>(
+    onfulfilled?: ((value: { data: unknown; error: unknown }) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | undefined | null
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);
   }

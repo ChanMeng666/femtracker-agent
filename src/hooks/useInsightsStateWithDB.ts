@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core';
 import { useAuth } from './auth/useAuth';
 import { 
-  supabase
-} from '@/lib/supabase/client';
+  supabaseRest
+} from '@/lib/supabase/restClient';
 import { cache } from '@/lib/redis/client';
 
 // 前端类型定义
@@ -122,7 +122,7 @@ export const useInsightsStateWithDB = () => {
     }
 
     // 从数据库加载
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('ai_insights')
       .select('*')
       .eq('user_id', user.id)
@@ -179,7 +179,7 @@ export const useInsightsStateWithDB = () => {
       startDate.setMonth(endDate.getMonth() - 3);
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('health_metrics')
       .select('*')
       .eq('user_id', user.id)
@@ -203,7 +203,7 @@ export const useInsightsStateWithDB = () => {
 
       setHealthMetrics(metrics);
       
-      // 缓存30分钟（健康指标更新相对频繁）
+      // 缓存数据30分钟（健康指标变化相对频繁）
       await cache.set(cacheKey, metrics, 1800);
     }
   };
@@ -211,7 +211,7 @@ export const useInsightsStateWithDB = () => {
   const loadCorrelationAnalyses = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('correlation_analyses')
       .select('*')
       .eq('user_id', user.id)
@@ -240,7 +240,7 @@ export const useInsightsStateWithDB = () => {
   const loadHealthOverview = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('health_overview')
       .select('overall_score')
       .eq('user_id', user.id)
@@ -264,7 +264,7 @@ export const useInsightsStateWithDB = () => {
     const startDate = new Date();
     startDate.setMonth(endDate.getMonth() - 6); // 6个月历史数据
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseRest
       .from('health_metrics')
       .select('category, score, date')
       .eq('user_id', user.id)
@@ -298,7 +298,7 @@ export const useInsightsStateWithDB = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('ai_insights')
         .insert([{
           user_id: user.id,
@@ -344,7 +344,7 @@ export const useInsightsStateWithDB = () => {
     if (!user || score < 0 || score > 100) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('health_metrics')
         .insert([{
           user_id: user.id,
@@ -387,7 +387,7 @@ export const useInsightsStateWithDB = () => {
     if (!user || correlation < -1 || correlation > 1) return;
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRest
         .from('correlation_analyses')
         .insert([{
           user_id: user.id,
@@ -426,7 +426,7 @@ export const useInsightsStateWithDB = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('ai_insights')
         .update({ is_active: false })
         .eq('id', insightId)
@@ -448,7 +448,7 @@ export const useInsightsStateWithDB = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('correlation_analyses')
         .update({ is_active: false })
         .eq('id', analysisId)

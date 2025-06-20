@@ -2,10 +2,13 @@ import { useState, useEffect, useMemo } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useCycles } from "./data/useCycles";
 import { useSymptomsMoods } from "./data/useSymptomsMoods";
+import { useAuth } from "./auth/useAuth";
+import { supabaseRest } from "@/lib/supabase/restClient";
 
 export const useCycleWithDB = () => {
+  const { user } = useAuth();
   const { cycles, addCycle, updateCycle, loading: cyclesLoading } = useCycles();
-  const { symptoms, moods, addSymptom, addMood, loading: symptomsLoading } = useSymptomsMoods();
+  const { symptoms, moods, upsertSymptom, upsertMood, deleteSymptom, loading: symptomsLoading } = useSymptomsMoods();
   
   const [currentDay, setCurrentDay] = useState<number>(14);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -38,6 +41,14 @@ export const useCycleWithDB = () => {
       setSelectedMood(todayMoods[0].mood_type);
     }
   }, [symptoms, moods]);
+
+  // Load current cycle day when cycles data is available
+  useEffect(() => {
+    if (cycles.length > 0 && user) {
+      loadCurrentCycleDay();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cycles, user]);
 
   // Cycle phase calculation
   const calculatePhase = (day: number) => {
@@ -89,7 +100,8 @@ export const useCycleWithDB = () => {
           const today = new Date().toISOString().split('T')[0];
           await startNewCycle(today);
         } else {
-          setCurrentDay(day);
+          // Update current cycle day and persist to database
+          await updateCurrentCycleDay(day);
         }
         return `Cycle updated to day ${day}`;
       } else {
@@ -98,10 +110,10 @@ export const useCycleWithDB = () => {
     },
   });
 
-  // AI Action: Add symptom
+  // AI Action: Add cycle symptom (use different name to avoid conflict)
   useCopilotAction({
-    name: "addSymptom",
-    description: "Add a symptom for today",
+    name: "addCycleSymptom",
+    description: "Add a symptom for today in the cycle context",
     parameters: [
       {
         name: "symptom",
@@ -117,14 +129,16 @@ export const useCycleWithDB = () => {
       }
     ],
     handler: async ({ symptom, severity = 5 }) => {
-      const result = await addSymptom({
+      const targetDate = new Date().toISOString().split('T')[0]
+      const result = await upsertSymptom({
         symptom_type: symptom,
         severity: Math.min(Math.max(severity, 1), 10),
-        date: new Date().toISOString().split('T')[0]
+        date: targetDate,
+        notes: 'Updated via cycle tracker AI assistant'
       });
       
-      if (result.error) {
-        return `Error adding symptom: ${result.error}`;
+      if (result && result.error) {
+        return `Error adding symptom: ${typeof result.error === 'string' ? result.error : 'Database error'}`;
       } else {
         // Update local state
         setSelectedSymptoms(prev => 
@@ -135,10 +149,10 @@ export const useCycleWithDB = () => {
     },
   });
 
-  // AI Action: Update mood
+  // AI Action: Update cycle mood (use different name to avoid conflict)
   useCopilotAction({
-    name: "updateMood",
-    description: "Update the current mood for today",
+    name: "updateCycleMood",
+    description: "Update the current mood for today in the cycle context",
     parameters: [{
       name: "mood",
       type: "string",
@@ -146,17 +160,179 @@ export const useCycleWithDB = () => {
       required: true,
     }],
     handler: async ({ mood }) => {
-      const result = await addMood({
+      const targetDate = new Date().toISOString().split('T')[0]
+      const result = await upsertMood({
         mood_type: mood,
         intensity: 5, // Default intensity
-        date: new Date().toISOString().split('T')[0]
+        date: targetDate,
+        notes: 'Updated via cycle tracker AI assistant'
       });
       
-      if (result.error) {
-        return `Error updating mood: ${result.error}`;
+      if (result && result.error) {
+        return `Error updating mood: ${typeof result.error === 'string' ? result.error : 'Database error'}`;
       } else {
         setSelectedMood(mood);
         return `Mood updated to: ${mood}`;
+      }
+    },
+  });
+
+  // AI Action: Record period flow
+  useCopilotAction({
+    name: "recordPeriodFlow",
+    description: "Record period flow intensity for today",
+    parameters: [{
+      name: "flowIntensity",
+      type: "string",
+      description: "Flow intensity: Light, Medium, Heavy, or Spotting",
+      required: true,
+    }],
+    handler: async ({ flowIntensity }) => {
+      if (!['Light', 'Medium', 'Heavy', 'Spotting'].includes(flowIntensity)) {
+        return "Invalid flow intensity. Please use: Light, Medium, Heavy, or Spotting";
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      try {
+        await supabaseRest
+          .from('quick_records')
+          .insert([{
+            user_id: user?.id,
+            date: today,
+            record_type: 'period_flow',
+            value: flowIntensity,
+            notes: 'Updated via AI assistant'
+          }]);
+        
+        return `Period flow recorded as ${flowIntensity} for today`;
+      } catch (error) {
+        return `Error recording period flow: ${error}`;
+      }
+    },
+  });
+
+  // AI Action: Record water intake
+  useCopilotAction({
+    name: "recordWaterIntake",
+    description: "Record water intake amount in milliliters",
+    parameters: [{
+      name: "amountMl",
+      type: "number",
+      description: "Amount of water in milliliters (e.g., 250, 500, 1000)",
+      required: true,
+    }],
+    handler: async ({ amountMl }) => {
+      if (amountMl <= 0 || amountMl > 5000) {
+        return "Invalid water amount. Please enter a value between 1 and 5000 ml";
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      try {
+        await supabaseRest
+          .from('water_intake')
+          .insert([{
+            user_id: user?.id,
+            date: today,
+            amount_ml: amountMl
+          }]);
+        
+        return `Water intake of ${amountMl}ml recorded for today`;
+      } catch (error) {
+        return `Error recording water intake: ${error}`;
+      }
+    },
+  });
+
+  // AI Action: Record lifestyle data
+  useCopilotAction({
+    name: "recordLifestyle",
+    description: "Record sleep and stress information for today",
+    parameters: [
+      {
+        name: "sleepHours",
+        type: "number",
+        description: "Hours of sleep (e.g., 7.5, 8.0)",
+        required: false,
+      },
+      {
+        name: "sleepQuality",
+        type: "number", 
+        description: "Sleep quality rating from 1-10",
+        required: false,
+      },
+      {
+        name: "stressLevel",
+        type: "number",
+        description: "Stress level from 1-10",
+        required: false,
+      }
+    ],
+    handler: async ({ sleepHours, sleepQuality, stressLevel }) => {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const lifestyleData: {
+        user_id: string | undefined;
+        date: string;
+        sleep_hours?: number;
+        sleep_quality?: number;
+        stress_level?: number;
+      } = {
+        user_id: user?.id,
+        date: today
+      };
+      
+      if (sleepHours !== undefined) {
+        if (sleepHours < 0 || sleepHours > 24) {
+          return "Invalid sleep hours. Please enter a value between 0 and 24";
+        }
+        lifestyleData.sleep_hours = sleepHours;
+      }
+      
+      if (sleepQuality !== undefined) {
+        if (sleepQuality < 1 || sleepQuality > 10) {
+          return "Invalid sleep quality. Please enter a value between 1 and 10";
+        }
+        lifestyleData.sleep_quality = sleepQuality;
+      }
+      
+      if (stressLevel !== undefined) {
+        if (stressLevel < 1 || stressLevel > 10) {
+          return "Invalid stress level. Please enter a value between 1 and 10";
+        }
+        lifestyleData.stress_level = stressLevel;
+      }
+      
+      try {
+        // Check if lifestyle entry exists for today
+        const { data: existingData } = await supabaseRest
+          .from('lifestyle_entries')
+          .select('*')
+          .eq('user_id', user?.id)
+          .eq('date', today);
+
+        if (existingData && Array.isArray(existingData) && existingData.length > 0) {
+          // Update existing entry
+          await supabaseRest
+            .from('lifestyle_entries')
+            .update(lifestyleData)
+            .eq('id', existingData[0].id);
+        } else {
+          // Create new entry
+          await supabaseRest
+            .from('lifestyle_entries')
+            .insert([lifestyleData]);
+        }
+        
+        const updates = [];
+        if (sleepHours !== undefined) updates.push(`sleep: ${sleepHours}h`);
+        if (sleepQuality !== undefined) updates.push(`sleep quality: ${sleepQuality}/10`);
+        if (stressLevel !== undefined) updates.push(`stress: ${stressLevel}/10`);
+        
+        return `Lifestyle data updated: ${updates.join(', ')}`;
+      } catch (error) {
+        return `Error recording lifestyle data: ${error}`;
       }
     },
   });
@@ -182,7 +358,89 @@ export const useCycleWithDB = () => {
       notes: `Started on day ${currentDay}`
     });
     
-    setCurrentDay(1);
+    // Update current day to 1 and persist
+    await updateCurrentCycleDay(1);
+  };
+
+  // Function to update and persist current cycle day
+  const updateCurrentCycleDay = async (day: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      // Use quick_records table to store current cycle day
+      const { data: existingRecord } = await supabaseRest
+        .from('quick_records')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('record_type', 'current_cycle_day')
+        .eq('date', today);
+
+      if (existingRecord && Array.isArray(existingRecord) && existingRecord.length > 0) {
+        // Update existing record
+        await supabaseRest
+          .from('quick_records')
+          .update({
+            value: day.toString(),
+            notes: 'Updated via cycle tracker'
+          })
+          .eq('id', existingRecord[0].id);
+      } else {
+        // Create new record
+        await supabaseRest
+          .from('quick_records')
+          .insert([{
+            user_id: user?.id,
+            date: today,
+            record_type: 'current_cycle_day',
+            value: day.toString(),
+            notes: 'Updated via cycle tracker'
+          }]);
+      }
+      
+      // Update local state
+      setCurrentDay(day);
+    } catch (error) {
+      console.error('Error updating current cycle day:', error);
+    }
+  };
+
+  // Function to load current cycle day from database
+  const loadCurrentCycleDay = async () => {
+    if (!user) return;
+
+    try {
+      // First, try to get from quick_records
+      const { data: quickRecord } = await supabaseRest
+        .from('quick_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('record_type', 'current_cycle_day')
+        .order('date', { ascending: false })
+        .limit(1);
+
+      if (quickRecord && Array.isArray(quickRecord) && quickRecord.length > 0) {
+        const savedDay = parseInt(quickRecord[0].value);
+        if (savedDay >= 1 && savedDay <= 28) {
+          setCurrentDay(savedDay);
+          return;
+        }
+      }
+
+      // Fallback: calculate from current cycle start date
+      if (currentCycle && currentCycle.start_date) {
+        const startDate = new Date(currentCycle.start_date);
+        const today = new Date();
+        const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        
+        if (daysDiff >= 1 && daysDiff <= 28) {
+          setCurrentDay(daysDiff);
+          // Save this calculated day to quick_records for future use
+          await updateCurrentCycleDay(daysDiff);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading current cycle day:', error);
+    }
   };
 
   const toggleSymptom = async (symptom: string) => {
@@ -190,17 +448,23 @@ export const useCycleWithDB = () => {
     const existingSymptom = symptoms.find(s => s.date === today && s.symptom_type === symptom);
     
     if (existingSymptom) {
-      // Remove symptom (would need a deleteSymptom function)
-      setSelectedSymptoms(prev => prev.filter(s => s !== symptom));
+      // Remove symptom by deleting it
+      if (deleteSymptom) {
+        const result = await deleteSymptom(existingSymptom.id);
+        if (result && !result.error) {
+          setSelectedSymptoms(prev => prev.filter(s => s !== symptom));
+        }
+      }
     } else {
-      // Add symptom
-      const result = await addSymptom({
+      // Add symptom using upsert
+      const result = await upsertSymptom({
         symptom_type: symptom,
         severity: 5, // Default severity
-        date: today
+        date: today,
+        notes: 'Updated via handler'
       });
       
-      if (!result.error) {
+      if (result && !result.error) {
         setSelectedSymptoms(prev => [...prev, symptom]);
       }
     }
@@ -209,13 +473,14 @@ export const useCycleWithDB = () => {
   const updateMoodHandler = async (mood: string) => {
     const today = new Date().toISOString().split('T')[0];
     
-    const result = await addMood({
+    const result = await upsertMood({
       mood_type: mood,
       intensity: 5, // Default intensity
-      date: today
+      date: today,
+      notes: 'Updated via handler'
     });
     
-    if (!result.error) {
+    if (result && !result.error) {
       setSelectedMood(mood);
     }
   };
