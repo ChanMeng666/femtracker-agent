@@ -157,10 +157,11 @@ export const useSettingsWithDB = () => {
       if (updates.avatarUrl !== undefined) profileUpdates.avatar_url = updates.avatarUrl;
 
       if (Object.keys(profileUpdates).length > 0) {
-        const { error: profileError } = await supabase
+        const { error: profileError } = await supabaseRest
           .from('profiles')
           .update(profileUpdates)
-          .eq('id', user.id);
+          .eq('id', user.id)
+          .execute();
 
         if (profileError) {
           console.error('Error updating profile:', profileError);
@@ -170,10 +171,11 @@ export const useSettingsWithDB = () => {
 
       // Update user preferences for theme
       if (updates.theme !== undefined) {
-        const { error: prefsError } = await supabase
+        const { error: prefsError } = await supabaseRest
           .from('user_preferences')
           .update({ theme: updates.theme })
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .execute();
 
         if (prefsError) {
           console.error('Error updating theme:', prefsError);
@@ -198,7 +200,7 @@ export const useSettingsWithDB = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('user_preferences')
         .update({ 
           notifications: {
@@ -206,7 +208,8 @@ export const useSettingsWithDB = () => {
             ...updates
           }
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .execute();
 
       if (error) {
         console.error('Error updating notification settings:', error);
@@ -230,7 +233,7 @@ export const useSettingsWithDB = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRest
         .from('user_preferences')
         .update({ 
           privacy: {
@@ -238,7 +241,8 @@ export const useSettingsWithDB = () => {
             ...updates
           }
         })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .execute();
 
       if (error) {
         console.error('Error updating privacy settings:', error);
