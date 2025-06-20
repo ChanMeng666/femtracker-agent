@@ -1,10 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNutritionWithDB } from '@/hooks/useNutritionWithDB';
+import { supabaseRest } from '@/lib/supabase/restClient';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { NutritionOverview } from './NutritionOverview';
-import { WaterIntakeTracker } from './WaterIntakeTracker';
-import { NutritionFocusSelection } from './NutritionFocusSelection';
-import { MealsOverview } from './MealsOverview';
+
+interface Meal {
+  id: string;
+  date: string;
+  meal_time: string;
+  foods: string[];
+  calories?: number;
+  nutrients?: string[];
+  notes?: string;
+  created_at: string;
+}
+
+interface WaterIntake {
+  id: string;
+  date: string;
+  amount_ml: number;
+  recorded_at: string;
+}
+
+const mealTimes = [
+  { value: 'breakfast', label: 'Breakfast', icon: '🌅', color: 'bg-yellow-50 border-yellow-200' },
+  { value: 'lunch', label: 'Lunch', icon: '☀️', color: 'bg-orange-50 border-orange-200' },
+  { value: 'dinner', label: 'Dinner', icon: '🌙', color: 'bg-purple-50 border-purple-200' },
+  { value: 'snack', label: 'Snack', icon: '🍎', color: 'bg-green-50 border-green-200' },
+];
+
+const nutritionFocusTypes = [
+  { value: 'iron', label: 'Iron', icon: '🥩', foods: 'Red meat, Spinach, Beans' },
+  { value: 'calcium', label: 'Calcium', icon: '🥛', foods: 'Dairy, Leafy greens' },
+  { value: 'magnesium', label: 'Magnesium', icon: '🥜', foods: 'Nuts, Whole grains' },
+  { value: 'omega3', label: 'Omega-3', icon: '🐟', foods: 'Fish, Flax seeds' },
+  { value: 'vitaminD', label: 'Vitamin D', icon: '☀️', foods: 'Egg yolks, Dairy' },
+  { value: 'antiInflammatory', label: 'Anti-inflammatory', icon: '🫐', foods: 'Berries, Green tea' },
+];
 
 export const NutritionTrackerContent: React.FC = () => {
   const {
@@ -23,6 +54,175 @@ export const NutritionTrackerContent: React.FC = () => {
     error,
     addWaterIntake
   } = useNutritionWithDB();
+
+  // Local state for enhanced features
+  const [meals, setMeals] = useState<Meal[]>([]);
+  const [waterIntakes, setWaterIntakes] = useState<WaterIntake[]>([]);
+  const [editingMeal, setEditingMeal] = useState<string | null>(null);
+  const [showAddMealForm, setShowAddMealForm] = useState<boolean>(false);
+  const [tempFoods, setTempFoods] = useState<string>('');
+  const [tempCalories, setTempCalories] = useState<string>('');
+  const [tempNutrients, setTempNutrients] = useState<string>('');
+  const [tempNotes, setTempNotes] = useState<string>('');
+  const [waterAmount, setWaterAmount] = useState<string>('250');
+
+  // Load data from database
+  React.useEffect(() => {
+    loadMeals();
+    loadWaterIntakes();
+  }, []);
+
+  const loadMeals = async () => {
+    try {
+      const { data, error } = await supabaseRest
+        .from('meals')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(10);
+
+      if (!error && data) {
+        setMeals(data as Meal[]);
+      }
+    } catch (error) {
+      console.error('Error loading meals:', error);
+    }
+  };
+
+  const loadWaterIntakes = async () => {
+    try {
+      const { data, error } = await supabaseRest
+        .from('water_intake')
+        .select('*')
+        .order('recorded_at', { ascending: false })
+        .limit(10);
+
+      if (!error && data) {
+        setWaterIntakes(data as WaterIntake[]);
+      }
+    } catch (error) {
+      console.error('Error loading water intakes:', error);
+    }
+  };
+
+  // Get today's data
+  const today = new Date().toISOString().split('T')[0];
+  const todayMealRecords = meals.filter(m => m.date === today);
+  const todayWaterRecords = waterIntakes.filter(w => w.date === today);
+
+  // Get recent data (last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const recentMeals = meals.filter(m => new Date(m.date) >= sevenDaysAgo);
+
+  // Handle meal editing
+  const handleEditMeal = (meal: Meal) => {
+    setEditingMeal(meal.id);
+    setTempFoods(meal.foods.join(', '));
+    setTempCalories(meal.calories?.toString() || '');
+    setTempNutrients(meal.nutrients?.join(', ') || '');
+    setTempNotes(meal.notes || '');
+  };
+
+  const handleSaveMeal = async (mealId: string) => {
+    try {
+      const updateData: any = {
+        foods: tempFoods.split(',').map(f => f.trim()).filter(f => f),
+        notes: tempNotes || 'Updated manually'
+      };
+
+      if (tempCalories) {
+        updateData.calories = Number(tempCalories);
+      }
+
+      if (tempNutrients) {
+        updateData.nutrients = tempNutrients.split(',').map(n => n.trim()).filter(n => n);
+      }
+
+      const { error } = await supabaseRest
+        .from('meals')
+        .update(updateData)
+        .eq('id', mealId);
+
+      if (!error) {
+        await loadMeals();
+        setEditingMeal(null);
+      }
+    } catch (error) {
+      console.error('Error updating meal:', error);
+    }
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    try {
+      const { error } = await supabaseRest
+        .from('meals')
+        .delete()
+        .eq('id', mealId);
+
+      if (!error) {
+        await loadMeals();
+      }
+    } catch (error) {
+      console.error('Error deleting meal:', error);
+    }
+  };
+
+  const handleAddMeal = async (mealTime: string) => {
+    try {
+      const mealData: any = {
+        date: today,
+        meal_time: mealTime,
+        foods: tempFoods.split(',').map(f => f.trim()).filter(f => f),
+        notes: tempNotes || 'Added manually'
+      };
+
+      if (tempCalories) {
+        mealData.calories = Number(tempCalories);
+      }
+
+      if (tempNutrients) {
+        mealData.nutrients = tempNutrients.split(',').map(n => n.trim()).filter(n => n);
+      }
+
+      const { error } = await supabaseRest
+        .from('meals')
+        .insert([mealData]);
+
+      if (!error) {
+        await loadMeals();
+        setShowAddMealForm(false);
+        setTempFoods('');
+        setTempCalories('');
+        setTempNutrients('');
+        setTempNotes('');
+      }
+    } catch (error) {
+      console.error('Error adding meal:', error);
+    }
+  };
+
+  const handleAddWater = async () => {
+    if (!waterAmount || Number(waterAmount) <= 0) return;
+    
+    try {
+      const { error } = await supabaseRest
+        .from('water_intake')
+        .insert([{
+          date: today,
+          amount_ml: Number(waterAmount)
+        }]);
+
+      if (!error) {
+        await loadWaterIntakes();
+        // Also call the hook's addWaterIntake if it exists
+        if (addWaterIntake) {
+          addWaterIntake(Number(waterAmount));
+        }
+      }
+    } catch (error) {
+      console.error('Error adding water:', error);
+    }
+  };
 
   // Show loading state
   if (loading) {
@@ -72,77 +272,285 @@ export const NutritionTrackerContent: React.FC = () => {
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-6xl mx-auto space-y-6">
             
-            <NutritionOverview
-              totalCalories={totalCalories}
-              calorieGoal={calorieGoal}
-              proteinData={proteinData}
-              carbData={carbData}
-              fatData={fatData}
-            />
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <WaterIntakeTracker
-                waterIntake={todayWaterIntake}
-                onWaterIntakeChange={addWaterIntake}
-              />
-
-              <NutritionFocusSelection
-                selectedFoodTypes={selectedFoodTypes}
-                onToggleFoodType={toggleFoodType}
-              />
+            {/* Database Connection Status */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-green-800">
+                    <span className="font-medium">Nutrition database connected</span> - Your meals and water intake are being saved automatically
+                    <span className="block text-xs text-green-600 mt-1">
+                      {meals.length} total meals • {todayMealRecords.length} today • {waterIntakes.length} water records
+                    </span>
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <MealsOverview
-              todayMeals={todayMeals}
-            />
-
-            {/* Nutrition Recommendations */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl shadow-sm border border-green-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-2xl">🤖</span>
-                <h2 className="text-xl font-semibold text-gray-800">AI Nutrition Recommendations</h2>
+            {/* Enhanced Water Intake Tracking */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">Water Intake Tracker</h2>
+              
+              {/* Quick Water Addition */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Add water:</label>
+                  <select
+                    value={waterAmount}
+                    onChange={(e) => setWaterAmount(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-green-500"
+                  >
+                    <option value="250">250ml (1 cup)</option>
+                    <option value="500">500ml (1 bottle)</option>
+                    <option value="750">750ml (large bottle)</option>
+                    <option value="1000">1000ml (1 liter)</option>
+                  </select>
+                  <button
+                    onClick={handleAddWater}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="p-4 bg-white/60 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">🥤</span>
-                      <span className="font-medium text-gray-800">Hydration Status</span>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      You&apos;ve consumed {todayWaterIntake}ml today. Great progress! Try to reach your 2000ml daily goal ({waterPercentage.toFixed(0)}% complete).
-                    </p>
-                  </div>
-                  <div className="p-4 bg-white/60 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">🍎</span>
-                      <span className="font-medium text-gray-800">Nutrient Balance</span>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Your protein intake looks good at {proteinData}g. Consider adding more leafy greens for iron.
-                    </p>
+
+              {/* Water Progress */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-800">Today&apos;s Progress</span>
+                  <span className="text-sm text-blue-600">{todayWaterIntake}ml / 2000ml</span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-3">
+                  <div 
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(waterPercentage, 100)}%` }}
+                  ></div>
+                </div>
+                <div className="text-xs text-blue-600 mt-1">{waterPercentage.toFixed(0)}% complete</div>
+              </div>
+
+              {/* Recent Water Intakes */}
+              {todayWaterRecords.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Today&apos;s Water Records</h3>
+                  <div className="space-y-2">
+                    {todayWaterRecords.slice(0, 5).map((water) => (
+                      <div key={water.id} className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-blue-600">💧</span>
+                          <span className="text-sm text-gray-800">{water.amount_ml}ml</span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(water.recorded_at).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="p-4 bg-white/60 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">⚡</span>
-                      <span className="font-medium text-gray-800">Energy Levels</span>
+              )}
+            </div>
+
+            {/* Enhanced Meal Tracking */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-800">Today&apos;s Meals</h2>
+                <button
+                  onClick={() => setShowAddMealForm(!showAddMealForm)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  {showAddMealForm ? 'Cancel' : 'Add Meal'}
+                </button>
+              </div>
+
+              {/* Add Meal Form */}
+              {showAddMealForm && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <h3 className="text-sm font-medium text-green-800 mb-3">Add New Meal</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-green-700">Foods (comma-separated)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Salmon, Rice, Broccoli"
+                        value={tempFoods}
+                        onChange={(e) => setTempFoods(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-green-300 rounded-md focus:outline-none focus:border-green-500"
+                      />
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Current calorie intake: {totalCalories}. Perfect balance for sustained energy throughout the day.
-                    </p>
+                    <div>
+                      <label className="text-xs text-green-700">Calories (optional)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g., 450"
+                        value={tempCalories}
+                        onChange={(e) => setTempCalories(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-green-300 rounded-md focus:outline-none focus:border-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-green-700">Nutrients (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., protein, omega3, iron"
+                        value={tempNutrients}
+                        onChange={(e) => setTempNutrients(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-green-300 rounded-md focus:outline-none focus:border-green-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-green-700">Notes (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="How did it taste?"
+                        value={tempNotes}
+                        onChange={(e) => setTempNotes(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-green-300 rounded-md focus:outline-none focus:border-green-500"
+                      />
+                    </div>
                   </div>
-                  <div className="p-4 bg-white/60 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">🌿</span>
-                      <span className="font-medium text-gray-800">Health Tips</span>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Include omega-3 rich foods like salmon or walnuts to support hormonal health.
-                    </p>
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {mealTimes.map((meal) => (
+                      <button
+                        key={meal.value}
+                        onClick={() => handleAddMeal(meal.value)}
+                        className={`p-3 rounded-lg border-2 ${meal.color} hover:shadow-sm transition-all text-center`}
+                      >
+                        <div className="text-xl mb-1">{meal.icon}</div>
+                        <div className="text-xs font-medium text-gray-800">{meal.label}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
+              )}
+
+              {/* Current Meals with Details */}
+              {todayMealRecords.length > 0 ? (
+                <div className="space-y-3">
+                  {todayMealRecords.map((meal) => (
+                    <div key={meal.id} className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-xl">
+                          {mealTimes.find(m => m.value === meal.meal_time)?.icon || '🍽️'}
+                        </span>
+                        <div>
+                          <div className="font-medium text-gray-800">{meal.meal_time}</div>
+                          <div className="text-sm text-gray-600">
+                            {meal.foods.join(', ')}
+                            {meal.calories && (
+                              <span> • {meal.calories} cal</span>
+                            )}
+                            {meal.nutrients && meal.nutrients.length > 0 && (
+                              <span> • {meal.nutrients.join(', ')}</span>
+                            )}
+                            {meal.notes && (
+                              <span className="ml-2 text-xs text-gray-500">• {meal.notes}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditMeal(meal)}
+                          className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMeal(meal.id)}
+                          className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-4xl mb-2">🍽️</div>
+                  <p>No meals recorded today</p>
+                  <p className="text-sm">Click "Add Meal" to get started!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Enhanced Nutrition Focus */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">Nutrition Focus Areas</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {nutritionFocusTypes.map((focus) => {
+                  const isSelected = selectedFoodTypes.includes(focus.value);
+                  return (
+                    <button
+                      key={focus.value}
+                      onClick={() => toggleFoodType(focus.value)}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        isSelected
+                          ? 'border-green-500 bg-green-50 shadow-md'
+                          : 'border-gray-200 hover:border-green-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-xl">{focus.icon}</span>
+                        <span className="font-medium text-gray-800">{focus.label}</span>
+                      </div>
+                      <div className="text-xs text-gray-600">{focus.foods}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Nutrition Summary */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">Nutrition Summary</h2>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-red-800 mb-3">Total Calories</h3>
+                  <div className="text-2xl font-bold text-red-600 mb-1">{totalCalories}</div>
+                  <div className="text-xs text-red-600">Goal: {calorieGoal}</div>
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-blue-800 mb-3">Protein</h3>
+                  <div className="text-2xl font-bold text-blue-600 mb-1">{proteinData}g</div>
+                  <div className="text-xs text-blue-600">Daily intake</div>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-yellow-800 mb-3">Carbs</h3>
+                  <div className="text-2xl font-bold text-yellow-600 mb-1">{carbData}g</div>
+                  <div className="text-xs text-yellow-600">Daily intake</div>
+                </div>
+                
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-purple-800 mb-3">Fats</h3>
+                  <div className="text-2xl font-bold text-purple-600 mb-1">{fatData}g</div>
+                  <div className="text-xs text-purple-600">Daily intake</div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Assistant Instructions */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-green-800 mb-2">🤖 Ask your AI Assistant</h3>
+              <div className="text-xs text-green-700 space-y-1">
+                <p><strong>Meal Recording:</strong></p>
+                <p>• &ldquo;Record breakfast: oatmeal, banana, milk with 350 calories&rdquo;</p>
+                <p>• &ldquo;Log lunch: salmon, rice, vegetables with omega3 nutrients&rdquo;</p>
+                <p>• &ldquo;Add dinner: chicken, broccoli, sweet potato&rdquo;</p>
+                
+                <p className="pt-2"><strong>Water Tracking:</strong></p>
+                <p>• &ldquo;Add 500ml of water to my intake&rdquo;</p>
+                <p>• &ldquo;I drank a 750ml bottle of water&rdquo;</p>
+                <p>• &ldquo;Record 250ml water intake&rdquo;</p>
+                
+                <p className="pt-2"><strong>Nutrition Management:</strong></p>
+                <p>• &ldquo;Set my calorie goal to 1600&rdquo;</p>
+                <p>• &ldquo;Add iron and calcium to my nutrition focus&rdquo;</p>
+                <p>• &ldquo;What foods are good for omega3?&rdquo;</p>
               </div>
             </div>
 
