@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNutritionWithDB } from '@/hooks/useNutritionWithDB';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { supabaseRest } from '@/lib/supabase/restClient';
 import { PageHeader } from '@/components/shared/PageHeader';
 
@@ -38,6 +39,7 @@ const nutritionFocusTypes = [
 ];
 
 export const NutritionTrackerContent: React.FC = () => {
+  const { user } = useAuth();
   const {
     todayWaterIntake,
     waterPercentage,
@@ -51,30 +53,44 @@ export const NutritionTrackerContent: React.FC = () => {
     toggleFoodType,
     loading,
     error,
-    addWaterIntake
+    addWaterIntake,
+    loadAllData
   } = useNutritionWithDB();
 
   // Local state for enhanced features
   const [meals, setMeals] = useState<Meal[]>([]);
   const [waterIntakes, setWaterIntakes] = useState<WaterIntake[]>([]);
   const [showAddMealForm, setShowAddMealForm] = useState<boolean>(false);
+  const [editingMeal, setEditingMeal] = useState<string | null>(null);
   const [tempFoods, setTempFoods] = useState<string>('');
   const [tempCalories, setTempCalories] = useState<string>('');
   const [tempNutrients, setTempNutrients] = useState<string>('');
   const [tempNotes, setTempNotes] = useState<string>('');
   const [waterAmount, setWaterAmount] = useState<string>('250');
+  const [nutritionFocusState, setNutritionFocusState] = useState<string[]>([]);
 
   // Load data from database
   React.useEffect(() => {
-    loadMeals();
-    loadWaterIntakes();
-  }, []);
+    if (user) {
+      loadMeals();
+      loadWaterIntakes();
+      loadNutritionFocus();
+    }
+  }, [user]);
+
+  // Sync nutritionFocusState with hook's selectedFoodTypes
+  React.useEffect(() => {
+    setNutritionFocusState(selectedFoodTypes);
+  }, [selectedFoodTypes]);
 
   const loadMeals = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabaseRest
         .from('meals')
         .select('*')
+        .eq('user_id', user.id)
         .order('date', { ascending: false })
         .limit(10);
 
@@ -87,10 +103,13 @@ export const NutritionTrackerContent: React.FC = () => {
   };
 
   const loadWaterIntakes = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabaseRest
         .from('water_intake')
         .select('*')
+        .eq('user_id', user.id)
         .order('recorded_at', { ascending: false })
         .limit(10);
 
@@ -99,6 +118,24 @@ export const NutritionTrackerContent: React.FC = () => {
       }
     } catch (error) {
       console.error('Error loading water intakes:', error);
+    }
+  };
+
+  const loadNutritionFocus = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabaseRest
+        .from('nutrition_focus')
+        .select('focus_type')
+        .eq('user_id', user.id)
+        .eq('is_selected', true);
+
+      if (!error && data && Array.isArray(data)) {
+        setNutritionFocusState(data.map((item: Record<string, unknown>) => item.focus_type as string));
+      }
+    } catch (error) {
+      console.error('Error loading nutrition focus:', error);
     }
   };
 
@@ -112,6 +149,8 @@ export const NutritionTrackerContent: React.FC = () => {
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const handleSaveMeal = async (mealId: string) => {
+    if (!user) return;
+    
     try {
       const updateData: Record<string, unknown> = {
         foods: tempFoods.split(',').map(f => f.trim()).filter(f => f),
@@ -129,26 +168,44 @@ export const NutritionTrackerContent: React.FC = () => {
       const { error } = await supabaseRest
         .from('meals')
         .update(updateData)
-        .eq('id', mealId);
+        .eq('id', mealId)
+        .eq('user_id', user.id);
 
       if (!error) {
         await loadMeals();
+        await loadAllData(); // Refresh hook data
         setEditingMeal(null);
+        setTempFoods('');
+        setTempCalories('');
+        setTempNutrients('');
+        setTempNotes('');
       }
     } catch (error) {
       console.error('Error updating meal:', error);
     }
   };
 
+  const handleEditMeal = (meal: Meal) => {
+    setEditingMeal(meal.id);
+    setTempFoods(meal.foods.join(', '));
+    setTempCalories(meal.calories ? meal.calories.toString() : '');
+    setTempNutrients(meal.nutrients ? meal.nutrients.join(', ') : '');
+    setTempNotes(meal.notes || '');
+  };
+
   const handleDeleteMeal = async (mealId: string) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabaseRest
         .from('meals')
         .delete()
-        .eq('id', mealId);
+        .eq('id', mealId)
+        .eq('user_id', user.id);
 
       if (!error) {
         await loadMeals();
+        await loadAllData(); // Refresh hook data
       }
     } catch (error) {
       console.error('Error deleting meal:', error);
@@ -156,8 +213,11 @@ export const NutritionTrackerContent: React.FC = () => {
   };
 
   const handleAddMeal = async (mealTime: string) => {
+    if (!user) return;
+    
     try {
       const mealData: Record<string, unknown> = {
+        user_id: user.id,
         date: today,
         meal_time: mealTime,
         foods: tempFoods.split(',').map(f => f.trim()).filter(f => f),
@@ -178,6 +238,7 @@ export const NutritionTrackerContent: React.FC = () => {
 
       if (!error) {
         await loadMeals();
+        await loadAllData(); // Refresh hook data
         setShowAddMealForm(false);
         setTempFoods('');
         setTempCalories('');
@@ -190,25 +251,87 @@ export const NutritionTrackerContent: React.FC = () => {
   };
 
   const handleAddWater = async () => {
-    if (!waterAmount || Number(waterAmount) <= 0) return;
+    if (!user || !waterAmount || Number(waterAmount) <= 0) return;
     
     try {
       const { error } = await supabaseRest
         .from('water_intake')
         .insert([{
+          user_id: user.id,
           date: today,
           amount_ml: Number(waterAmount)
         }]);
 
       if (!error) {
         await loadWaterIntakes();
-        // Also call the hook's addWaterIntake if it exists
-        if (addWaterIntake) {
-          addWaterIntake(Number(waterAmount));
-        }
+        await loadAllData(); // Refresh hook data
+        // Also call the hook's addWaterIntake to update global state
+        await addWaterIntake(Number(waterAmount));
+        setWaterAmount('250'); // Reset to default
       }
     } catch (error) {
       console.error('Error adding water:', error);
+    }
+  };
+
+  const handleAddWaterPreset = async (amount: number) => {
+    if (!user || amount <= 0) return;
+    
+    try {
+      const { error } = await supabaseRest
+        .from('water_intake')
+        .insert([{
+          user_id: user.id,
+          date: today,
+          amount_ml: amount
+        }]);
+
+      if (!error) {
+        await loadWaterIntakes();
+        await loadAllData(); // Refresh hook data
+        // Also call the hook's addWaterIntake to update global state
+        await addWaterIntake(amount);
+      }
+    } catch (error) {
+      console.error('Error adding water:', error);
+    }
+  };
+
+  const handleToggleNutritionFocus = async (focusType: string) => {
+    if (!user) return;
+    
+    const isCurrentlySelected = nutritionFocusState.includes(focusType);
+    
+    try {
+      if (isCurrentlySelected) {
+        // Remove from database
+        const { error } = await supabaseRest
+          .from('nutrition_focus')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('focus_type', focusType);
+
+        if (!error) {
+          // Update hook state first, which will automatically update local state via useEffect
+          toggleFoodType(focusType);
+        }
+      } else {
+        // Add to database (upsert)
+        const { error } = await supabaseRest
+          .from('nutrition_focus')
+          .upsert([{
+            user_id: user.id,
+            focus_type: focusType,
+            is_selected: true
+          }]);
+
+        if (!error) {
+          // Update hook state first, which will automatically update local state via useEffect
+          toggleFoodType(focusType);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating nutrition focus:', error);
     }
   };
 
@@ -281,10 +404,54 @@ export const NutritionTrackerContent: React.FC = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Water Intake Tracker</h2>
               
-              {/* Quick Water Addition */}
-              <div className="flex items-center gap-4 mb-6">
+              {/* Quick Water Addition with Preset Buttons */}
+              <div className="mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <button
+                    onClick={() => handleAddWaterPreset(200)}
+                    className="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg mb-1">🥤</div>
+                      <div className="text-sm font-medium text-gray-800">Glass</div>
+                      <div className="text-xs text-gray-600">200ml</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleAddWaterPreset(500)}
+                    className="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg mb-1">🍼</div>
+                      <div className="text-sm font-medium text-gray-800">Bottle</div>
+                      <div className="text-xs text-gray-600">500ml</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleAddWaterPreset(350)}
+                    className="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg mb-1">☕</div>
+                      <div className="text-sm font-medium text-gray-800">Mug</div>
+                      <div className="text-xs text-gray-600">350ml</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleAddWaterPreset(250)}
+                    className="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                  >
+                    <div className="text-center">
+                      <div className="text-lg mb-1">🥛</div>
+                      <div className="text-sm font-medium text-gray-800">Cup</div>
+                      <div className="text-xs text-gray-600">250ml</div>
+                    </div>
+                  </button>
+                </div>
+                
+                {/* Custom Amount Input */}
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">Add water:</label>
+                  <label className="text-sm font-medium text-gray-700">Custom amount:</label>
                   <select
                     value={waterAmount}
                     onChange={(e) => setWaterAmount(e.target.value)}
@@ -469,11 +636,11 @@ export const NutritionTrackerContent: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Nutrition Focus Areas</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {nutritionFocusTypes.map((focus) => {
-                  const isSelected = selectedFoodTypes.includes(focus.value);
+                  const isSelected = nutritionFocusState.includes(focus.value);
                   return (
                     <button
                       key={focus.value}
-                      onClick={() => toggleFoodType(focus.value)}
+                      onClick={() => handleToggleNutritionFocus(focus.value)}
                       className={`p-4 rounded-lg border-2 transition-all text-left ${
                         isSelected
                           ? 'border-green-500 bg-green-50 shadow-md'
@@ -483,6 +650,7 @@ export const NutritionTrackerContent: React.FC = () => {
                       <div className="flex items-center space-x-2 mb-2">
                         <span className="text-xl">{focus.icon}</span>
                         <span className="font-medium text-gray-800">{focus.label}</span>
+                        {isSelected && <span className="text-sm text-green-600">✓</span>}
                       </div>
                       <div className="text-xs text-gray-600">{focus.foods}</div>
                     </button>

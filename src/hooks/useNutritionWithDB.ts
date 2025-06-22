@@ -39,8 +39,28 @@ export const useNutritionWithDB = () => {
   useEffect(() => {
     if (!user) return;
     loadAllData();
+    loadUserNutritionFocus();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const loadUserNutritionFocus = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabaseRest
+        .from('nutrition_focus')
+        .select('focus_type')
+        .eq('user_id', user.id)
+        .eq('is_selected', true);
+
+      if (!error && data && Array.isArray(data)) {
+        const focusTypes = data.map((item: Record<string, unknown>) => item.focus_type as string);
+        setSelectedFoodTypes(focusTypes);
+      }
+    } catch (error) {
+      console.error('Error loading nutrition focus:', error);
+    }
+  };
 
   const loadAllData = async () => {
     if (!user) return;
@@ -51,7 +71,8 @@ export const useNutritionWithDB = () => {
     try {
       await Promise.all([
         loadTodayMeals(),
-        loadWaterIntake()
+        loadWaterIntake(),
+        loadUserNutritionFocus()
       ]);
     } catch (err) {
       console.error('Error loading nutrition data:', err);
@@ -284,14 +305,50 @@ export const useNutritionWithDB = () => {
       description: "Array of nutrition focus types (iron, calcium, magnesium, omega3, vitaminD, antiInflammatory)",
       required: true,
     }],
-    handler: ({ focusTypes }) => {
+    handler: async ({ focusTypes }) => {
+      if (!user) {
+        console.error('User not authenticated');
+        return;
+      }
+
       const validTypes = focusTypes.filter((type: string) => 
         nutritionFocus.some(nf => nf.type === type)
       );
-      setSelectedFoodTypes(prev => {
-        const newTypes = [...new Set([...prev, ...validTypes])];
-        return newTypes;
-      });
+
+      try {
+        // Save each focus type to database
+        const insertPromises = validTypes.map(focusType => 
+          supabaseRest
+            .from('nutrition_focus')
+            .upsert([{
+              user_id: user.id,
+              focus_type: focusType,
+              is_selected: true
+            }])
+        );
+
+        const results = await Promise.all(insertPromises);
+        
+        // Check for any errors
+        const hasErrors = results.some(result => result.error);
+        if (hasErrors) {
+          console.error('Error saving nutrition focus to database');
+          return;
+        }
+
+        // Update local state only if database save was successful
+        setSelectedFoodTypes(prev => {
+          const newTypes = [...new Set([...prev, ...validTypes])];
+          return newTypes;
+        });
+
+        console.log('Successfully saved nutrition focus areas:', validTypes);
+        
+        // Return success message
+        return `Successfully added nutrition focus areas: ${validTypes.join(', ')}`;
+      } catch (error) {
+        console.error('Error in addNutritionFocus action:', error);
+      }
     },
   });
 
