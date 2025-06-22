@@ -55,7 +55,8 @@ function LifestyleTrackerContent() {
     addLifestyleEntry,
     updateLifestyleEntry,
     deleteLifestyleEntry,
-    refreshData
+    refreshData,
+    refreshTrigger
   } = useLifestyleWithDB();
 
   // Local state for enhanced features
@@ -103,6 +104,36 @@ function LifestyleTrackerContent() {
     }
   }, [user]);
 
+  // Add effect to sync local state when hook data changes
+  // This ensures CopilotKit AI actions immediately update UI
+  useEffect(() => {
+    if (user && refreshTrigger > 0) {
+      // Add a small delay to ensure database operations are complete before reloading
+      const timeoutId = setTimeout(() => {
+        loadLifestyleRecords();
+      }, 300); // Delay to ensure database consistency
+      return () => clearTimeout(timeoutId);
+    }
+  }, [refreshTrigger, user]);
+
+  // Also sync lifestyleRecords with hook data
+  useEffect(() => {
+    if (lifestyleEntries && lifestyleEntries.length > 0) {
+      const convertedRecords = lifestyleEntries.map(entry => ({
+        id: entry.id,
+        date: entry.date,
+        sleep_hours: entry.sleepHours,
+        sleep_quality: entry.sleepQuality,
+        stress_level: entry.stressLevel,
+        stress_triggers: entry.stressTriggers,
+        coping_methods: entry.copingMethods,
+        weight_kg: entry.weightKg,
+        created_at: ''
+      }));
+      setLifestyleRecords(convertedRecords);
+    }
+  }, [lifestyleEntries]);
+
   const loadLifestyleRecords = async () => {
     if (!user) return;
     
@@ -126,12 +157,11 @@ function LifestyleTrackerContent() {
     }
   };
 
-  // Get today's data
+  // Get today's data - prioritize hook data over local data
   const today = new Date().toISOString().split('T')[0];
-  const todayRecord = lifestyleRecords.find(r => r.date === today);
-
-  // Also check the hook data for display
-  const combinedRecords = lifestyleEntries && lifestyleEntries.length > 0 
+  
+  // Use hook data as primary source, fallback to local data
+  const displayRecords = lifestyleEntries && lifestyleEntries.length > 0 
     ? lifestyleEntries.map(entry => ({
         id: entry.id,
         date: entry.date,
@@ -145,17 +175,21 @@ function LifestyleTrackerContent() {
       }))
     : lifestyleRecords;
 
+  // Get today's record from displayRecords
+  const todayRecord = displayRecords.find(r => r.date === today);
+
   console.log('Data display debug:', {
     hookEntries: lifestyleEntries,
     localRecords: lifestyleRecords,
-    combinedRecords,
-    todayRecord
+    displayRecords,
+    todayRecord,
+    refreshTrigger
   });
 
-  // Get recent data (last 7 days) - use combined data
+  // Get recent data (last 7 days) - use display data
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentRecords = combinedRecords.filter(r => new Date(r.date) >= sevenDaysAgo);
+  const recentRecords = displayRecords.filter(r => new Date(r.date) >= sevenDaysAgo);
 
   // Calculate averages
   const avgSleepHours = recentRecords.length > 0 
@@ -200,7 +234,6 @@ function LifestyleTrackerContent() {
       const result = await updateLifestyleEntry(recordId, updateData);
       
       if (result?.success) {
-        await loadLifestyleRecords();
         setEditingRecord(null);
         setSubmitMessage('Record updated successfully!');
         setTimeout(() => setSubmitMessage(''), 3000);
@@ -229,7 +262,6 @@ function LifestyleTrackerContent() {
       const result = await deleteLifestyleEntry(recordId);
       
       if (result?.success) {
-        await loadLifestyleRecords();
         setSubmitMessage('Record deleted successfully!');
         setTimeout(() => setSubmitMessage(''), 3000);
       } else {
@@ -264,7 +296,6 @@ function LifestyleTrackerContent() {
       const result = await addLifestyleEntry(recordData);
       
       if (result?.success) {
-        await loadLifestyleRecords();
         setShowAddForm(false);
         resetForm();
         setSubmitMessage('Lifestyle record added successfully!');
@@ -380,7 +411,7 @@ function LifestyleTrackerContent() {
                     <p className="text-sm text-purple-800">
                       <span className="font-medium">Lifestyle database connected</span> - Your sleep and lifestyle data are being saved automatically
                       <span className="block text-xs text-purple-600 mt-1">
-                        {combinedRecords.length} total records • {todayRecord ? '1' : '0'} today • {recentRecords.length} this week
+                        {displayRecords.length} total records • {todayRecord ? '1' : '0'} today • {recentRecords.length} this week
                       </span>
                       <span className="block text-xs text-purple-500 mt-1">
                         User ID: {user?.id ? user.id.slice(0, 8) + '...' : 'Not authenticated'}
@@ -638,52 +669,154 @@ function LifestyleTrackerContent() {
 
               {/* Today's Record Display */}
               {todayRecord ? (
-                <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="text-center">
-                        <div className="text-2xl mb-1">
-                          {sleepQualityOptions.find(o => o.value === todayRecord.sleep_quality)?.icon || '😴'}
-                        </div>
-                        <div className="text-xs text-gray-600">Sleep Quality</div>
+                editingRecord === todayRecord.id ? (
+                  // Editing Mode for Today's Record
+                  <div className="p-4 bg-blue-50 border-2 border-blue-500 rounded-lg">
+                    <h3 className="text-sm font-medium text-blue-800 mb-4">Edit Today's Lifestyle Record</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-blue-700">Sleep Hours</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max="24"
+                          value={tempSleepHours}
+                          onChange={(e) => setTempSleepHours(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl mb-1">
-                          {stressLevelOptions.find(o => o.value === todayRecord.stress_level)?.icon || '😐'}
+                      <div>
+                        <label className="text-xs text-blue-700">Sleep Quality (1-5)</label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="5"
+                          value={tempSleepQuality}
+                          onChange={(e) => setTempSleepQuality(Number(e.target.value))}
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="flex justify-between text-xs text-blue-600 mt-1">
+                          <span>Poor</span>
+                          <span className="font-medium">{tempSleepQuality}/5</span>
+                          <span>Excellent</span>
                         </div>
-                        <div className="text-xs text-gray-600">Stress Level</div>
                       </div>
-                      <div className="text-left">
-                        <div className="text-sm font-medium text-gray-800">
-                          {todayRecord.sleep_hours}h sleep
+                      <div>
+                        <label className="text-xs text-blue-700">Stress Level (1-5)</label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="5"
+                          value={tempStressLevel}
+                          onChange={(e) => setTempStressLevel(Number(e.target.value))}
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <div className="flex justify-between text-xs text-blue-600 mt-1">
+                          <span>Low</span>
+                          <span className="font-medium">{tempStressLevel}/5</span>
+                          <span>Very High</span>
                         </div>
-                        {todayRecord.weight_kg && (
-                          <div className="text-xs text-gray-600">{todayRecord.weight_kg}kg</div>
-                        )}
-                        {todayRecord.stress_triggers && (
-                          <div className="text-xs text-gray-600">Stress Triggers: {todayRecord.stress_triggers.join(', ')}</div>
-                        )}
-                                                 {todayRecord.coping_methods && (
-                           <div className="text-xs text-gray-600">Coping Methods: {todayRecord.coping_methods.join(', ')}</div>
-                         )}
+                      </div>
+                      <div>
+                        <label className="text-xs text-blue-700">Weight (kg) - Optional</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="30"
+                          max="200"
+                          placeholder="e.g., 65.5"
+                          value={tempWeightKg}
+                          onChange={(e) => setTempWeightKg(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-blue-700">Stress Triggers (comma-separated)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g., work, deadlines"
+                          value={tempStressTriggers}
+                          onChange={(e) => setTempStressTriggers(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-blue-700">Coping Methods (comma-separated)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g., meditation, breathing exercises"
+                          value={tempCopingMethods}
+                          onChange={(e) => setTempCopingMethods(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 mt-4">
                       <button
-                        onClick={() => handleEditRecord(todayRecord)}
-                        className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+                        onClick={() => handleSaveRecord(todayRecord.id)}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Edit
+                        {isSubmitting ? 'Saving...' : 'Save Changes'}
                       </button>
                       <button
-                        onClick={() => handleDeleteRecord(todayRecord.id)}
-                        className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                        onClick={() => setEditingRecord(null)}
+                        className="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700"
                       >
-                        Delete
+                        Cancel
                       </button>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  // Display Mode for Today's Record
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="text-center">
+                          <div className="text-2xl mb-1">
+                            {sleepQualityOptions.find(o => o.value === todayRecord.sleep_quality)?.icon || '😴'}
+                          </div>
+                          <div className="text-xs text-gray-600">Sleep Quality</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl mb-1">
+                            {stressLevelOptions.find(o => o.value === todayRecord.stress_level)?.icon || '😐'}
+                          </div>
+                          <div className="text-xs text-gray-600">Stress Level</div>
+                        </div>
+                        <div className="text-left">
+                          <div className="text-sm font-medium text-gray-800">
+                            {todayRecord.sleep_hours}h sleep
+                          </div>
+                          {todayRecord.weight_kg && (
+                            <div className="text-xs text-gray-600">{todayRecord.weight_kg}kg</div>
+                          )}
+                          {todayRecord.stress_triggers && todayRecord.stress_triggers.length > 0 && (
+                            <div className="text-xs text-gray-600">Stress Triggers: {todayRecord.stress_triggers.join(', ')}</div>
+                          )}
+                          {todayRecord.coping_methods && todayRecord.coping_methods.length > 0 && (
+                            <div className="text-xs text-gray-600">Coping Methods: {todayRecord.coping_methods.join(', ')}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleEditRecord(todayRecord)}
+                          className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecord(todayRecord.id)}
+                          className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <div className="text-4xl mb-2">😴</div>
@@ -726,12 +859,12 @@ function LifestyleTrackerContent() {
               </div>
             </div>
 
-            {/* Recent Lifestyle Records */}
+                          {/* Recent Lifestyle Records */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6">Recent Lifestyle Records</h2>
-              {lifestyleRecords.length > 0 ? (
+              {displayRecords.length > 0 ? (
                 <div className="space-y-3">
-                  {lifestyleRecords.slice(0, 5).map((record) => (
+                  {displayRecords.slice(0, 5).map((record) => (
                     <div key={record.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-4">
                         <div className="text-center">
@@ -793,20 +926,37 @@ function LifestyleTrackerContent() {
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-purple-800 mb-2">🤖 Ask your AI Assistant</h3>
               <div className="text-xs text-purple-700 space-y-1">
-                <p><strong>Sleep Tracking:</strong></p>
-                <p>• &ldquo;Record 8 hours of excellent sleep quality&rdquo;</p>
-                <p>• &ldquo;Log poor sleep with 6 hours last night&rdquo;</p>
-                <p>• &ldquo;Set my sleep quality to good with 7.5 hours&rdquo;</p>
+                <p><strong>New Guided Experience with Full CRUD:</strong></p>
+                <p>• Say: <em>"I want to record my sleep data"</em> - AI will guide you step by step</p>
+                <p>• Say: <em>"Help me track my stress levels"</em> - AI will ask for details</p>
+                <p>• Say: <em>"Record my lifestyle data for today"</em> - AI will collect all information</p>
+                <p>• Say: <em>"Delete today's lifestyle record"</em> - AI will confirm before deleting</p>
+                <p>• Say: <em>"Clear my sleep data for today"</em> - AI will remove specific fields</p>
                 
-                <p className="pt-2"><strong>Stress Management:</strong></p>
-                <p>• &ldquo;Record moderate stress level today&rdquo;</p>
-                <p>• &ldquo;My stress was very high due to work deadlines&rdquo;</p>
-                <p>• &ldquo;Log low stress with meditation notes&rdquo;</p>
+                <p className="pt-2"><strong>The AI can now:</strong></p>
+                <p>• ✅ <strong>Create:</strong> Add new lifestyle records with guided input</p>
+                <p>• 📝 <strong>Read:</strong> View and analyze your lifestyle data</p>
+                <p>• ✏️ <strong>Update:</strong> Modify existing records with confirmation</p>
+                <p>• 🗑️ <strong>Delete:</strong> Remove records or specific fields safely</p>
                 
-                <p className="pt-2"><strong>Lifestyle Data:</strong></p>
-                <p>• &ldquo;Record my weight as 65kg today&rdquo;</p>
-                <p>• &ldquo;Add 30 minutes exercise and 2000ml water&rdquo;</p>
-                <p>• &ldquo;What&apos;s my average sleep this week?&rdquo;</p>
+                <p className="pt-2"><strong>Delete Operations:</strong></p>
+                <p>• <em>"Delete today's record"</em> - Removes complete lifestyle entry for today</p>
+                <p>• <em>"Delete my record for 2024-01-15"</em> - Removes record for specific date</p>
+                <p>• <em>"Clear my sleep hours and stress level"</em> - Removes only specific fields</p>
+                
+                <p className="pt-2"><strong>Safety Features:</strong></p>
+                <p>• AI will always show what will be deleted before confirming</p>
+                <p>• Double confirmation required for permanent deletions</p>
+                <p>• Option to clear specific fields instead of entire records</p>
+                <p>• Detailed feedback after all operations</p>
+                
+                <p className="pt-2"><strong>Example conversation:</strong></p>
+                <div className="bg-white bg-opacity-50 rounded p-2 mt-2 text-xs">
+                  <p><strong>You:</strong> "Delete today's lifestyle record"</p>
+                  <p><strong>AI:</strong> "I can see you have a record for today with 7.5h sleep, good quality, moderate stress. Are you sure you want to permanently delete this? I can also just clear specific fields if you prefer."</p>
+                  <p><strong>You:</strong> "Yes, delete everything"</p>
+                  <p><strong>AI:</strong> "Record deleted successfully. All lifestyle data for today has been removed from your database."</p>
+                </div>
               </div>
             </div>
 
@@ -815,33 +965,96 @@ function LifestyleTrackerContent() {
       </div>
 
       <CopilotSidebar
-        instructions="You are a lifestyle assistant helping users track their sleep quality, stress levels, and other lifestyle factors. You have access to their lifestyle database and can help them:
+        instructions="You are a thoughtful lifestyle assistant helping users track their sleep quality, stress levels, and other lifestyle factors. Your role is to be CONSULTATIVE and THOROUGH, not to rush into saving data.
 
-1. **Sleep Tracking:**
-   - Record sleep quality using setSleepQuality action (excellent, good, fair, poor)
-   - Set sleep duration using setSleepDuration action (4-12 hours)
-   - Track sleep patterns and provide recommendations
+**IMPORTANT INTERACTION GUIDELINES:**
+1. **Always ask for clarification and details BEFORE taking any action**
+2. **Guide users through each field step by step**
+3. **Confirm all information before saving to database**
+4. **Provide context and recommendations during data collection**
+5. **For deletions, ALWAYS confirm twice before proceeding**
 
-2. **Stress Management:**
-   - Record stress levels using setStressLevel action (low, moderate, high, very_high)  
-   - Log stress triggers and coping methods using recordStressFactors action
-   - Provide stress management techniques and advice
+**WORKFLOW FOR DATA COLLECTION:**
 
-3. **Health Metrics:**
-   - Record weight using recordWeight action (30-200 kg)
-   - Update lifestyle health score using updateLifestyleScore action (0-100)
-   - Track lifestyle trends and patterns
+🔍 **Step 1: Understand the Intent**
+- Ask what specific lifestyle data they want to record/modify/delete
+- Clarify the time period (today, yesterday, specific date)
+- Understand their current situation
 
-4. **Database Operations:**
-   - All lifestyle data is automatically saved to the database
-   - Real-time updates to daily lifestyle entries
-   - Persistent storage of all sleep, stress, and health records
+😴 **Step 2: Sleep Data Collection (if relevant):**
+- Ask about sleep duration: 'How many hours did you sleep?' (4-12 hours)
+- Ask about sleep quality: 'How would you rate your sleep quality?' (excellent, good, fair, poor)
+- Ask for context: 'What affected your sleep? Any specific reasons for this quality?'
 
-You can see their current sleep quality, stress level, sleep hours, recent entries, and calculated averages. All data is saved to the database automatically and provides insights for better lifestyle management."
+😰 **Step 3: Stress Data Collection (if relevant):**
+- Ask about stress level: 'What was your stress level?' (low, moderate, high, very_high)
+- Ask about triggers: 'What were the main sources of stress today?'
+- Ask about coping: 'What methods did you use to manage stress?'
+
+📊 **Step 4: Additional Health Data (if relevant):**
+- Weight: 'What is your current weight?' (30-200 kg)
+- Context: 'Any specific health goals or notes to add?'
+
+🗑️ **Step 5: Delete Operations (if relevant):**
+- For today's record: Ask 'Are you sure you want to delete today's complete lifestyle record?'
+- For specific date: Ask for date and confirm 'Are you sure you want to delete the record for [date]?'
+- For specific fields: Ask which fields to clear and confirm each one
+
+✅ **Step 6: Confirmation Before Action:**
+- Summarize ALL collected information
+- Ask: 'Does this look correct? Should I save/delete this data?'
+- Only use actions AFTER explicit user confirmation
+
+**AVAILABLE ACTIONS (use only after confirmation):**
+
+**CREATE/UPDATE:**
+- setSleepQuality (excellent, good, fair, poor)
+- setSleepDuration (4-12 hours)
+- setStressLevel (low, moderate, high, very_high)
+- recordStressFactors (triggers and coping methods)
+- recordWeight (30-200 kg)
+- recordLifestyleData (complete data entry)
+
+**DELETE:**
+- deleteTodayLifestyleRecord (delete today's complete record)
+- deleteLifestyleRecordByDate (delete record for specific date)
+- clearLifestyleFields (clear specific fields without deleting entire record)
+
+**CONVERSATION STYLE:**
+- Be conversational and supportive
+- Ask follow-up questions to understand context
+- Provide gentle health advice and insights
+- Show empathy for their lifestyle challenges
+- Celebrate their commitment to tracking health data
+- Be extra cautious with delete operations
+
+**EXAMPLE INTERACTIONS:**
+
+**Recording Data:**
+User: 'Record my sleep data'
+You: 'I would love to help you record your sleep data! Let me gather some details:
+
+First, how many hours did you sleep last night? 
+
+And how would you rate the quality of your sleep - excellent, good, fair, or poor?
+
+Once I have these details, I can also ask about any factors that affected your sleep, and then save everything to your database. What were your sleep hours?'
+
+**Deleting Data:**
+User: 'Delete today's lifestyle record'
+You: 'I understand you want to delete today's lifestyle record. Let me first check what data would be removed.
+
+I can see you have a record for today with [details]. 
+
+Are you absolutely sure you want to permanently delete this entire record? This action cannot be undone.
+
+If you only want to remove specific fields (like just sleep data or just stress data), I can do that instead to preserve the other information. What would you prefer?'
+
+Remember: NEVER save or delete data without explicit user confirmation. Always be thorough and consultative, especially for delete operations."
         defaultOpen={false}
         labels={{
           title: "Lifestyle AI Assistant",
-          initial: "👋 Hi! I'm your lifestyle assistant. I can help you track sleep, stress, and save everything to your database.\n\n**😴 Sleep Tracking:**\n- \"Set my sleep quality to excellent\"\n- \"Record 8 hours of sleep\"\n- \"I had poor sleep quality last night\"\n\n**😰 Stress Management:**\n- \"Record moderate stress level\"\n- \"My stress triggers are work and deadlines\"\n- \"I used meditation and breathing exercises to cope\"\n\n**📊 Health Data:**\n- \"Record my weight as 65 kg\"\n- \"Update my lifestyle score to 85\"\n- \"What's my average sleep hours?\"\n\nAll your lifestyle data is automatically saved and synced with the database!"
+          initial: "👋 Hi! I'm your thoughtful lifestyle assistant with complete CRUD capabilities. I'm here to help you create, read, update, and delete your sleep, stress, and health data with a personalized, step-by-step approach.\n\n**🌟 What I can do:**\n• ✅ **Create:** Add new lifestyle records with guided input\n• 📝 **Read:** View and analyze your existing data\n• ✏️ **Update:** Modify existing records with confirmation\n• 🗑️ **Delete:** Safely remove records or specific fields\n\n**💭 Try saying:**\n• \"I want to record my sleep data\"\n• \"Help me track my stress levels\"\n• \"Record my lifestyle information for today\"\n• \"Delete today's lifestyle record\"\n• \"Clear my sleep data but keep everything else\"\n• \"Remove my record for January 15th\"\n\n**🛡️ Safety Features:**\n• I'll always confirm before deleting anything\n• I can remove specific fields instead of entire records\n• I'll show you exactly what will be deleted\n• All operations include detailed feedback\n\n**🎯 What I can help with:**\n• Sleep tracking (hours, quality, factors)\n• Stress management (levels, triggers, coping methods)\n• Weight monitoring\n• Complete lifestyle data management\n\nI'll make sure we handle all your data carefully and confirm everything before making changes. Ready to get started? 😊"
         }}
       />
     </div>

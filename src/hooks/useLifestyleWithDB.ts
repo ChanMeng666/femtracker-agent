@@ -477,7 +477,7 @@ export const useLifestyleWithDB = () => {
   // AI Action: Set sleep quality
   useCopilotAction({
     name: "setSleepQuality",
-    description: "Record last night's sleep quality",
+    description: "Record last night's sleep quality - use only after confirming with user",
     parameters: [{
       name: "quality",
       type: "string",
@@ -492,7 +492,12 @@ export const useLifestyleWithDB = () => {
         const qualityMap = { 'poor': 2, 'fair': 5, 'good': 7, 'excellent': 9 };
         const numericQuality = qualityMap[quality as keyof typeof qualityMap];
         
-        await updateTodayEntry({ sleepQuality: numericQuality });
+        const result = await updateTodayEntry({ sleepQuality: numericQuality });
+        setRefreshTrigger(prev => prev + 1);
+        
+        return `✅ Sleep quality set to "${quality}" and saved to your database. This corresponds to a ${numericQuality}/10 rating.`;
+      } else {
+        return `❌ Invalid sleep quality "${quality}". Please use: excellent, good, fair, or poor.`;
       }
     },
   });
@@ -500,7 +505,7 @@ export const useLifestyleWithDB = () => {
   // AI Action: Set stress level
   useCopilotAction({
     name: "setStressLevel",
-    description: "Record current stress level",
+    description: "Record current stress level - use only after confirming with user",
     parameters: [{
       name: "level",
       type: "string",
@@ -515,7 +520,12 @@ export const useLifestyleWithDB = () => {
         const stressMap = { 'low': 2, 'moderate': 5, 'high': 7, 'very_high': 9 };
         const numericStress = stressMap[level as keyof typeof stressMap];
         
-        await updateTodayEntry({ stressLevel: numericStress });
+        const result = await updateTodayEntry({ stressLevel: numericStress });
+        setRefreshTrigger(prev => prev + 1);
+        
+        return `✅ Stress level set to "${level}" and saved to your database. This corresponds to a ${numericStress}/10 rating.`;
+      } else {
+        return `❌ Invalid stress level "${level}". Please use: low, moderate, high, or very_high.`;
       }
     },
   });
@@ -523,7 +533,7 @@ export const useLifestyleWithDB = () => {
   // AI Action: Set sleep duration
   useCopilotAction({
     name: "setSleepDuration",
-    description: "Set sleep duration in hours",
+    description: "Set sleep duration in hours - use only after confirming with user",
     parameters: [{
       name: "hours",
       type: "number",
@@ -533,7 +543,12 @@ export const useLifestyleWithDB = () => {
     handler: async ({ hours }) => {
       if (hours >= SLEEP_MIN && hours <= SLEEP_MAX) {
         setSleepHours(hours);
-        await updateTodayEntry({ sleepHours: hours });
+        const result = await updateTodayEntry({ sleepHours: hours });
+        setRefreshTrigger(prev => prev + 1);
+        
+        return `✅ Sleep duration set to ${hours} hours and saved to your database.`;
+      } else {
+        return `❌ Invalid sleep duration ${hours} hours. Please enter a value between ${SLEEP_MIN} and ${SLEEP_MAX} hours.`;
       }
     },
   });
@@ -541,7 +556,7 @@ export const useLifestyleWithDB = () => {
   // AI Action: Record weight
   useCopilotAction({
     name: "recordWeight",
-    description: "Record current weight in kilograms",
+    description: "Record current weight in kilograms - use only after confirming with user",
     parameters: [{
       name: "weightKg",
       type: "number",
@@ -550,7 +565,12 @@ export const useLifestyleWithDB = () => {
     }],
     handler: async ({ weightKg }) => {
       if (weightKg >= 30 && weightKg <= 200) {
-        await updateTodayEntry({ weightKg });
+        const result = await updateTodayEntry({ weightKg });
+        setRefreshTrigger(prev => prev + 1);
+        
+        return `✅ Weight recorded as ${weightKg}kg and saved to your database.`;
+      } else {
+        return `❌ Invalid weight ${weightKg}kg. Please enter a weight between 30 and 200 kg.`;
       }
     },
   });
@@ -558,7 +578,7 @@ export const useLifestyleWithDB = () => {
   // AI Action: Add stress triggers and coping methods
   useCopilotAction({
     name: "recordStressFactors",
-    description: "Record stress triggers and coping methods",
+    description: "Record stress triggers and coping methods - use only after confirming with user",
     parameters: [
       {
         name: "triggers",
@@ -574,10 +594,132 @@ export const useLifestyleWithDB = () => {
       }
     ],
     handler: async ({ triggers, copingMethods }) => {
-      await updateTodayEntry({ 
+      const result = await updateTodayEntry({ 
         stressTriggers: triggers,
         copingMethods: copingMethods
       });
+      setRefreshTrigger(prev => prev + 1);
+      
+      const summaryParts = [];
+      if (triggers && triggers.length > 0) summaryParts.push(`Stress Triggers: ${triggers.join(', ')}`);
+      if (copingMethods && copingMethods.length > 0) summaryParts.push(`Coping Methods: ${copingMethods.join(', ')}`);
+      
+      return `✅ Stress factors recorded and saved to your database!\n\n${summaryParts.join('\n')}`;
+    },
+  });
+
+  // AI Action: Delete today's lifestyle record
+  useCopilotAction({
+    name: "deleteTodayLifestyleRecord",
+    description: "Delete today's complete lifestyle record - use only after confirming with user",
+    parameters: [],
+    handler: async () => {
+      if (!todayEntry) {
+        return `❌ No lifestyle record found for today. There's nothing to delete.`;
+      }
+
+      const result = await deleteLifestyleEntry(todayEntry.id);
+      
+      if (result?.success) {
+        setRefreshTrigger(prev => prev + 1);
+        return `✅ Successfully deleted today's lifestyle record from your database.\n\nThe deleted record included:\n• Sleep: ${todayEntry.sleepHours || 'Not recorded'} hours\n• Sleep Quality: ${todayEntry.sleepQuality || 'Not recorded'}/10\n• Stress Level: ${todayEntry.stressLevel || 'Not recorded'}/10\n• Weight: ${todayEntry.weightKg || 'Not recorded'}kg`;
+      } else {
+        return `❌ Error deleting today's lifestyle record: ${result?.error}\n\nPlease try again or check your internet connection.`;
+      }
+    },
+  });
+
+  // AI Action: Delete lifestyle record by date
+  useCopilotAction({
+    name: "deleteLifestyleRecordByDate",
+    description: "Delete lifestyle record for a specific date - use only after confirming with user",
+    parameters: [
+      {
+        name: "date",
+        type: "string",
+        description: "Date in YYYY-MM-DD format (e.g., '2024-01-15')",
+        required: true,
+      }
+    ],
+    handler: async ({ date }) => {
+      // Validate date format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(date)) {
+        return `❌ Invalid date format. Please use YYYY-MM-DD format (e.g., '2024-01-15').`;
+      }
+
+      // Find the record for the specified date
+      const recordToDelete = lifestyleEntries.find(entry => entry.date === date);
+      
+      if (!recordToDelete) {
+        return `❌ No lifestyle record found for ${date}. Please check the date and try again.`;
+      }
+
+      const result = await deleteLifestyleEntry(recordToDelete.id);
+      
+      if (result?.success) {
+        setRefreshTrigger(prev => prev + 1);
+        return `✅ Successfully deleted lifestyle record for ${date} from your database.\n\nThe deleted record included:\n• Sleep: ${recordToDelete.sleepHours || 'Not recorded'} hours\n• Sleep Quality: ${recordToDelete.sleepQuality || 'Not recorded'}/10\n• Stress Level: ${recordToDelete.stressLevel || 'Not recorded'}/10\n• Weight: ${recordToDelete.weightKg || 'Not recorded'}kg`;
+      } else {
+        return `❌ Error deleting lifestyle record for ${date}: ${result?.error}\n\nPlease try again or check your internet connection.`;
+      }
+    },
+  });
+
+  // AI Action: Clear specific lifestyle fields for today
+  useCopilotAction({
+    name: "clearLifestyleFields",
+    description: "Clear specific lifestyle fields for today (without deleting the entire record) - use only after confirming with user",
+    parameters: [
+      {
+        name: "fields",
+        type: "string[]",
+        description: "Array of field names to clear: 'sleep_hours', 'sleep_quality', 'stress_level', 'weight_kg', 'stress_triggers', 'coping_methods'",
+        required: true,
+      }
+    ],
+    handler: async ({ fields }) => {
+      if (!todayEntry) {
+        return `❌ No lifestyle record found for today. There's nothing to clear.`;
+      }
+
+      const validFields = ['sleep_hours', 'sleep_quality', 'stress_level', 'weight_kg', 'stress_triggers', 'coping_methods'];
+      const invalidFields = fields.filter(field => !validFields.includes(field));
+      
+      if (invalidFields.length > 0) {
+        return `❌ Invalid field names: ${invalidFields.join(', ')}.\n\nValid fields are: ${validFields.join(', ')}`;
+      }
+
+      // Prepare update data to clear specified fields
+      const updateData: Record<string, any> = {};
+      fields.forEach(field => {
+        if (field === 'stress_triggers' || field === 'coping_methods') {
+          updateData[field] = []; // Clear arrays
+        } else {
+          updateData[field] = null; // Clear other fields
+        }
+      });
+
+      const result = await updateLifestyleEntry(todayEntry.id, updateData);
+      
+      if (result?.success) {
+        setRefreshTrigger(prev => prev + 1);
+        
+        const fieldLabels = {
+          'sleep_hours': 'Sleep Hours',
+          'sleep_quality': 'Sleep Quality',
+          'stress_level': 'Stress Level',
+          'weight_kg': 'Weight',
+          'stress_triggers': 'Stress Triggers',
+          'coping_methods': 'Coping Methods'
+        };
+        
+        const clearedFields = fields.map(field => fieldLabels[field as keyof typeof fieldLabels]).join(', ');
+        
+        return `✅ Successfully cleared the following fields from today's lifestyle record:\n\n${clearedFields}\n\nThe record still exists but these specific fields have been reset.`;
+      } else {
+        return `❌ Error clearing lifestyle fields: ${result?.error}\n\nPlease try again or check your internet connection.`;
+      }
     },
   });
 
@@ -601,7 +743,7 @@ export const useLifestyleWithDB = () => {
   // AI Action: Record complete lifestyle data
   useCopilotAction({
     name: "recordLifestyleData",
-    description: "Record complete lifestyle data for today",
+    description: "Record complete lifestyle data for today - use this only after confirming all details with the user",
     parameters: [
       {
         name: "sleepHours",
@@ -647,6 +789,15 @@ export const useLifestyleWithDB = () => {
       }
     ],
     handler: async ({ sleepHours, sleepQuality, stressLevel, weightKg, stressTriggers, copingMethods, notes }) => {
+      // Build summary of what will be saved
+      const summaryParts = [];
+      if (sleepHours !== undefined) summaryParts.push(`Sleep: ${sleepHours} hours`);
+      if (sleepQuality) summaryParts.push(`Sleep Quality: ${sleepQuality}`);
+      if (stressLevel) summaryParts.push(`Stress Level: ${stressLevel}`);
+      if (weightKg !== undefined) summaryParts.push(`Weight: ${weightKg}kg`);
+      if (stressTriggers && stressTriggers.length > 0) summaryParts.push(`Stress Triggers: ${stressTriggers.join(', ')}`);
+      if (copingMethods && copingMethods.length > 0) summaryParts.push(`Coping Methods: ${copingMethods.join(', ')}`);
+      
       const entryData: any = {
         notes: notes || 'Recorded via AI assistant'
       };
@@ -670,9 +821,12 @@ export const useLifestyleWithDB = () => {
       const result = await addLifestyleEntry(entryData);
       
       if (result?.success) {
-        return "Successfully recorded lifestyle data for today!";
+        // Trigger refresh to update UI
+        setRefreshTrigger(prev => prev + 1);
+        
+        return `✅ Successfully saved your lifestyle data for today!\n\nRecorded:\n${summaryParts.join('\n')}\n\nYour data has been saved to the database and you should see it reflected in the page immediately.`;
       } else {
-        return `Error recording lifestyle data: ${result?.error}`;
+        return `❌ Error saving lifestyle data: ${result?.error}\n\nPlease try again or check your internet connection.`;
       }
     },
   });
@@ -702,4 +856,4 @@ export const useLifestyleWithDB = () => {
     loadAllData,
     refreshData
   };
-}; 
+};
