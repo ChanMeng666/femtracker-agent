@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useCycleWithDB } from '@/hooks/useCycleWithDB';
+import { useQuickRecords } from '@/hooks/useQuickRecords';
 import { supabaseRest } from '@/lib/supabase/restClient';
 import { symptoms, moods } from '@/constants/cycle';
 import { PageLayout } from '@/components/shared/PageLayout';
@@ -21,6 +22,15 @@ export const CycleTrackerContent: React.FC = () => {
     deleteSymptom,
     deleteMood,
   } = useCycleWithDB();
+
+  const {
+    getTodayData,
+    upsertQuickRecord,
+    addWaterIntake,
+    upsertLifestyleEntry,
+    refreshData,
+    loading: quickRecordsLoading
+  } = useQuickRecords();
 
   // Local state for editing
   const [editingSymptom, setEditingSymptom] = useState<string | null>(null);
@@ -91,86 +101,74 @@ export const CycleTrackerContent: React.FC = () => {
     }
   };
 
+  // Get today's quick records data
+  const todayData = getTodayData();
+
+  // Update local state when today's data changes
+  React.useEffect(() => {
+    if (todayData.lifestyle) {
+      if (todayData.lifestyle.sleep_quality && sleepQuality === 5) {
+        setSleepQuality(todayData.lifestyle.sleep_quality);
+      }
+      if (todayData.lifestyle.stress_level && stressLevel === 5) {
+        setStressLevel(todayData.lifestyle.stress_level);
+      }
+    }
+  }, [todayData.lifestyle, sleepQuality, stressLevel]);
+
   // Handle quick records
   const handleRecordFlow = async (flow: string) => {
     setSelectedFlow(flow);
-    const today = new Date().toISOString().split('T')[0];
     
-    try {
-      const { error } = await supabaseRest
-        .from('quick_records')
-        .insert([{
-          date: today,
-          record_type: 'period_flow',
-          value: flow,
-          notes: 'Updated manually'
-        }]);
-      
-      if (!error) {
-        alert(`Period flow recorded as ${flow}`);
-      } else {
-        console.error('Error recording flow:', error);
-      }
-    } catch (error) {
-      console.error('Error recording flow:', error);
+    const success = await upsertQuickRecord('period_flow', flow, 'Updated manually');
+    if (success) {
+      const existingFlow = todayData.flow;
+      const message = existingFlow ? 
+        `Period flow updated from ${existingFlow} to ${flow}` : 
+        `Period flow recorded as ${flow}`;
+      alert(message);
+      await refreshData(); // Refresh to show updated data
+    } else {
+      alert('Error recording period flow. Please try again.');
     }
   };
 
   const handleRecordWater = async () => {
     if (!waterAmount || Number(waterAmount) <= 0) return;
     
-    const today = new Date().toISOString().split('T')[0];
-    
-    try {
-      const { error } = await supabaseRest
-        .from('water_intake')
-        .insert([{
-          date: today,
-          amount_ml: Number(waterAmount)
-        }]);
-      
-      if (!error) {
-        alert(`Water intake of ${waterAmount}ml recorded`);
-        setWaterAmount('');
-      } else {
-        console.error('Error recording water:', error);
-      }
-    } catch (error) {
-      console.error('Error recording water:', error);
+    const success = await addWaterIntake(Number(waterAmount));
+    if (success) {
+      alert(`Water intake of ${waterAmount}ml recorded`);
+      setWaterAmount('');
+      await refreshData(); // Refresh to show updated data
+    } else {
+      alert('Error recording water intake. Please try again.');
     }
   };
 
   const handleRecordLifestyle = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    
     const lifestyleData: {
-      date: string;
       sleep_hours?: number;
       sleep_quality?: number;
       stress_level?: number;
-    } = {
-      date: today
-    };
+    } = {};
     
     if (sleepHours) lifestyleData.sleep_hours = Number(sleepHours);
-    if (sleepQuality) lifestyleData.sleep_quality = sleepQuality;
-    if (stressLevel) lifestyleData.stress_level = stressLevel;
+    lifestyleData.sleep_quality = sleepQuality;
+    lifestyleData.stress_level = stressLevel;
     
-    try {
-      const { error } = await supabaseRest
-        .from('lifestyle_entries')
-        .upsert([lifestyleData]);
-      
-      if (!error) {
-        alert('Lifestyle data saved successfully');
-        setSleepHours('');
-        setSleepQuality(5);
-        setStressLevel(5);
-      } else {
-        console.error('Error recording lifestyle:', error);
-      }
-    } catch (error) {
-      console.error('Error recording lifestyle:', error);
+    const success = await upsertLifestyleEntry(lifestyleData);
+    if (success) {
+      const message = todayData.lifestyle ? 
+        'Lifestyle data updated successfully' : 
+        'Lifestyle data saved successfully';
+      alert(message);
+      setSleepHours('');
+      setSleepQuality(5);
+      setStressLevel(5);
+      await refreshData(); // Refresh to show updated data
+    } else {
+      alert('Error recording lifestyle data. Please try again.');
     }
   };
 
@@ -540,13 +538,18 @@ export const CycleTrackerContent: React.FC = () => {
             <h3 className="text-sm font-medium text-red-800 mb-3 flex items-center">
               🩸 Period Flow
             </h3>
+            {todayData.flow && (
+              <div className="mb-3 p-2 bg-red-100 border border-red-300 rounded text-sm">
+                <strong>Today's flow:</strong> {todayData.flow}
+              </div>
+            )}
             <div className="space-y-2">
               {['Light', 'Medium', 'Heavy', 'Spotting'].map((flow) => (
                 <button
                   key={flow}
                   onClick={() => handleRecordFlow(flow)}
                   className={`w-full px-3 py-2 text-sm border border-red-300 rounded-md hover:bg-red-50 transition-colors text-left ${
-                    selectedFlow === flow ? 'bg-red-100 border-red-500' : 'bg-white'
+                    todayData.flow === flow ? 'bg-red-100 border-red-500 font-medium' : 'bg-white'
                   }`}
                 >
                   {flow}
@@ -560,6 +563,16 @@ export const CycleTrackerContent: React.FC = () => {
             <h3 className="text-sm font-medium text-blue-800 mb-3 flex items-center">
               💧 Water Intake
             </h3>
+            {todayData.waterTotal > 0 && (
+              <div className="mb-3 p-2 bg-blue-100 border border-blue-300 rounded text-sm">
+                <strong>Today's total:</strong> {todayData.waterTotal}ml
+                {todayData.waterEntries.length > 1 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    ({todayData.waterEntries.length} entries)
+                  </div>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <input
                 type="number"
@@ -582,6 +595,22 @@ export const CycleTrackerContent: React.FC = () => {
             <h3 className="text-sm font-medium text-green-800 mb-3 flex items-center">
               😴 Sleep & Stress
             </h3>
+            {todayData.lifestyle && (
+              <div className="mb-3 p-2 bg-green-100 border border-green-300 rounded text-sm">
+                <strong>Today's records:</strong>
+                <div className="text-xs text-green-700 mt-1">
+                  {todayData.lifestyle.sleep_hours && (
+                    <div>Sleep: {todayData.lifestyle.sleep_hours}h</div>
+                  )}
+                  {todayData.lifestyle.sleep_quality && (
+                    <div>Quality: {todayData.lifestyle.sleep_quality}/10</div>
+                  )}
+                  {todayData.lifestyle.stress_level && (
+                    <div>Stress: {todayData.lifestyle.stress_level}/10</div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <div>
                 <label className="text-xs text-green-700">Sleep Hours</label>
@@ -590,7 +619,7 @@ export const CycleTrackerContent: React.FC = () => {
                   step="0.5"
                   min="0"
                   max="24"
-                  placeholder="8.0"
+                  placeholder={todayData.lifestyle?.sleep_hours?.toString() || "8.0"}
                   value={sleepHours}
                   onChange={(e) => setSleepHours(e.target.value)}
                   className="w-full px-2 py-1 text-sm border border-green-300 rounded focus:outline-none focus:border-green-500"
@@ -622,7 +651,7 @@ export const CycleTrackerContent: React.FC = () => {
                 onClick={handleRecordLifestyle}
                 className="w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
               >
-                Save Lifestyle
+                {todayData.lifestyle ? 'Update Lifestyle' : 'Save Lifestyle'}
               </button>
             </div>
           </div>
