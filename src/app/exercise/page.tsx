@@ -25,20 +25,29 @@ function ExerciseTrackerPageContent() {
 
 1. **Record Workouts:**
    - Record complete workouts with exercise type, duration (5-120 minutes), intensity (1-10), and calories burned
-   - Track different exercise types: cardio, strength, yoga, walking
+   - Track different exercise types: cardio, strength, yoga, walking, swimming, cycling
    - Add notes and details about workouts
 
-2. **Weekly Goal Management:**
+2. **Update Existing Workouts:**
+   - Modify duration, intensity, calories burned, or notes of existing workouts
+   - Find workouts by exercise type and date, or update today's most recent workout
+   - Update specific fields while keeping others unchanged
+
+3. **Delete Workouts:**
+   - Remove workouts by exercise type and date, or delete today's most recent workout
+   - Confirm successful deletion with workout details
+
+4. **Weekly Goal Management:**
    - Set weekly exercise goals (60-500 minutes)
    - Track weekly progress and goal achievement
    - Monitor active days per week
 
-3. **Exercise Data Management:**
+5. **Exercise Data Management:**
    - View recent exercise history
    - Update exercise health score (0-100)
    - Analyze workout patterns and progress
 
-4. **Database Operations:**
+6. **Database Operations:**
    - All exercise data is automatically saved to the database
    - Real-time updates to weekly progress tracking
    - Persistent storage of all workout records
@@ -54,11 +63,11 @@ Intensity levels (1-10):
 - 4-7: Moderate intensity (slightly breathless but can talk)
 - 8-10: High intensity (heavily breathing)
 
-You can see their current exercise data and make real-time updates that are saved to the database."
+You can see their current exercise data and make real-time updates that are saved to the database. You can add, update, and delete workouts through conversation."
         defaultOpen={false}
         labels={{
           title: "Exercise AI Assistant",
-          initial: "👋 Hi! I'm your exercise assistant. I can help you track workouts and save them to your database.\n\n**🏃‍♀️ Record Workouts:**\n- \"Record a 45-minute cardio workout with intensity 7\"\n- \"Log 30 minutes of yoga with 300 calories burned\"\n- \"Set up a strength training session for 60 minutes\"\n\n**🎯 Weekly Goals:**\n- \"Set my weekly exercise goal to 200 minutes\"\n- \"What's my current goal achievement?\"\n- \"Update my exercise score to 85\"\n\n**📊 Data Analysis:**\n- \"Show me my recent workout history\"\n- \"What's my weekly progress?\"\n- \"Analyze my exercise patterns\"\n\nAll your data is automatically saved and synced with the database!"
+          initial: "👋 Hi! I'm your exercise assistant. I can help you track, update, and delete workouts in your database.\n\n**🏃‍♀️ Record Workouts:**\n- \"Record a 45-minute cardio workout with intensity 7\"\n- \"Log 30 minutes of yoga with 300 calories burned\"\n- \"Set up a strength training session for 60 minutes\"\n\n**✏️ Update Workouts:**\n- \"Update my cardio workout to 50 minutes\"\n- \"Change the intensity of today's yoga to 8\"\n- \"Update my strength workout calories to 400\"\n- \"Add notes to my running workout: felt great today\"\n\n**🗑️ Delete Workouts:**\n- \"Delete my cardio workout from today\"\n- \"Remove the yoga session I logged earlier\"\n- \"Delete my most recent workout\"\n\n**🎯 Weekly Goals:**\n- \"Set my weekly exercise goal to 200 minutes\"\n- \"What's my current goal achievement?\"\n- \"Update my exercise score to 85\"\n\n**📊 Data Analysis:**\n- \"Show me my recent workout history\"\n- \"What's my weekly progress?\"\n- \"Analyze my exercise patterns\"\n\nAll your data is automatically saved and synced with the database!"
         }}
       />
     </div>

@@ -85,7 +85,7 @@ export const useExerciseWithDB = () => {
     }
 
     if (data) {
-      setExercises(data.map(exercise => ({
+      setExercises(data.map((exercise: any) => ({
         id: exercise.id,
         date: exercise.date,
         exerciseType: exercise.exercise_type,
@@ -179,18 +179,19 @@ export const useExerciseWithDB = () => {
       }
 
       const newExercise: FrontendExercise = {
-        id: data[0].id,
-        date: data[0].date,
-        exerciseType: data[0].exercise_type,
-        durationMinutes: data[0].duration_minutes,
-        intensity: data[0].intensity,
-        caloriesBurned: data[0].calories_burned || undefined,
-        notes: data[0].notes || undefined
+        id: data[0]?.id || Date.now().toString(),
+        date: exerciseDate,
+        exerciseType: exerciseType,
+        durationMinutes: duration,
+        intensity: intensity,
+        caloriesBurned: caloriesBurned,
+        notes: notes
       };
 
+      // Update local state immediately
       setExercises(prev => [newExercise, ...prev]);
       
-      // Reload weekly progress if it's this week
+      // Also reload weekly progress
       loadWeeklyProgress();
       
     } catch (err) {
@@ -318,12 +319,20 @@ export const useExerciseWithDB = () => {
     ],
     handler: async ({ exerciseType, duration, intensity, caloriesBurned, notes }) => {
       if (duration >= 5 && duration <= 120 && intensity >= 1 && intensity <= 10) {
-        await addExercise(exerciseType, duration, intensity, caloriesBurned, notes);
-        
-        // Update UI state
-        setSelectedExercise(exerciseType);
-        setExerciseDuration(duration);
-        setExerciseIntensity(intensity <= 3 ? "low" : intensity <= 7 ? "moderate" : "high");
+        try {
+          await addExercise(exerciseType, duration, intensity, caloriesBurned, notes);
+          
+          // Update UI state
+          setSelectedExercise(exerciseType);
+          setExerciseDuration(duration);
+          setExerciseIntensity(intensity <= 3 ? "low" : intensity <= 7 ? "moderate" : "high");
+          
+          return `Workout recorded successfully: ${duration} minutes of ${exerciseType} at intensity ${intensity}/10`;
+        } catch (error) {
+          return "Failed to record workout. Please try again.";
+        }
+      } else {
+        return "Invalid workout parameters. Duration must be 5-120 minutes and intensity 1-10.";
       }
     },
   });
@@ -361,6 +370,222 @@ export const useExerciseWithDB = () => {
       }
     },
   });
+
+  // AI Action: Update workout
+  useCopilotAction({
+    name: "updateWorkout",
+    description: "Update an existing workout by finding it by exercise type and date or by specifying today's most recent workout",
+    parameters: [
+      {
+        name: "exerciseType",
+        type: "string",
+        description: "Exercise type to find and update (cardio, strength, yoga, walking, swimming, cycling)",
+        required: false,
+      },
+      {
+        name: "date",
+        type: "string",
+        description: "Date of the workout to update (YYYY-MM-DD format). If not provided, defaults to today",
+        required: false,
+      },
+      {
+        name: "duration",
+        type: "number",
+        description: "New exercise duration in minutes (5-120)",
+        required: false,
+      },
+      {
+        name: "intensity",
+        type: "number",
+        description: "New intensity level (1-10)",
+        required: false,
+      },
+      {
+        name: "caloriesBurned",
+        type: "number",
+        description: "New estimated calories burned",
+        required: false,
+      },
+      {
+        name: "notes",
+        type: "string",
+        description: "New notes about the workout",
+        required: false,
+      }
+    ],
+    handler: async ({ exerciseType, date, duration, intensity, caloriesBurned, notes }) => {
+      try {
+        const targetDate = date || new Date().toISOString().split('T')[0];
+        
+        // Find the exercise to update
+        let targetExercise;
+        if (exerciseType) {
+          // Find by exercise type and date
+          targetExercise = exercises.find(exercise => 
+            exercise.exerciseType.toLowerCase() === exerciseType.toLowerCase() && 
+            exercise.date === targetDate
+          );
+        } else {
+          // Find today's most recent workout
+          const todayExercises = exercises.filter(exercise => exercise.date === targetDate);
+          targetExercise = todayExercises[0]; // Most recent (exercises are sorted by date desc)
+        }
+
+        if (!targetExercise) {
+          if (exerciseType) {
+            return `No ${exerciseType} workout found for ${targetDate}. Please check the exercise type and date.`;
+          } else {
+            return `No workouts found for ${targetDate}. Please add a workout first.`;
+          }
+        }
+
+        // Prepare updates
+        const updates: {
+          duration_minutes?: number;
+          intensity?: number;
+          calories_burned?: number;
+          notes?: string;
+        } = {};
+
+        if (duration !== undefined) {
+          if (duration < 5 || duration > 120) {
+            return "Invalid duration. Please use a value between 5 and 120 minutes.";
+          }
+          updates.duration_minutes = duration;
+        }
+
+        if (intensity !== undefined) {
+          if (intensity < 1 || intensity > 10) {
+            return "Invalid intensity. Please use a value between 1 and 10.";
+          }
+          updates.intensity = intensity;
+        }
+
+        if (caloriesBurned !== undefined) {
+          updates.calories_burned = caloriesBurned;
+        }
+
+        if (notes !== undefined) {
+          updates.notes = notes;
+        }
+
+        if (Object.keys(updates).length === 0) {
+          return "No valid updates provided. Please specify duration, intensity, caloriesBurned, or notes to update.";
+        }
+
+        await updateExercise(targetExercise.id, updates);
+
+        // Build response message
+        const updateParts = [];
+        if (updates.duration_minutes) updateParts.push(`duration to ${updates.duration_minutes} minutes`);
+        if (updates.intensity) updateParts.push(`intensity to ${updates.intensity}/10`);
+        if (updates.calories_burned) updateParts.push(`calories to ${updates.calories_burned}`);
+        if (updates.notes) updateParts.push(`notes to "${updates.notes}"`);
+
+        return `Successfully updated ${targetExercise.exerciseType} workout from ${targetDate}: ${updateParts.join(', ')}.`;
+      } catch (error) {
+        return "Failed to update workout. Please try again.";
+      }
+    },
+  });
+
+  // AI Action: Delete workout
+  useCopilotAction({
+    name: "deleteWorkout",
+    description: "Delete a workout by finding it by exercise type and date or by specifying today's most recent workout",
+    parameters: [
+      {
+        name: "exerciseType",
+        type: "string",
+        description: "Exercise type to find and delete (cardio, strength, yoga, walking, swimming, cycling)",
+        required: false,
+      },
+      {
+        name: "date",
+        type: "string",
+        description: "Date of the workout to delete (YYYY-MM-DD format). If not provided, defaults to today",
+        required: false,
+      }
+    ],
+    handler: async ({ exerciseType, date }) => {
+      try {
+        const targetDate = date || new Date().toISOString().split('T')[0];
+        
+        // Find the exercise to delete
+        let targetExercise;
+        if (exerciseType) {
+          // Find by exercise type and date
+          targetExercise = exercises.find(exercise => 
+            exercise.exerciseType.toLowerCase() === exerciseType.toLowerCase() && 
+            exercise.date === targetDate
+          );
+        } else {
+          // Find today's most recent workout
+          const todayExercises = exercises.filter(exercise => exercise.date === targetDate);
+          targetExercise = todayExercises[0]; // Most recent (exercises are sorted by date desc)
+        }
+
+        if (!targetExercise) {
+          if (exerciseType) {
+            return `No ${exerciseType} workout found for ${targetDate}. Please check the exercise type and date.`;
+          } else {
+            return `No workouts found for ${targetDate}. Nothing to delete.`;
+          }
+        }
+
+        await deleteExercise(targetExercise.id);
+
+        return `Successfully deleted ${targetExercise.exerciseType} workout from ${targetDate} (${targetExercise.durationMinutes} minutes, intensity ${targetExercise.intensity}/10).`;
+      } catch (error) {
+        return "Failed to delete workout. Please try again.";
+      }
+    },
+  });
+
+  // Update exercise
+  const updateExercise = async (
+    exerciseId: string,
+    updates: {
+      duration_minutes?: number;
+      intensity?: number;
+      calories_burned?: number;
+      notes?: string;
+    }
+  ) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabaseRest
+        .from('exercises')
+        .update(updates)
+        .eq('id', exerciseId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error updating exercise:', error);
+        return;
+      }
+
+      // Update local state
+      setExercises(prev => prev.map(exercise => 
+        exercise.id === exerciseId 
+          ? {
+              ...exercise,
+              durationMinutes: updates.duration_minutes ?? exercise.durationMinutes,
+              intensity: updates.intensity ?? exercise.intensity,
+              caloriesBurned: updates.calories_burned ?? exercise.caloriesBurned,
+              notes: updates.notes ?? exercise.notes
+            }
+          : exercise
+      ));
+      
+      // Reload weekly progress to reflect changes
+      loadWeeklyProgress();
+      
+    } catch (err) {
+      console.error('Error updating exercise:', err);
+    }
+  };
 
   // Delete exercise
   const deleteExercise = async (exerciseId: string) => {
@@ -409,6 +634,7 @@ export const useExerciseWithDB = () => {
     
     // Actions
     addExercise,
+    updateExercise,
     deleteExercise,
     loadAllData
   };

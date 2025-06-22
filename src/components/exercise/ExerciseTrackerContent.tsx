@@ -30,12 +30,15 @@ export const ExerciseTrackerContent: React.FC = () => {
     weeklyProgress,
     totalWeeklyMinutes,
     goalAchievement,
+    exercises: hookExercises,
     loading,
     error,
+    addExercise: hookAddExercise,
+    updateExercise: hookUpdateExercise,
+    deleteExercise: hookDeleteExercise,
   } = useExerciseWithDB();
 
-  // Local state for enhanced features
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  // Local state for UI editing only
   const [editingExercise, setEditingExercise] = useState<string | null>(null);
   const [tempDuration, setTempDuration] = useState<number>(30);
   const [tempIntensity, setTempIntensity] = useState<number>(5);
@@ -43,26 +46,19 @@ export const ExerciseTrackerContent: React.FC = () => {
   const [tempNotes, setTempNotes] = useState<string>('');
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
 
-  // Load exercises from database
-  React.useEffect(() => {
-    loadExercises();
-  }, []);
-
-  const loadExercises = async () => {
-    try {
-      const { data, error } = await supabaseRest
-        .from('exercises')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(10);
-
-      if (!error && data) {
-        setExercises(data as Exercise[]);
-      }
-    } catch (error) {
-      console.error('Error loading exercises:', error);
-    }
-  };
+  // Convert hook exercises to component format
+  const exercises = React.useMemo(() => {
+    return hookExercises.map(exercise => ({
+      id: exercise.id,
+      date: exercise.date,
+      exercise_type: exercise.exerciseType,
+      duration_minutes: exercise.durationMinutes,
+      intensity: exercise.intensity,
+      calories_burned: exercise.caloriesBurned,
+      notes: exercise.notes,
+      created_at: exercise.date
+    }));
+  }, [hookExercises]);
 
   // Get today's data
   const today = new Date().toISOString().split('T')[0];
@@ -84,7 +80,12 @@ export const ExerciseTrackerContent: React.FC = () => {
 
   const handleSaveExercise = async (exerciseId: string) => {
     try {
-      const updateData: Record<string, unknown> = {
+      const updateData: {
+        duration_minutes: number;
+        intensity: number;
+        calories_burned?: number;
+        notes: string;
+      } = {
         duration_minutes: tempDuration,
         intensity: tempIntensity,
         notes: tempNotes || 'Updated manually'
@@ -94,61 +95,42 @@ export const ExerciseTrackerContent: React.FC = () => {
         updateData.calories_burned = Number(tempCalories);
       }
 
-      const { error } = await supabaseRest
-        .from('exercises')
-        .update(updateData)
-        .eq('id', exerciseId);
-
-      if (!error) {
-        await loadExercises();
-        setEditingExercise(null);
-      }
+      await hookUpdateExercise(exerciseId, updateData);
+      setEditingExercise(null);
     } catch (error) {
       console.error('Error updating exercise:', error);
     }
   };
 
   const handleDeleteExercise = async (exerciseId: string) => {
-    try {
-      const { error } = await supabaseRest
-        .from('exercises')
-        .delete()
-        .eq('id', exerciseId);
-
-      if (!error) {
-        await loadExercises();
+    if (confirm('Are you sure you want to delete this exercise?')) {
+      try {
+        await hookDeleteExercise(exerciseId);
+      } catch (error) {
+        console.error('Error deleting exercise:', error);
       }
-    } catch (error) {
-      console.error('Error deleting exercise:', error);
     }
   };
 
   const handleAddExercise = async (exerciseType: string) => {
     try {
-      const exerciseData: Record<string, unknown> = {
-        date: today,
-        exercise_type: exerciseType,
-        duration_minutes: tempDuration,
-        intensity: tempIntensity,
-        notes: tempNotes || 'Added manually'
-      };
+      const caloriesBurned = tempCalories ? Number(tempCalories) : undefined;
+      const notes = tempNotes || 'Added manually';
 
-      if (tempCalories) {
-        exerciseData.calories_burned = Number(tempCalories);
-      }
+      await hookAddExercise(
+        exerciseType,
+        tempDuration,
+        tempIntensity,
+        caloriesBurned,
+        notes
+      );
 
-      const { error } = await supabaseRest
-        .from('exercises')
-        .insert([exerciseData]);
-
-      if (!error) {
-        await loadExercises();
-        setShowAddForm(false);
-        setTempDuration(30);
-        setTempIntensity(5);
-        setTempCalories('');
-        setTempNotes('');
-      }
+      // Reset form after successful addition
+      setShowAddForm(false);
+      setTempDuration(30);
+      setTempIntensity(5);
+      setTempCalories('');
+      setTempNotes('');
     } catch (error) {
       console.error('Error adding exercise:', error);
     }
@@ -292,38 +274,111 @@ export const ExerciseTrackerContent: React.FC = () => {
         {todayExercises.length > 0 ? (
           <div className="space-y-3">
             {todayExercises.map((exercise) => (
-              <div key={exercise.id} className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <span className="text-xl">
-                    {exerciseTypes.find(t => t.value === exercise.exercise_type)?.icon || '🏃‍♀️'}
-                  </span>
-                  <div>
-                    <div className="font-medium text-gray-800">{exercise.exercise_type}</div>
-                    <div className="text-sm text-gray-600">
-                      {exercise.duration_minutes} min • Intensity: {exercise.intensity}/10
-                      {exercise.calories_burned && (
-                        <span> • {exercise.calories_burned} cal</span>
-                      )}
-                      {exercise.notes && (
-                        <span className="ml-2 text-xs text-gray-500">• {exercise.notes}</span>
-                      )}
+              <div key={exercise.id} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                {editingExercise === exercise.id ? (
+                  /* Edit Form */
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-blue-900">Edit Workout</h4>
+                      <span className="text-xl">
+                        {exerciseTypes.find(t => t.value === exercise.exercise_type)?.icon || '🏃‍♀️'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs text-blue-700">Duration (minutes)</label>
+                        <input
+                          type="number"
+                          min="5"
+                          max="180"
+                          value={tempDuration}
+                          onChange={(e) => setTempDuration(Number(e.target.value))}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-blue-700">Intensity: {tempIntensity}/10</label>
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          value={tempIntensity}
+                          onChange={(e) => setTempIntensity(Number(e.target.value))}
+                          className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-blue-700">Calories Burned (optional)</label>
+                        <input
+                          type="number"
+                          placeholder="e.g., 300"
+                          value={tempCalories}
+                          onChange={(e) => setTempCalories(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-blue-700">Notes (optional)</label>
+                        <input
+                          type="text"
+                          placeholder="How did it feel?"
+                          value={tempNotes}
+                          onChange={(e) => setTempNotes(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-blue-300 rounded-md focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 pt-2">
+                      <button
+                        onClick={() => handleSaveExercise(exercise.id)}
+                        className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        onClick={() => setEditingExercise(null)}
+                        className="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleEditExercise(exercise)}
-                    className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteExercise(exercise.id)}
-                    className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
+                ) : (
+                  /* Display Mode */
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-xl">
+                        {exerciseTypes.find(t => t.value === exercise.exercise_type)?.icon || '🏃‍♀️'}
+                      </span>
+                      <div>
+                        <div className="font-medium text-gray-800">{exercise.exercise_type}</div>
+                        <div className="text-sm text-gray-600">
+                          {exercise.duration_minutes} min • Intensity: {exercise.intensity}/10
+                          {exercise.calories_burned && (
+                            <span> • {exercise.calories_burned} cal</span>
+                          )}
+                          {exercise.notes && (
+                            <span className="ml-2 text-xs text-gray-500">• {exercise.notes}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEditExercise(exercise)}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteExercise(exercise.id)}
+                        className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
