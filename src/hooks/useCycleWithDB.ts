@@ -207,36 +207,23 @@ export const useCycleWithDB = () => {
     handler: async ({ sleepHours, sleepQuality, stressLevel }) => {
       const today = new Date().toISOString().split('T')[0];
       
-      const lifestyleData: {
-        user_id: string | undefined;
-        date: string;
-        sleep_hours?: number;
-        sleep_quality?: number;
-        stress_level?: number;
-      } = {
-        user_id: user?.id,
-        date: today
-      };
-      
+      // Validate parameters
       if (sleepHours !== undefined) {
         if (sleepHours < 0 || sleepHours > 24) {
           return "Invalid sleep hours. Please enter a value between 0 and 24";
         }
-        lifestyleData.sleep_hours = sleepHours;
       }
       
       if (sleepQuality !== undefined) {
         if (sleepQuality < 1 || sleepQuality > 10) {
           return "Invalid sleep quality. Please enter a value between 1 and 10";
         }
-        lifestyleData.sleep_quality = sleepQuality;
       }
       
       if (stressLevel !== undefined) {
         if (stressLevel < 1 || stressLevel > 10) {
           return "Invalid stress level. Please enter a value between 1 and 10";
         }
-        lifestyleData.stress_level = stressLevel;
       }
       
       try {
@@ -245,19 +232,54 @@ export const useCycleWithDB = () => {
           .from('lifestyle_entries')
           .select('*')
           .eq('user_id', user?.id)
-          .eq('date', today);
+          .eq('date', today)
+          .single();
 
-        if (existingData && Array.isArray(existingData) && existingData.length > 0) {
-          // Update existing entry
-          await supabaseRest
+        console.log('Cycle Tracker - Existing lifestyle entry:', existingData);
+
+        if (existingData) {
+          // Update existing entry with only the provided fields
+          console.log('Cycle Tracker - Updating existing lifestyle entry with ID:', existingData.id);
+          
+          const updateData: Record<string, unknown> = {};
+          if (sleepHours !== undefined) updateData.sleep_hours = sleepHours;
+          if (sleepQuality !== undefined) updateData.sleep_quality = sleepQuality;
+          if (stressLevel !== undefined) updateData.stress_level = stressLevel;
+          
+          const { error: updateError } = await supabaseRest
             .from('lifestyle_entries')
-            .update(lifestyleData)
-            .eq('id', existingData[0].id);
+            .update(updateData)
+            .eq('id', existingData.id)
+            .eq('user_id', user?.id);
+
+          if (updateError) {
+            console.error('Error updating lifestyle entry:', updateError);
+            return `Error updating lifestyle data: ${updateError.message}`;
+          }
+          
+          console.log('Cycle Tracker - Successfully updated lifestyle entry');
         } else {
           // Create new entry
-          await supabaseRest
+          console.log('Cycle Tracker - Creating new lifestyle entry');
+          
+          const insertData: Record<string, unknown> = {
+            user_id: user?.id,
+            date: today
+          };
+          if (sleepHours !== undefined) insertData.sleep_hours = sleepHours;
+          if (sleepQuality !== undefined) insertData.sleep_quality = sleepQuality;
+          if (stressLevel !== undefined) insertData.stress_level = stressLevel;
+          
+          const { error: insertError } = await supabaseRest
             .from('lifestyle_entries')
-            .insert([lifestyleData]);
+            .insert([insertData]);
+
+          if (insertError) {
+            console.error('Error inserting lifestyle entry:', insertError);
+            return `Error creating lifestyle data: ${insertError.message}`;
+          }
+          
+          console.log('Cycle Tracker - Successfully created lifestyle entry');
         }
         
         const updates = [];
@@ -267,6 +289,7 @@ export const useCycleWithDB = () => {
         
         return `Lifestyle data updated: ${updates.join(', ')}`;
       } catch (error) {
+        console.error('Exception in recordLifestyle:', error);
         return `Error recording lifestyle data: ${error}`;
       }
     },

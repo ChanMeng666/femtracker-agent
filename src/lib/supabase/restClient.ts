@@ -73,8 +73,8 @@ class TableQuery {
     const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/rest/v1/${this.table}`;
     
-    const requestHeaders = {
-      ...headers,
+    const requestHeaders: Record<string, string> = {
+      ...headers as Record<string, string>,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation,resolution=merge-duplicates'
     };
@@ -83,18 +83,98 @@ class TableQuery {
       requestHeaders['Prefer'] += `,columns=${options.select}`;
     }
 
+    console.log('Upsert request details:', {
+      url,
+      method: 'POST',
+      headers: requestHeaders,
+      data: data
+    });
+
     const response = await fetch(url, {
       method: 'POST',
       headers: requestHeaders,
       body: JSON.stringify(data)
     });
 
+    console.log('Upsert response status:', response.status);
+    console.log('Upsert response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const error = await response.text();
-      return { data: null, error: { message: error, status: response.status } };
+      console.error('Upsert failed with error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: error
+      });
+      
+      let parsedError;
+      try {
+        parsedError = JSON.parse(error);
+      } catch {
+        parsedError = { message: error };
+      }
+      
+      return { data: null, error: { message: parsedError.message || error, status: response.status, details: parsedError } };
     }
 
     const result = await response.json();
+    console.log('Upsert successful result:', result);
+    return { 
+      data: options?.single ? result[0] : result, 
+      error: null 
+    };
+  }
+
+  // Add a manual upsert method that handles conflicts properly
+  async manualUpsert(data: QueryData[], conflictColumns: string[], options?: InsertOptions) {
+    const headers = await this.getAuthHeaders();
+    const url = `${this.baseUrl}/rest/v1/${this.table}`;
+    
+    const requestHeaders: Record<string, string> = {
+      ...headers as Record<string, string>,
+      'Content-Type': 'application/json',
+      'Prefer': `return=representation,resolution=merge-duplicates,on_conflict=${conflictColumns.join(',')}`
+    };
+
+    if (options?.select) {
+      requestHeaders['Prefer'] += `,columns=${options.select}`;
+    }
+
+    console.log('Manual upsert request details:', {
+      url,
+      method: 'POST',
+      headers: requestHeaders,
+      data: data,
+      conflictColumns
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: requestHeaders,
+      body: JSON.stringify(data)
+    });
+
+    console.log('Manual upsert response status:', response.status);
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Manual upsert failed:', {
+        status: response.status,
+        error: error
+      });
+      
+      let parsedError;
+      try {
+        parsedError = JSON.parse(error);
+      } catch {
+        parsedError = { message: error };
+      }
+      
+      return { data: null, error: { message: parsedError.message || error, status: response.status, details: parsedError } };
+    }
+
+    const result = await response.json();
+    console.log('Manual upsert successful result:', result);
     return { 
       data: options?.single ? result[0] : result, 
       error: null 

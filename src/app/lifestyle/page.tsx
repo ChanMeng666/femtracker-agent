@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { useLifestyleWithDB } from "@/hooks/useLifestyleWithDB";
 import { supabaseRest } from "@/lib/supabase/restClient";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 interface LifestyleRecord {
   id: string;
@@ -13,10 +14,9 @@ interface LifestyleRecord {
   sleep_hours?: number;
   sleep_quality?: number;
   stress_level?: number;
-  weight?: number;
-  exercise_minutes?: number;
-  water_intake?: number;
-  notes?: string;
+  stress_triggers?: string[];
+  coping_methods?: string[];
+  weight_kg?: number;
   created_at: string;
 }
 
@@ -47,9 +47,15 @@ export default function LifestyleTracker() {
 
 // Internal component that uses CopilotKit hooks
 function LifestyleTrackerContent() {
+  const { user } = useAuth();
   const {
+    lifestyleEntries,
     loading,
-    error
+    error,
+    addLifestyleEntry,
+    updateLifestyleEntry,
+    deleteLifestyleEntry,
+    refreshData
   } = useLifestyleWithDB();
 
   // Local state for enhanced features
@@ -59,29 +65,64 @@ function LifestyleTrackerContent() {
   const [tempSleepHours, setTempSleepHours] = useState<string>('8');
   const [tempSleepQuality, setTempSleepQuality] = useState<number>(4);
   const [tempStressLevel, setTempStressLevel] = useState<number>(2);
-  const [tempWeight, setTempWeight] = useState<string>('');
-  const [tempExerciseMinutes, setTempExerciseMinutes] = useState<string>('');
-  const [tempWaterIntake, setTempWaterIntake] = useState<string>('');
-  const [tempNotes, setTempNotes] = useState<string>('');
+  const [tempWeightKg, setTempWeightKg] = useState<string>('');
+  const [tempStressTriggers, setTempStressTriggers] = useState<string>('');
+  const [tempCopingMethods, setTempCopingMethods] = useState<string>('');
 
-  // Load lifestyle records from database
-  React.useEffect(() => {
-    loadLifestyleRecords();
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitMessage, setSubmitMessage] = useState<string>('');
+
+  // Add page focus listener to refresh data when returning to page
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('Lifestyle page focused - refreshing data');
+      loadLifestyleRecords();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Lifestyle page visible - refreshing data');
+        loadLifestyleRecords();
+      }
+    };
+
+    // Listen for window focus and visibility change
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
+  // Load data on mount and when user changes
+  useEffect(() => {
+    if (user) {
+      loadLifestyleRecords();
+    }
+  }, [user]);
+
   const loadLifestyleRecords = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabaseRest
-        .from('lifestyle_data')
+        .from('lifestyle_entries')
         .select('*')
+        .eq('user_id', user.id)
         .order('date', { ascending: false })
         .limit(10);
 
       if (!error && data) {
         setLifestyleRecords(data as LifestyleRecord[]);
+      } else if (error) {
+        console.error('Error loading lifestyle records:', error);
+        setSubmitMessage('Failed to load lifestyle records');
       }
     } catch (error) {
       console.error('Error loading lifestyle records:', error);
+      setSubmitMessage('Failed to load lifestyle records');
     }
   };
 
@@ -89,10 +130,32 @@ function LifestyleTrackerContent() {
   const today = new Date().toISOString().split('T')[0];
   const todayRecord = lifestyleRecords.find(r => r.date === today);
 
-  // Get recent data (last 7 days)
+  // Also check the hook data for display
+  const combinedRecords = lifestyleEntries && lifestyleEntries.length > 0 
+    ? lifestyleEntries.map(entry => ({
+        id: entry.id,
+        date: entry.date,
+        sleep_hours: entry.sleepHours,
+        sleep_quality: entry.sleepQuality,
+        stress_level: entry.stressLevel,
+        stress_triggers: entry.stressTriggers,
+        coping_methods: entry.copingMethods,
+        weight_kg: entry.weightKg,
+        created_at: ''
+      }))
+    : lifestyleRecords;
+
+  console.log('Data display debug:', {
+    hookEntries: lifestyleEntries,
+    localRecords: lifestyleRecords,
+    combinedRecords,
+    todayRecord
+  });
+
+  // Get recent data (last 7 days) - use combined data
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const recentRecords = lifestyleRecords.filter(r => new Date(r.date) >= sevenDaysAgo);
+  const recentRecords = combinedRecords.filter(r => new Date(r.date) >= sevenDaysAgo);
 
   // Calculate averages
   const avgSleepHours = recentRecords.length > 0 
@@ -111,79 +174,110 @@ function LifestyleTrackerContent() {
     setTempSleepHours(record.sleep_hours?.toString() || '8');
     setTempSleepQuality(record.sleep_quality || 4);
     setTempStressLevel(record.stress_level || 2);
-    setTempWeight(record.weight?.toString() || '');
-    setTempExerciseMinutes(record.exercise_minutes?.toString() || '');
-    setTempWaterIntake(record.water_intake?.toString() || '');
-    setTempNotes(record.notes || '');
+    setTempWeightKg(record.weight_kg?.toString() || '');
+    setTempStressTriggers(record.stress_triggers?.join(', ') || '');
+    setTempCopingMethods(record.coping_methods?.join(', ') || '');
+    setSubmitMessage(''); // Clear any previous messages
   };
 
   const handleSaveRecord = async (recordId: string) => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    setSubmitMessage('');
+    
     try {
       const updateData: Record<string, unknown> = {
         sleep_hours: Number(tempSleepHours),
         sleep_quality: tempSleepQuality,
         stress_level: tempStressLevel,
-        notes: tempNotes || 'Updated manually'
+        stress_triggers: tempStressTriggers ? tempStressTriggers.split(',').map(s => s.trim()) : [],
+        coping_methods: tempCopingMethods ? tempCopingMethods.split(',').map(s => s.trim()) : []
       };
 
-      if (tempWeight) updateData.weight = Number(tempWeight);
-      if (tempExerciseMinutes) updateData.exercise_minutes = Number(tempExerciseMinutes);
-      if (tempWaterIntake) updateData.water_intake = Number(tempWaterIntake);
+      if (tempWeightKg) updateData.weight_kg = Number(tempWeightKg);
 
-      const { error } = await supabaseRest
-        .from('lifestyle_data')
-        .update(updateData)
-        .eq('id', recordId);
-
-      if (!error) {
+      const result = await updateLifestyleEntry(recordId, updateData);
+      
+      if (result?.success) {
         await loadLifestyleRecords();
         setEditingRecord(null);
+        setSubmitMessage('Record updated successfully!');
+        setTimeout(() => setSubmitMessage(''), 3000);
+      } else {
+        setSubmitMessage(`Failed to update record: ${result?.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error updating lifestyle record:', error);
+      setSubmitMessage(`Failed to update record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteRecord = async (recordId: string) => {
+    if (!user) return;
+    
+    if (!confirm('Are you sure you want to delete this lifestyle record?')) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setSubmitMessage('');
+    
     try {
-      const { error } = await supabaseRest
-        .from('lifestyle_data')
-        .delete()
-        .eq('id', recordId);
-
-      if (!error) {
+      const result = await deleteLifestyleEntry(recordId);
+      
+      if (result?.success) {
         await loadLifestyleRecords();
+        setSubmitMessage('Record deleted successfully!');
+        setTimeout(() => setSubmitMessage(''), 3000);
+      } else {
+        setSubmitMessage(`Failed to delete record: ${result?.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error deleting lifestyle record:', error);
+      setSubmitMessage(`Failed to delete record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleAddRecord = async () => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    setSubmitMessage('');
+    
     try {
-      const recordData: Record<string, unknown> = {
+      const recordData = {
         date: today,
         sleep_hours: Number(tempSleepHours),
         sleep_quality: tempSleepQuality,
         stress_level: tempStressLevel,
-        notes: tempNotes || 'Added manually'
+        stress_triggers: tempStressTriggers ? tempStressTriggers.split(',').map(s => s.trim()) : [],
+        coping_methods: tempCopingMethods ? tempCopingMethods.split(',').map(s => s.trim()) : [],
+        weight_kg: tempWeightKg ? Number(tempWeightKg) : undefined
       };
 
-      if (tempWeight) recordData.weight = Number(tempWeight);
-      if (tempExerciseMinutes) recordData.exercise_minutes = Number(tempExerciseMinutes);
-      if (tempWaterIntake) recordData.water_intake = Number(tempWaterIntake);
-
-      const { error } = await supabaseRest
-        .from('lifestyle_data')
-        .upsert([recordData]);
-
-      if (!error) {
+      console.log('Submitting lifestyle record:', recordData);
+      const result = await addLifestyleEntry(recordData);
+      
+      if (result?.success) {
         await loadLifestyleRecords();
         setShowAddForm(false);
         resetForm();
+        setSubmitMessage('Lifestyle record added successfully!');
+        setTimeout(() => setSubmitMessage(''), 3000);
+      } else {
+        setSubmitMessage(`Failed to add record: ${result?.error || 'Unknown error'}`);
+        console.error('Add record failed:', result);
       }
     } catch (error) {
       console.error('Error adding lifestyle record:', error);
+      setSubmitMessage(`Failed to add record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -191,11 +285,27 @@ function LifestyleTrackerContent() {
     setTempSleepHours('8');
     setTempSleepQuality(4);
     setTempStressLevel(2);
-    setTempWeight('');
-    setTempExerciseMinutes('');
-    setTempWaterIntake('');
-    setTempNotes('');
+    setTempWeightKg('');
+    setTempStressTriggers('');
+    setTempCopingMethods('');
   };
+
+  // Show authentication required state
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-purple-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">Please log in to access your lifestyle data</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading state
   if (loading) {
@@ -238,22 +348,178 @@ function LifestyleTrackerContent() {
         <main className="flex-1 overflow-auto p-6">
           <div className="max-w-6xl mx-auto space-y-6">
             
+            {/* Manual Refresh Button */}
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={async () => {
+                  console.log('Manual refresh clicked');
+                  await loadLifestyleRecords();
+                  if (refreshData) {
+                    await refreshData();
+                  }
+                  setSubmitMessage('Data refreshed successfully!');
+                  setTimeout(() => setSubmitMessage(''), 2000);
+                }}
+                className="flex items-center px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh Data
+              </button>
+            </div>
+            
             {/* Database Connection Status */}
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-purple-800">
+                      <span className="font-medium">Lifestyle database connected</span> - Your sleep and lifestyle data are being saved automatically
+                      <span className="block text-xs text-purple-600 mt-1">
+                        {combinedRecords.length} total records • {todayRecord ? '1' : '0'} today • {recentRecords.length} this week
+                      </span>
+                      <span className="block text-xs text-purple-500 mt-1">
+                        User ID: {user?.id ? user.id.slice(0, 8) + '...' : 'Not authenticated'}
+                      </span>
+                    </p>
+                  </div>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm text-purple-800">
-                    <span className="font-medium">Lifestyle database connected</span> - Your sleep and lifestyle data are being saved automatically
-                    <span className="block text-xs text-purple-600 mt-1">
-                      {lifestyleRecords.length} total records • {todayRecord ? '1' : '0'} today • {recentRecords.length} this week
-                    </span>
-                  </p>
-                </div>
+                <button
+                  onClick={async () => {
+                    console.log('=== DATABASE CONNECTION TEST ===');
+                    console.log('User:', user);
+                    console.log('User ID:', user?.id);
+                    
+                    try {
+                      const { data, error } = await supabaseRest
+                        .from('lifestyle_entries')
+                        .select('*')
+                        .eq('user_id', user?.id)
+                        .limit(1);
+                      
+                      console.log('Test query result:', { data, error });
+                      
+                      if (data) {
+                        setSubmitMessage(`Connection test successful! Found ${Array.isArray(data) ? data.length : 'some'} records.`);
+                      } else if (error) {
+                        setSubmitMessage(`Connection test failed: ${JSON.stringify(error)}`);
+                      } else {
+                        setSubmitMessage('Connection test: No data returned');
+                      }
+                    } catch (err) {
+                      console.error('Connection test error:', err);
+                      setSubmitMessage(`Connection test error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                    }
+                  }}
+                  className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
+                >
+                  Test DB
+                </button>
+                <button
+                  onClick={async () => {
+                    console.log('=== DIRECT INSERT TEST ===');
+                    
+                    const testData = {
+                      user_id: user.id,
+                      date: new Date().toISOString().split('T')[0],
+                      sleep_hours: 8.0,
+                      sleep_quality: 4,
+                      stress_level: 2
+                    };
+                    
+                    console.log('Test data to insert:', testData);
+                    
+                    try {
+                      // First check if record exists
+                      const existingResponse = await supabaseRest
+                        .from('lifestyle_entries')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .eq('date', testData.date)
+                        .single();
+
+                      console.log('Existing record check:', existingResponse);
+
+                      if (existingResponse.data) {
+                        // Update existing record
+                        console.log('Updating existing record with ID:', existingResponse.data.id);
+                        
+                        const updateResponse = await supabaseRest
+                          .from('lifestyle_entries')
+                          .update(testData)
+                          .eq('id', existingResponse.data.id)
+                          .eq('user_id', user.id);
+
+                        console.log('Update response:', updateResponse);
+
+                        if (updateResponse.error) {
+                          console.error('Direct update failed:', JSON.stringify(updateResponse.error, null, 2));
+                          alert(`Direct update failed: ${JSON.stringify(updateResponse.error)}`);
+                        } else {
+                          console.log('Direct update succeeded:', updateResponse.data);
+                          alert('Direct update succeeded!');
+                          await loadLifestyleRecords();
+                        }
+                      } else {
+                        // Insert new record
+                        console.log('Inserting new record');
+                        
+                        const insertResponse = await supabaseRest
+                          .from('lifestyle_entries')
+                          .insert([testData]);
+
+                        console.log('Insert response:', insertResponse);
+
+                        if (insertResponse.error) {
+                          console.error('Direct insert failed:', JSON.stringify(insertResponse.error, null, 2));
+                          alert(`Direct insert failed: ${JSON.stringify(insertResponse.error)}`);
+                        } else {
+                          console.log('Direct insert succeeded:', insertResponse.data);
+                          alert('Direct insert succeeded!');
+                          await loadLifestyleRecords();
+                        }
+                      }
+                    } catch (err) {
+                      console.error('Direct insert exception:', err);
+                      alert(`Direct insert exception: ${err}`);
+                    }
+                  }}
+                  className="ml-2 px-3 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Direct Insert
+                </button>
               </div>
             </div>
+
+            {/* Status Message */}
+            {submitMessage && (
+              <div className={`border rounded-lg p-3 mb-4 ${
+                submitMessage.includes('successfully') || submitMessage.includes('Success')
+                  ? 'bg-green-50 border-green-200 text-green-800'
+                  : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    {submitMessage.includes('successfully') || submitMessage.includes('Success') ? (
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium">{submitMessage}</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Today's Lifestyle Record */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -333,38 +599,28 @@ function LifestyleTrackerContent() {
                       <input
                         type="number"
                         placeholder="e.g., 65"
-                        value={tempWeight}
-                        onChange={(e) => setTempWeight(e.target.value)}
+                        value={tempWeightKg}
+                        onChange={(e) => setTempWeightKg(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-purple-300 rounded-md focus:outline-none focus:border-purple-500"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-purple-700">Exercise (min, optional)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g., 30"
-                        value={tempExerciseMinutes}
-                        onChange={(e) => setTempExerciseMinutes(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-md focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-purple-700">Water (ml, optional)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g., 2000"
-                        value={tempWaterIntake}
-                        onChange={(e) => setTempWaterIntake(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-md focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="text-xs text-purple-700">Notes (optional)</label>
+                      <label className="text-xs text-purple-700">Stress Triggers (comma-separated)</label>
                       <input
                         type="text"
-                        placeholder="How was your day?"
-                        value={tempNotes}
-                        onChange={(e) => setTempNotes(e.target.value)}
+                        placeholder="e.g., work, deadlines"
+                        value={tempStressTriggers}
+                        onChange={(e) => setTempStressTriggers(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-md focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-purple-700">Coping Methods (comma-separated)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., meditation, breathing exercises"
+                        value={tempCopingMethods}
+                        onChange={(e) => setTempCopingMethods(e.target.value)}
                         className="w-full px-3 py-2 text-sm border border-purple-300 rounded-md focus:outline-none focus:border-purple-500"
                       />
                     </div>
@@ -372,9 +628,10 @@ function LifestyleTrackerContent() {
 
                   <button
                     onClick={handleAddRecord}
-                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                    disabled={isSubmitting}
+                    className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Lifestyle Record
+                    {isSubmitting ? 'Saving...' : 'Save Lifestyle Record'}
                   </button>
                 </div>
               )}
@@ -400,18 +657,15 @@ function LifestyleTrackerContent() {
                         <div className="text-sm font-medium text-gray-800">
                           {todayRecord.sleep_hours}h sleep
                         </div>
-                        {todayRecord.weight && (
-                          <div className="text-xs text-gray-600">{todayRecord.weight}kg</div>
+                        {todayRecord.weight_kg && (
+                          <div className="text-xs text-gray-600">{todayRecord.weight_kg}kg</div>
                         )}
-                        {todayRecord.exercise_minutes && (
-                          <div className="text-xs text-gray-600">{todayRecord.exercise_minutes}min exercise</div>
+                        {todayRecord.stress_triggers && (
+                          <div className="text-xs text-gray-600">Stress Triggers: {todayRecord.stress_triggers.join(', ')}</div>
                         )}
-                        {todayRecord.water_intake && (
-                          <div className="text-xs text-gray-600">{todayRecord.water_intake}ml water</div>
-                        )}
-                        {todayRecord.notes && (
-                          <div className="text-xs text-gray-500 mt-1">{todayRecord.notes}</div>
-                        )}
+                                                 {todayRecord.coping_methods && (
+                           <div className="text-xs text-gray-600">Coping Methods: {todayRecord.coping_methods.join(', ')}</div>
+                         )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -496,7 +750,7 @@ function LifestyleTrackerContent() {
                           </div>
                           <div className="text-sm text-gray-600">
                             {record.sleep_hours}h sleep • Quality: {record.sleep_quality}/5 • Stress: {record.stress_level}/5
-                            {record.weight && <span> • {record.weight}kg</span>}
+                            {record.weight_kg && <span> • {record.weight_kg}kg</span>}
                           </div>
                         </div>
                       </div>

@@ -200,37 +200,73 @@ export const useQuickRecords = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      // First, delete existing lifestyle entry for today
-      await supabaseRest
+      console.log('Quick Records - Upserting lifestyle entry:', lifestyleData);
+      
+      // First, check if lifestyle entry exists for today
+      const { data: existingData, error: selectError } = await supabaseRest
         .from('lifestyle_entries')
-        .delete()
+        .select('*')
         .eq('user_id', user.id)
         .eq('date', today)
-        .execute();
+        .single();
 
-      // Then insert the new entry
-      const entryData = {
-        user_id: user.id,
-        date: today,
-        ...lifestyleData
-      };
+      console.log('Quick Records - Existing lifestyle entry:', existingData);
 
-      const { data, error } = await supabaseRest
-        .from('lifestyle_entries')
-        .insert([entryData], { select: '*' });
+      if (existingData && !selectError) {
+        // Record exists, update only the provided fields
+        console.log('Quick Records - Updating existing lifestyle entry with ID:', existingData.id);
+        
+        const { data, error } = await supabaseRest
+          .from('lifestyle_entries')
+          .update(lifestyleData)
+          .eq('id', existingData.id)
+          .eq('user_id', user.id);
 
-      if (error) {
-        console.error('Error inserting lifestyle entry:', error);
-        return false;
-      }
+        if (error) {
+          console.error('Error updating lifestyle entry:', error);
+          return false;
+        }
 
-      // Update local state
-      if (data && Array.isArray(data)) {
+        console.log('Quick Records - Successfully updated lifestyle entry');
+        
+        // Update local state - merge the new data with existing data
         setLifestyleEntries(prev => {
-          const filtered = prev.filter(l => l.date !== today);
-          return [data[0] as LifestyleEntry, ...filtered];
+          return prev.map(entry => 
+            entry.date === today 
+              ? { ...entry, ...lifestyleData } 
+              : entry
+          );
         });
+      } else {
+        // Record doesn't exist, create new entry
+        console.log('Quick Records - Creating new lifestyle entry');
+        
+        const entryData = {
+          user_id: user.id,
+          date: today,
+          ...lifestyleData
+        };
+
+        const { data, error } = await supabaseRest
+          .from('lifestyle_entries')
+          .insert([entryData]);
+
+        if (error) {
+          console.error('Error inserting lifestyle entry:', error);
+          return false;
+        }
+
+        console.log('Quick Records - Successfully created lifestyle entry');
+        
+        // Update local state
+        if (data && Array.isArray(data)) {
+          setLifestyleEntries(prev => {
+            const filtered = prev.filter(l => l.date !== today);
+            return [data[0] as LifestyleEntry, ...filtered];
+          });
+        }
       }
+      
       return true;
     } catch (error) {
       console.error('Error upserting lifestyle entry:', error);
