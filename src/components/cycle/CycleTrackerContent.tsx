@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useCycleWithDB } from '@/hooks/useCycleWithDB';
-import { useSymptomsMoods } from '@/hooks/data/useSymptomsMoods';
 import { supabaseRest } from '@/lib/supabase/restClient';
 import { symptoms, moods } from '@/constants/cycle';
 import { PageLayout } from '@/components/shared/PageLayout';
@@ -15,16 +14,13 @@ export const CycleTrackerContent: React.FC = () => {
     loading,
     currentCycle,
     startNewCycle,
+    symptoms: todaySymptoms,
+    moods: todayMoods,
+    upsertSymptom,
+    upsertMood,
+    deleteSymptom,
+    deleteMood,
   } = useCycleWithDB();
-
-  const { 
-    symptoms: todaySymptoms, 
-    moods: todayMoods, 
-    upsertSymptom, 
-    upsertMood, 
-    deleteSymptom, 
-    deleteMood 
-  } = useSymptomsMoods();
 
   // Local state for editing
   const [editingSymptom, setEditingSymptom] = useState<string | null>(null);

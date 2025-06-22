@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // 基础配置
-  reactStrictMode: true,
+  reactStrictMode: false, // Temporarily disabled to fix CopilotKit duplicate action registration
   
   // 图片优化配置
   images: {

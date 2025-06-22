@@ -8,7 +8,7 @@ import { supabaseRest } from "@/lib/supabase/restClient";
 export const useCycleWithDB = () => {
   const { user } = useAuth();
   const { cycles, addCycle, updateCycle, loading: cyclesLoading } = useCycles();
-  const { symptoms, moods, upsertSymptom, upsertMood, deleteSymptom, loading: symptomsLoading } = useSymptomsMoods();
+  const { symptoms, moods, upsertSymptom, upsertMood, deleteSymptom, deleteMood, loading: symptomsLoading } = useSymptomsMoods();
   
   const [currentDay, setCurrentDay] = useState<number>(14);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -110,72 +110,7 @@ export const useCycleWithDB = () => {
     },
   });
 
-  // AI Action: Add cycle symptom (use different name to avoid conflict)
-  useCopilotAction({
-    name: "addCycleSymptom",
-    description: "Add a symptom for today in the cycle context",
-    parameters: [
-      {
-        name: "symptom",
-        type: "string",
-        description: "The symptom to add (e.g., Cramps, Headache, Bloating, etc.)",
-        required: true,
-      },
-      {
-        name: "severity",
-        type: "number",
-        description: "Severity level from 1-10 (optional, defaults to 5)",
-        required: false,
-      }
-    ],
-    handler: async ({ symptom, severity = 5 }) => {
-      const targetDate = new Date().toISOString().split('T')[0]
-      const result = await upsertSymptom({
-        symptom_type: symptom,
-        severity: Math.min(Math.max(severity, 1), 10),
-        date: targetDate,
-        notes: 'Updated via cycle tracker AI assistant'
-      });
-      
-      if (result && result.error) {
-        return `Error adding symptom: ${typeof result.error === 'string' ? result.error : 'Database error'}`;
-      } else {
-        // Update local state
-        setSelectedSymptoms(prev => 
-          prev.includes(symptom) ? prev : [...prev, symptom]
-        );
-        return `Added symptom: ${symptom} (severity ${severity})`;
-      }
-    },
-  });
-
-  // AI Action: Update cycle mood (use different name to avoid conflict)
-  useCopilotAction({
-    name: "updateCycleMood",
-    description: "Update the current mood for today in the cycle context",
-    parameters: [{
-      name: "mood",
-      type: "string",
-      description: "The mood to set (Happy, Sad, Irritable, Calm, Anxious, Energetic, etc.)",
-      required: true,
-    }],
-    handler: async ({ mood }) => {
-      const targetDate = new Date().toISOString().split('T')[0]
-      const result = await upsertMood({
-        mood_type: mood,
-        intensity: 5, // Default intensity
-        date: targetDate,
-        notes: 'Updated via cycle tracker AI assistant'
-      });
-      
-      if (result && result.error) {
-        return `Error updating mood: ${typeof result.error === 'string' ? result.error : 'Database error'}`;
-      } else {
-        setSelectedMood(mood);
-        return `Mood updated to: ${mood}`;
-      }
-    },
-  });
+  // Note: Symptom and mood actions are handled by useSymptomsMoods hook to avoid duplication
 
   // AI Action: Record period flow
   useCopilotAction({
@@ -500,5 +435,12 @@ export const useCycleWithDB = () => {
     currentCycle,
     cycles,
     loading: cyclesLoading || symptomsLoading,
+    // Expose symptoms and moods data and functions
+    symptoms,
+    moods,
+    upsertSymptom,
+    upsertMood,
+    deleteSymptom,
+    deleteMood,
   };
 }; 
