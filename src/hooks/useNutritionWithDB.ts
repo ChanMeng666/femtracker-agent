@@ -30,6 +30,9 @@ export const useNutritionWithDB = () => {
   const [todayMeals, setTodayMeals] = useState<Meal[]>([]);
   const [waterIntakeHistory, setWaterIntakeHistory] = useState<FrontendWaterIntake[]>([]);
   const [todayWaterIntake, setTodayWaterIntake] = useState<number>(0);
+  
+  // Add refresh trigger for real-time updates
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   const totalCalories = todayMeals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
   const dailyWaterGoal = 2000; // ml
@@ -99,12 +102,12 @@ export const useNutritionWithDB = () => {
       return;
     }
 
-    if (data) {
+    if (data && Array.isArray(data)) {
       setTodayMeals(data.map((meal: Record<string, unknown>) => ({
-        time: meal.meal_time,
-        foods: meal.foods,
-        calories: meal.calories || 0,
-        nutrients: meal.nutrients || []
+        time: (meal.meal_time as string) || '',
+        foods: (meal.foods as string[]) || [],
+        calories: (meal.calories as number) || 0,
+        nutrients: (meal.nutrients as string[]) || []
       })));
     }
   };
@@ -126,12 +129,12 @@ export const useNutritionWithDB = () => {
       return;
     }
 
-    if (data) {
+    if (data && Array.isArray(data)) {
       const intakeHistory = data.map((intake: Record<string, unknown>) => ({
-        id: intake.id,
-        date: intake.date,
-        amountMl: intake.amount_ml,
-        recordedAt: intake.recorded_at
+        id: intake.id as string,
+        date: intake.date as string,
+        amountMl: intake.amount_ml as number,
+        recordedAt: intake.recorded_at as string
       }));
       
       setWaterIntakeHistory(intakeHistory);
@@ -198,14 +201,14 @@ export const useNutritionWithDB = () => {
         return;
       }
 
-      const newMeal: Meal = {
-        time: data[0].meal_time,
-        foods: data[0].foods,
-        calories: data[0].calories || 0,
-        nutrients: data[0].nutrients || []
-      };
-
-      setTodayMeals(prev => [...prev, newMeal]);
+      // Don't update local state immediately, let loadAllData handle it
+      // to avoid race conditions between local state and database state
+      
+      // Reload all data to ensure sync with other components and UI
+      await loadAllData();
+      
+      // Trigger refresh for any listening components
+      setRefreshTrigger(prev => prev + 1);
       
     } catch (err) {
       console.error('Error adding meal:', err);
@@ -292,6 +295,8 @@ export const useNutritionWithDB = () => {
     ],
     handler: async ({ mealTime, foods, calories, nutrients, notes }) => {
       await addMeal(mealTime, foods, calories, nutrients, notes);
+      // Return a success message to confirm completion
+      return `Meal recorded: ${foods.join(', ')} for ${mealTime}`;
     },
   });
 
@@ -417,6 +422,7 @@ export const useNutritionWithDB = () => {
     waterPercentage,
     loading,
     error,
+    refreshTrigger, // Expose for components to react to updates
     
     // Actions
     addWaterIntake,

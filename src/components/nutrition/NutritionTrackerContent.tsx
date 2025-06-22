@@ -54,7 +54,8 @@ export const NutritionTrackerContent: React.FC = () => {
     loading,
     error,
     addWaterIntake,
-    loadAllData
+    loadAllData,
+    refreshTrigger
   } = useNutritionWithDB();
 
   // Local state for enhanced features
@@ -82,6 +83,28 @@ export const NutritionTrackerContent: React.FC = () => {
   React.useEffect(() => {
     setNutritionFocusState(selectedFoodTypes);
   }, [selectedFoodTypes]);
+
+  // Add effect to sync meals state when hook data changes
+  // This ensures CopilotKit AI actions immediately update UI
+  React.useEffect(() => {
+    if (user && refreshTrigger > 0) {
+      // Add a small delay to ensure database operations are complete before reloading
+      const timeoutId = setTimeout(() => {
+        loadMeals();
+      }, 300); // Longer delay to ensure database consistency
+      return () => clearTimeout(timeoutId);
+    }
+  }, [refreshTrigger, user]);
+
+  // Also keep the totalCalories effect as backup
+  React.useEffect(() => {
+    if (user && totalCalories > 0) {
+      const timeoutId = setTimeout(() => {
+        loadMeals();
+      }, 200);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [totalCalories, user]);
 
   const loadMeals = async () => {
     if (!user) return;
@@ -172,8 +195,9 @@ export const NutritionTrackerContent: React.FC = () => {
         .eq('user_id', user.id);
 
       if (!error) {
-        await loadMeals();
+        // First call loadAllData to update hook state, then loadMeals for component state
         await loadAllData(); // Refresh hook data
+        await loadMeals(); // Refresh component data
         setEditingMeal(null);
         setTempFoods('');
         setTempCalories('');
@@ -204,8 +228,9 @@ export const NutritionTrackerContent: React.FC = () => {
         .eq('user_id', user.id);
 
       if (!error) {
-        await loadMeals();
+        // First call loadAllData to update hook state, then loadMeals for component state
         await loadAllData(); // Refresh hook data
+        await loadMeals(); // Refresh component data
       }
     } catch (error) {
       console.error('Error deleting meal:', error);
@@ -237,8 +262,9 @@ export const NutritionTrackerContent: React.FC = () => {
         .insert([mealData]);
 
       if (!error) {
-        await loadMeals();
+        // First call loadAllData to update hook state, then loadMeals for component state
         await loadAllData(); // Refresh hook data
+        await loadMeals(); // Refresh component data
         setShowAddMealForm(false);
         setTempFoods('');
         setTempCalories('');
