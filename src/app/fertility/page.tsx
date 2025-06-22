@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { CopilotSidebar } from "@copilotkit/react-ui";
 import { useFertilityWithDB } from "@/hooks/useFertilityWithDB";
-import { supabaseRest } from "@/lib/supabase/restClient";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 interface FertilityRecord {
@@ -13,9 +12,11 @@ interface FertilityRecord {
   bbt?: number;
   cervical_mucus?: string;
   ovulation_test?: string;
-  symptoms?: string[];
+  ovulation_pain?: boolean;
+  breast_tenderness?: boolean;
+  increased_libido?: boolean;
   notes?: string;
-  created_at: string;
+  created_at?: string;
 }
 
 const cervicalMucusTypes = [
@@ -33,8 +34,9 @@ const ovulationTestResults = [
 ];
 
 const fertilitySymptoms = [
-  'Ovulation pain', 'Breast tenderness', 'Increased libido', 'Mood changes',
-  'Increased energy', 'Bloating', 'Spotting', 'Cervical position changes'
+  { key: 'ovulation_pain', label: 'Ovulation pain', icon: '⚡' },
+  { key: 'breast_tenderness', label: 'Breast tenderness', icon: '🤱' },
+  { key: 'increased_libido', label: 'Increased libido', icon: '💕' }
 ];
 
 // Main component that wraps everything in CopilotKit
@@ -50,43 +52,25 @@ export default function FertilityTracker() {
 function FertilityTrackerContent() {
   const {
     loading,
-    error
+    error,
+    fertilityRecords,
+    todayRecord,
+    addFertilityRecord,
+    updateFertilityRecord,
+    deleteFertilityRecord
   } = useFertilityWithDB();
 
   // Local state for enhanced features
-  const [fertilityRecords, setFertilityRecords] = useState<FertilityRecord[]>([]);
   const [editingRecord, setEditingRecord] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [tempBBT, setTempBBT] = useState<string>('');
   const [tempCervicalMucus, setTempCervicalMucus] = useState<string>('');
   const [tempOvulationTest, setTempOvulationTest] = useState<string>('');
-  const [tempSymptoms, setTempSymptoms] = useState<string[]>([]);
+  const [tempSymptoms, setTempSymptoms] = useState<{[key: string]: boolean}>({});
   const [tempNotes, setTempNotes] = useState<string>('');
-
-  // Load fertility records from database
-  React.useEffect(() => {
-    loadFertilityRecords();
-  }, []);
-
-  const loadFertilityRecords = async () => {
-    try {
-      const { data, error } = await supabaseRest
-        .from('fertility_data')
-        .select('*')
-        .order('date', { ascending: false })
-        .limit(15);
-
-      if (!error && data) {
-        setFertilityRecords(data as FertilityRecord[]);
-      }
-    } catch (error) {
-      console.error('Error loading fertility records:', error);
-    }
-  };
 
   // Get today's data
   const today = new Date().toISOString().split('T')[0];
-  const todayRecord = fertilityRecords.find(r => r.date === today);
 
   // Get recent data (last 30 days)
   const thirtyDaysAgo = new Date();
@@ -106,29 +90,33 @@ function FertilityTrackerContent() {
     setTempBBT(record.bbt?.toString() || '');
     setTempCervicalMucus(record.cervical_mucus || '');
     setTempOvulationTest(record.ovulation_test || '');
-    setTempSymptoms(record.symptoms || []);
+    setTempSymptoms({
+      ovulation_pain: record.ovulation_pain || false,
+      breast_tenderness: record.breast_tenderness || false,
+      increased_libido: record.increased_libido || false
+    });
     setTempNotes(record.notes || '');
   };
 
   const handleSaveRecord = async (recordId: string) => {
     try {
-      const updateData: Record<string, unknown> = {
-        notes: tempNotes || 'Updated manually'
-      };
+      const updateData: Record<string, unknown> = {};
 
       if (tempBBT) updateData.bbt = Number(tempBBT);
       if (tempCervicalMucus) updateData.cervical_mucus = tempCervicalMucus;
       if (tempOvulationTest) updateData.ovulation_test = tempOvulationTest;
-      if (tempSymptoms.length > 0) updateData.symptoms = tempSymptoms;
+      updateData.ovulation_pain = tempSymptoms.ovulation_pain || false;
+      updateData.breast_tenderness = tempSymptoms.breast_tenderness || false;
+      updateData.increased_libido = tempSymptoms.increased_libido || false;
+      if (tempNotes) updateData.notes = tempNotes;
 
-      const { error } = await supabaseRest
-        .from('fertility_data')
-        .update(updateData)
-        .eq('id', recordId);
-
-      if (!error) {
-        await loadFertilityRecords();
+      const result = await updateFertilityRecord(recordId, updateData);
+      
+      if (result.success) {
         setEditingRecord(null);
+        resetForm();
+      } else {
+        console.error('Error updating fertility record:', result.error);
       }
     } catch (error) {
       console.error('Error updating fertility record:', error);
@@ -136,14 +124,15 @@ function FertilityTrackerContent() {
   };
 
   const handleDeleteRecord = async (recordId: string) => {
-    try {
-      const { error } = await supabaseRest
-        .from('fertility_data')
-        .delete()
-        .eq('id', recordId);
+    if (!confirm('Are you sure you want to delete this fertility record?')) {
+      return;
+    }
 
-      if (!error) {
-        await loadFertilityRecords();
+    try {
+      const result = await deleteFertilityRecord(recordId);
+      
+      if (!result.success) {
+        console.error('Error deleting fertility record:', result.error);
       }
     } catch (error) {
       console.error('Error deleting fertility record:', error);
@@ -160,16 +149,17 @@ function FertilityTrackerContent() {
       if (tempBBT) recordData.bbt = Number(tempBBT);
       if (tempCervicalMucus) recordData.cervical_mucus = tempCervicalMucus;
       if (tempOvulationTest) recordData.ovulation_test = tempOvulationTest;
-      if (tempSymptoms.length > 0) recordData.symptoms = tempSymptoms;
+      recordData.ovulation_pain = tempSymptoms.ovulation_pain || false;
+      recordData.breast_tenderness = tempSymptoms.breast_tenderness || false;
+      recordData.increased_libido = tempSymptoms.increased_libido || false;
 
-      const { error } = await supabaseRest
-        .from('fertility_data')
-        .upsert([recordData]);
-
-      if (!error) {
-        await loadFertilityRecords();
+      const result = await addFertilityRecord(recordData);
+      
+      if (result.success) {
         setShowAddForm(false);
         resetForm();
+      } else {
+        console.error('Error adding fertility record:', result.error);
       }
     } catch (error) {
       console.error('Error adding fertility record:', error);
@@ -180,16 +170,15 @@ function FertilityTrackerContent() {
     setTempBBT('');
     setTempCervicalMucus('');
     setTempOvulationTest('');
-    setTempSymptoms([]);
+    setTempSymptoms({});
     setTempNotes('');
   };
 
-  const toggleSymptom = (symptom: string) => {
-    setTempSymptoms(prev => 
-      prev.includes(symptom) 
-        ? prev.filter(s => s !== symptom)
-        : [...prev, symptom]
-    );
+  const toggleSymptom = (symptomKey: string) => {
+    setTempSymptoms(prev => ({
+      ...prev,
+      [symptomKey]: !prev[symptomKey]
+    }));
   };
 
   // Show loading state
@@ -328,18 +317,19 @@ function FertilityTrackerContent() {
                   {/* Fertility Symptoms */}
                   <div className="mb-4">
                     <label className="text-xs text-green-700 mb-2 block">Fertility Symptoms</label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       {fertilitySymptoms.map((symptom) => (
                         <button
-                          key={symptom}
-                          onClick={() => toggleSymptom(symptom)}
-                          className={`p-2 rounded-lg border-2 transition-all text-center text-xs ${
-                            tempSymptoms.includes(symptom)
+                          key={symptom.key}
+                          onClick={() => toggleSymptom(symptom.key)}
+                          className={`p-3 rounded-lg border-2 transition-all text-center text-sm ${
+                            tempSymptoms[symptom.key]
                               ? 'border-green-500 bg-green-100 text-green-700'
                               : 'border-gray-300 hover:border-green-300'
                           }`}
                         >
-                          {symptom}
+                          <div className="text-lg mb-1">{symptom.icon}</div>
+                          <div className="text-xs font-medium">{symptom.label}</div>
                         </button>
                       ))}
                     </div>
@@ -411,15 +401,25 @@ function FertilityTrackerContent() {
                       </div>
                       
                       {/* Symptoms Display */}
-                      {todayRecord.symptoms && todayRecord.symptoms.length > 0 && (
+                      {(todayRecord.ovulation_pain || todayRecord.breast_tenderness || todayRecord.increased_libido) && (
                         <div className="mb-2">
                           <div className="text-xs text-gray-600 mb-1">Symptoms:</div>
                           <div className="flex flex-wrap gap-1">
-                            {todayRecord.symptoms.map((symptom, index) => (
-                              <span key={index} className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                                {symptom}
+                            {todayRecord.ovulation_pain && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                                Ovulation pain
                               </span>
-                            ))}
+                            )}
+                            {todayRecord.breast_tenderness && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                                Breast tenderness
+                              </span>
+                            )}
+                            {todayRecord.increased_libido && (
+                              <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+                                Increased libido
+                              </span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -493,62 +493,164 @@ function FertilityTrackerContent() {
               {fertilityRecords.length > 0 ? (
                 <div className="space-y-3">
                   {fertilityRecords.slice(0, 7).map((record) => (
-                    <div key={record.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="text-center">
-                          <div className="text-lg">
-                            {record.bbt ? '🌡️' : record.cervical_mucus ? 
-                              cervicalMucusTypes.find(t => t.value === record.cervical_mucus)?.icon : 
-                              record.ovulation_test ? 
-                              ovulationTestResults.find(r => r.value === record.ovulation_test)?.icon : '📊'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-800">
-                            {new Date(record.date).toLocaleDateString()}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {record.bbt && <span>BBT: {record.bbt}°C</span>}
-                            {record.cervical_mucus && (
-                              <span className="ml-2">
-                                CM: {cervicalMucusTypes.find(t => t.value === record.cervical_mucus)?.label}
-                              </span>
-                            )}
-                            {record.ovulation_test && (
-                              <span className="ml-2">
-                                Test: {ovulationTestResults.find(r => r.value === record.ovulation_test)?.label}
-                              </span>
-                            )}
-                            {record.symptoms && record.symptoms.length > 0 && (
-                              <span className="ml-2 text-xs text-gray-500">
-                                • {record.symptoms.length} symptom(s)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                    <div key={record.id} className="border border-gray-200 rounded-lg">
                       {editingRecord === record.id ? (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleSaveRecord(record.id)}
-                            className="px-3 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingRecord(null)}
-                            className="px-3 py-1 text-xs bg-gray-600 text-white rounded-md hover:bg-gray-700"
-                          >
-                            Cancel
-                          </button>
+                        // Edit Form
+                        <div className="p-4 bg-gray-50">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            {/* BBT Input */}
+                            <div>
+                              <label className="text-xs text-gray-700 mb-1 block">BBT (°C)</label>
+                              <input
+                                type="number"
+                                min="35.0"
+                                max="40.0"
+                                step="0.1"
+                                placeholder="e.g., 36.8"
+                                value={tempBBT}
+                                onChange={(e) => setTempBBT(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-green-500"
+                              />
+                            </div>
+
+                            {/* Cervical Mucus Selection */}
+                            <div>
+                              <label className="text-xs text-gray-700 mb-1 block">Cervical Mucus</label>
+                              <select
+                                value={tempCervicalMucus}
+                                onChange={(e) => setTempCervicalMucus(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-green-500"
+                              >
+                                <option value="">Select type</option>
+                                {cervicalMucusTypes.map((type) => (
+                                  <option key={type.value} value={type.value}>
+                                    {type.label} ({type.fertility})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Ovulation Test Selection */}
+                            <div>
+                              <label className="text-xs text-gray-700 mb-1 block">Ovulation Test</label>
+                              <select
+                                value={tempOvulationTest}
+                                onChange={(e) => setTempOvulationTest(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-green-500"
+                              >
+                                <option value="">Select result</option>
+                                {ovulationTestResults.map((result) => (
+                                  <option key={result.value} value={result.value}>
+                                    {result.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Notes */}
+                            <div>
+                              <label className="text-xs text-gray-700 mb-1 block">Notes</label>
+                              <input
+                                type="text"
+                                placeholder="Additional notes..."
+                                value={tempNotes}
+                                onChange={(e) => setTempNotes(e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-green-500"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Symptoms */}
+                          <div className="mb-4">
+                            <label className="text-xs text-gray-700 mb-2 block">Symptoms</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {fertilitySymptoms.map((symptom) => (
+                                <button
+                                  key={symptom.key}
+                                  onClick={() => toggleSymptom(symptom.key)}
+                                  className={`p-2 rounded-lg border-2 transition-all text-center text-xs ${
+                                    tempSymptoms[symptom.key]
+                                      ? 'border-green-500 bg-green-100 text-green-700'
+                                      : 'border-gray-300 hover:border-green-300'
+                                  }`}
+                                >
+                                  <div className="text-sm mb-1">{symptom.icon}</div>
+                                  <div className="text-xs">{symptom.label}</div>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleSaveRecord(record.id)}
+                              className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                            >
+                              Save Changes
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingRecord(null);
+                                resetForm();
+                              }}
+                              className="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => handleEditRecord(record)}
-                          className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
-                        >
-                          Edit
-                        </button>
+                        // Display Mode
+                        <div className="flex items-center justify-between p-3">
+                          <div className="flex items-center space-x-4">
+                            <div className="text-center">
+                              <div className="text-lg">
+                                {record.bbt ? '🌡️' : record.cervical_mucus ? 
+                                  cervicalMucusTypes.find(t => t.value === record.cervical_mucus)?.icon : 
+                                  record.ovulation_test ? 
+                                  ovulationTestResults.find(r => r.value === record.ovulation_test)?.icon : '📊'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-800">
+                                {new Date(record.date).toLocaleDateString()}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {record.bbt && <span>BBT: {record.bbt}°C</span>}
+                                {record.cervical_mucus && (
+                                  <span className="ml-2">
+                                    CM: {cervicalMucusTypes.find(t => t.value === record.cervical_mucus)?.label}
+                                  </span>
+                                )}
+                                {record.ovulation_test && (
+                                  <span className="ml-2">
+                                    Test: {ovulationTestResults.find(r => r.value === record.ovulation_test)?.label}
+                                  </span>
+                                )}
+                                {(record.ovulation_pain || record.breast_tenderness || record.increased_libido) && (
+                                  <span className="ml-2 text-xs text-gray-500">
+                                    • {[record.ovulation_pain && 'Pain', record.breast_tenderness && 'Tenderness', record.increased_libido && 'Libido'].filter(Boolean).length} symptom(s)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleEditRecord(record)}
+                              className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRecord(record.id)}
+                              className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -566,25 +668,30 @@ function FertilityTrackerContent() {
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-green-800 mb-2">🤖 Ask your AI Assistant</h3>
               <div className="text-xs text-green-700 space-y-1">
-                <p><strong>BBT Tracking:</strong></p>
-                <p>• &ldquo;Record my BBT as 36.8 degrees celsius&rdquo;</p>
-                <p>• &ldquo;Log my basal body temperature at 37.0&rdquo;</p>
-                <p>• &ldquo;My temperature this morning was 36.5°C&rdquo;</p>
+                <p><strong>Complete Fertility Tracking (Recommended):</strong></p>
+                <p>• &ldquo;Record my BBT as 36.8°C and cervical mucus as egg white&rdquo;</p>
+                <p>• &ldquo;Log my temperature at 36.6°C with positive ovulation test and ovulation pain&rdquo;</p>
+                <p>• &ldquo;My BBT is 37.0°C, cervical mucus is creamy, and I have breast tenderness&rdquo;</p>
+                <p>• &ldquo;Record watery cervical mucus and increased libido today&rdquo;</p>
                 
-                <p className="pt-2"><strong>Cervical Mucus:</strong></p>
-                <p>• &ldquo;Set cervical mucus to egg white type&rdquo;</p>
-                <p>• &ldquo;Record creamy cervical mucus today&rdquo;</p>
-                <p>• &ldquo;My cervical mucus is watery and stretchy&rdquo;</p>
+                <p className="pt-2"><strong>Individual Tracking:</strong></p>
+                <p>• &ldquo;Record my BBT as 36.8 degrees&rdquo;</p>
+                <p>• &ldquo;Log my temperature at 36.6 celsius&rdquo;</p>
+                <p>• &ldquo;Set cervical mucus to egg_white&rdquo;</p>
+                <p>• &ldquo;Record creamy cervical mucus&rdquo;</p>
                 
-                <p className="pt-2"><strong>Ovulation Testing:</strong></p>
-                <p>• &ldquo;Record positive ovulation test result&rdquo;</p>
-                <p>• &ldquo;Log negative ovulation test today&rdquo;</p>
-                <p>• &ldquo;My LH test shows a strong positive&rdquo;</p>
+                <p className="pt-2"><strong>Delete & Clear Data:</strong></p>
+                <p>• &ldquo;Delete today's fertility record&rdquo;</p>
+                <p>• &ldquo;Delete my fertility record from 2024-01-15&rdquo;</p>
+                <p>• &ldquo;Clear my BBT and cervical mucus data from today&rdquo;</p>
+                <p>• &ldquo;Remove ovulation test from yesterday's record&rdquo;</p>
                 
                 <p className="pt-2"><strong>Fertility Analysis:</strong></p>
                 <p>• &ldquo;What&apos;s my fertility status today?&rdquo;</p>
                 <p>• &ldquo;Show me my BBT patterns this cycle&rdquo;</p>
                 <p>• &ldquo;When is my expected ovulation?&rdquo;</p>
+                
+                <p className="pt-2 text-blue-700"><strong>💡 Tip:</strong> Describe multiple fertility signs together for better tracking!</p>
               </div>
             </div>
 
@@ -602,24 +709,36 @@ function FertilityTrackerContent() {
    - Monitor BBT trends and cycles
 
 2. **Cervical Mucus Monitoring:**
-   - Record cervical mucus type using setCervicalMucus action
+   - Record cervical mucus type using recordCervicalMucus action
    - Available types: dry, sticky, creamy, watery, egg_white
    - Track fertility indicators throughout cycle
 
 3. **Ovulation Testing:**
-   - Record ovulation test results using setOvulationTest action
+   - Record ovulation test results using recordOvulationTest action
    - Results: negative, low, positive
    - Track LH surge patterns
 
-4. **Fertility Symptoms:**
-   - Record fertility symptoms using recordFertilitySymptoms action
+4. **Complete Fertility Tracking:**
+   - Use recordFertilityData action to record multiple fertility signs at once
+   - Prevents duplicate records by updating existing daily records
+   - Supports BBT, cervical mucus, ovulation tests, and symptoms
+
+5. **Delete & Clear Data:**
+   - Delete complete fertility records using deleteFertilityRecord action
+   - Delete today's record using deleteTodayFertilityRecord action
+   - Clear specific fields using clearFertilityData action
+   - Support for date-specific operations
+
+6. **Fertility Symptoms:**
    - Track ovulation pain, breast tenderness, increased libido
    - Add notes about fertility observations
+   - All symptoms stored as boolean values
 
-5. **Database Operations:**
+7. **Database Operations:**
    - All fertility data is automatically saved to the database
    - Real-time updates to fertility records
    - Persistent storage of BBT, cervical mucus, and ovulation data
+   - Smart upsert functionality prevents duplicate daily records
 
 Available cervical mucus types:
 - dry: Low fertility indicator
@@ -633,11 +752,16 @@ Ovulation test results:
 - low: Slight LH surge
 - positive: Strong LH surge (ovulation likely within 24-48 hours)
 
+Delete operations:
+- deleteFertilityRecord: Delete by specific date or today's record
+- deleteTodayFertilityRecord: Delete only today's record
+- clearFertilityData: Clear specific fields (bbt, cervical_mucus, ovulation_test, symptoms, notes)
+
 You can see their current fertility data including recent records and help them optimize their conception chances. All data is saved to the database automatically."
         defaultOpen={false}
         labels={{
           title: "Fertility AI Assistant",
-          initial: "👋 Hi! I'm your fertility assistant. I can help you track ovulation and save everything to your database.\n\n**🌡️ BBT Tracking:**\n- \"Record my BBT as 36.8 degrees\"\n- \"Log my temperature at 36.6 celsius\"\n- \"My basal body temperature is 37.0\"\n\n**💧 Cervical Mucus:**\n- \"Set cervical mucus to egg_white\"\n- \"Record creamy cervical mucus\"\n- \"My cervical mucus is watery today\"\n\n**🧪 Ovulation Tests:**\n- \"Record positive ovulation test\"\n- \"Log negative ovulation test result\"\n- \"My ovulation test shows low positive\"\n\n**📊 Fertility Analysis:**\n- \"What's my current fertility status?\"\n- \"Show me my recent BBT patterns\"\n- \"Give me conception advice\"\n\nAll your fertility data is automatically saved and synced with the database!"
+          initial: "👋 Hi! I'm your fertility assistant. I can help you track ovulation and save everything to your database.\n\n**🌟 Complete Tracking (Recommended):**\n- \"Record my BBT as 36.8°C and cervical mucus as egg white\"\n- \"Log my temperature at 36.6°C with positive ovulation test and ovulation pain\"\n- \"My BBT is 37.0°C, cervical mucus is creamy, and I have breast tenderness\"\n- \"Record watery cervical mucus and increased libido today\"\n\n**🌡️ Individual BBT:**\n- \"Record my BBT as 36.8 degrees\"\n- \"Log my temperature at 36.6 celsius\"\n\n**💧 Individual Cervical Mucus:**\n- \"Set cervical mucus to egg_white\"\n- \"Record creamy cervical mucus\"\n\n**🧪 Individual Ovulation Tests:**\n- \"Record positive ovulation test\"\n- \"Log negative ovulation test result\"\n\n**🗑️ Delete & Clear Data:**\n- \"Delete today's fertility record\"\n- \"Delete my fertility record from 2024-01-15\"\n- \"Clear my BBT and cervical mucus data from today\"\n- \"Remove ovulation test from yesterday's record\"\n\n**📊 Fertility Analysis:**\n- \"What's my fertility status today?\"\n- \"Show me my recent BBT patterns\"\n- \"Give me conception advice\"\n\n💡 **Pro Tip:** Describe multiple fertility signs together (BBT + cervical mucus + symptoms) for better tracking and to avoid duplicate records!\n\nAll your fertility data is automatically saved and synced with the database!"
         }}
       />
     </div>

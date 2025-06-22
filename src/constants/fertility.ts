@@ -1,10 +1,10 @@
 // Cervical mucus types
 export const cervicalMucusTypes = [
-  { value: "dry", label: "Dry", icon: "🌵", color: "bg-yellow-50 border-yellow-200" },
-  { value: "sticky", label: "Sticky", icon: "🍯", color: "bg-orange-50 border-orange-200" },
-  { value: "creamy", label: "Creamy", icon: "🥛", color: "bg-blue-50 border-blue-200" },
-  { value: "watery", label: "Watery", icon: "💧", color: "bg-cyan-50 border-cyan-200" },
-  { value: "egg_white", label: "Egg White", icon: "🥚", color: "bg-green-50 border-green-200" }
+  { value: "dry", label: "Dry", icon: "🌵", color: "bg-yellow-50 border-yellow-200", fertility: "Low" },
+  { value: "sticky", label: "Sticky", icon: "🍯", color: "bg-orange-50 border-orange-200", fertility: "Low" },
+  { value: "creamy", label: "Creamy", icon: "🥛", color: "bg-blue-50 border-blue-200", fertility: "Moderate" },
+  { value: "watery", label: "Watery", icon: "💧", color: "bg-cyan-50 border-cyan-200", fertility: "High" },
+  { value: "egg_white", label: "Egg White", icon: "🥚", color: "bg-green-50 border-green-200", fertility: "Peak" }
 ];
 
 // Ovulation test results
