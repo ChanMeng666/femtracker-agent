@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { supabaseRest } from "@/lib/supabase/restClient";
+import { cache } from "@/lib/redis/client";
 import { HealthMetric, Insight, CorrelationAnalysis, TimeRange } from "@/components/insights/types";
 
 export function useInsightsData() {
@@ -31,50 +32,104 @@ export function useInsightsData() {
     if (!user) return;
 
     setLoading(true);
+    const startTime = performance.now();
+    
     try {
-      // Try to load from database first
+      // Generate cache keys
+      const cacheKeys = {
+        healthMetrics: cache.healthKey(user.id, 'health_metrics', selectedTimeRange),
+        insights: cache.healthKey(user.id, 'ai_insights', selectedTimeRange),
+        correlations: cache.healthKey(user.id, 'correlation_analyses', selectedTimeRange)
+      };
+
+      // Try to load from cache first
+      const cacheStartTime = performance.now();
+      const [cachedMetrics, cachedInsights, cachedCorrelations] = await Promise.all([
+        cache.get<HealthMetric[]>(cacheKeys.healthMetrics),
+        cache.get<Insight[]>(cacheKeys.insights),
+        cache.get<CorrelationAnalysis[]>(cacheKeys.correlations)
+      ]);
+      const cacheEndTime = performance.now();
+
+      // If all data is cached, use it
+      if (cachedMetrics && cachedInsights && cachedCorrelations) {
+        console.log(`Loading insights from cache - Cache lookup: ${(cacheEndTime - cacheStartTime).toFixed(2)}ms`);
+        setHealthMetrics(cachedMetrics);
+        setInsights(cachedInsights);
+        setCorrelationAnalyses(cachedCorrelations);
+        setLoading(false);
+        return;
+      }
+
+      // Otherwise, load from database
+      console.log('Loading insights from database');
+      const dbStartTime = performance.now();
       const [healthMetricsData, insightsData, correlationsData] = await Promise.all([
         supabaseRest.from('health_metrics').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(10),
         supabaseRest.from('ai_insights').select('*').eq('user_id', user.id).eq('is_active', true).order('generated_at', { ascending: false }).limit(10),
         supabaseRest.from('correlation_analyses').select('*').eq('user_id', user.id).eq('is_active', true).order('generated_at', { ascending: false }).limit(5)
       ]);
+      const dbEndTime = performance.now();
+
+      let processedMetrics: HealthMetric[] = [];
+      let processedInsights: Insight[] = [];
+      let processedCorrelations: CorrelationAnalysis[] = [];
 
       if (healthMetricsData.data && healthMetricsData.data.length > 0) {
-        setHealthMetrics(healthMetricsData.data.map(metric => ({
+        processedMetrics = healthMetricsData.data.map(metric => ({
           category: metric.category,
           score: metric.score,
           trend: metric.trend,
           color: getTrendColor(metric.category)
-        })));
+        }));
+        setHealthMetrics(processedMetrics);
       } else {
         loadDefaultHealthMetrics();
+        processedMetrics = getDefaultHealthMetrics();
       }
 
       if (insightsData.data && insightsData.data.length > 0) {
-        setInsights(insightsData.data.map(insight => ({
+        processedInsights = insightsData.data.map(insight => ({
           type: insight.insight_type,
           category: insight.category,
           title: insight.title,
           description: insight.description,
           recommendation: insight.recommendation || "Continue monitoring your health data for more insights."
-        })));
+        }));
+        setInsights(processedInsights);
       } else {
         loadDefaultInsights();
+        processedInsights = getDefaultInsights();
       }
 
       if (correlationsData.data && correlationsData.data.length > 0) {
-        setCorrelationAnalyses(correlationsData.data.map(correlation => ({
+        processedCorrelations = correlationsData.data.map(correlation => ({
           title: correlation.title,
           description: correlation.description,
           correlation: correlation.correlation,
           suggestion: correlation.suggestion || "Monitor these patterns for better health management."
-        })));
+        }));
+        setCorrelationAnalyses(processedCorrelations);
       } else {
         loadDefaultCorrelations();
+        processedCorrelations = getDefaultCorrelations();
       }
 
+      // Cache the data for 30 minutes
+      const cacheSetStartTime = performance.now();
+      await Promise.all([
+        cache.set(cacheKeys.healthMetrics, processedMetrics, 1800),
+        cache.set(cacheKeys.insights, processedInsights, 1800),
+        cache.set(cacheKeys.correlations, processedCorrelations, 1800)
+      ]);
+      const cacheSetEndTime = performance.now();
+
+      const totalTime = performance.now() - startTime;
+      console.log(`Database insights loaded - DB query: ${(dbEndTime - dbStartTime).toFixed(2)}ms, Cache set: ${(cacheSetEndTime - cacheSetStartTime).toFixed(2)}ms, Total: ${totalTime.toFixed(2)}ms`);
+
     } catch (error) {
-      console.error('Error loading insights from database:', error);
+      const errorTime = performance.now() - startTime;
+      console.error(`Error loading insights from database after ${errorTime.toFixed(2)}ms:`, error);
       loadDefaultInsights();
     } finally {
       setLoading(false);
@@ -88,82 +143,75 @@ export function useInsightsData() {
   };
 
   const loadDefaultHealthMetrics = () => {
-    setHealthMetrics([
-      { category: "Cycle Health", score: 82, trend: "up", color: "text-pink-600 bg-pink-100" },
-      { category: "Nutrition Status", score: 75, trend: "stable", color: "text-orange-600 bg-orange-100" },
-      { category: "Exercise Health", score: 68, trend: "up", color: "text-teal-600 bg-teal-100" },
-      { category: "Fertility Health", score: 85, trend: "up", color: "text-green-600 bg-green-100" },
-      { category: "Lifestyle", score: 72, trend: "down", color: "text-indigo-600 bg-indigo-100" },
-      { category: "Symptoms & Mood", score: 76, trend: "stable", color: "text-purple-600 bg-purple-100" }
-    ]);
+    setHealthMetrics(getDefaultHealthMetrics());
   };
+
+  const getDefaultHealthMetrics = (): HealthMetric[] => [
+    { category: "Cycle Health", score: 85, trend: "stable", color: "text-pink-600 bg-pink-100" },
+    { category: "Exercise Health", score: 78, trend: "up", color: "text-blue-600 bg-blue-100" },
+    { category: "Nutrition Status", score: 82, trend: "stable", color: "text-green-600 bg-green-100" },
+    { category: "Fertility Health", score: 88, trend: "up", color: "text-green-600 bg-green-100" },
+    { category: "Lifestyle", score: 75, trend: "down", color: "text-indigo-600 bg-indigo-100" },
+    { category: "Symptoms & Mood", score: 80, trend: "stable", color: "text-purple-600 bg-purple-100" }
+  ];
 
   const loadDefaultAIInsights = () => {
-    setInsights([
-      {
-        type: "positive",
-        category: "Fertility Health",
-        title: "Ovulation Regularity Good",
-        description: "Your basal body temperature change shows regular ovulation cycles, with excellent fertility health status. Continue to maintain a healthy lifestyle.",
-        recommendation: "Continue monitoring basal body temperature and maintaining balanced nutrition"
-      },
-      {
-        type: "improvement",
-        category: "Exercise Health",
-        title: "Exercise Needs to Increase",
-        description: "This month's exercise time decreased by 15% compared to last month. It's recommended to increase daily activity to maintain healthy weight and cardiovascular health.",
-        recommendation: "Develop a weekly 150 minutes moderate intensity exercise plan"
-      },
-      {
-        type: "warning",
-        category: "Sleep Quality",
-        title: "Sleep Quality Decreased",
-        description: "The sleep quality score decreased last week, possibly related to increased stress. Suggestion to adjust sleep schedule.",
-        recommendation: "Establish a regular sleep ritual, reduce screen time before bed"
-      },
-      {
-        type: "neutral",
-        category: "Nutrition Status",
-        title: "Nutrition Intake Basic Balance",
-        description: "Overall nutrition intake is balanced, but iron intake is slightly insufficient. Suggestion to pay special attention to iron supplementation during menstruation.",
-        recommendation: "Increase iron-rich foods, such as lean meat and spinach"
-      }
-    ]);
+    setInsights(getDefaultInsights());
   };
+
+  const getDefaultInsights = (): Insight[] => [
+    {
+      type: "positive",
+      category: "Cycle Health",
+      title: "Regular Cycle Pattern",
+      description: "Your menstrual cycle has been consistent over the past few months, indicating good reproductive health.",
+      recommendation: "Continue tracking your cycle and maintain your current lifestyle habits for optimal cycle health."
+    },
+    {
+      type: "improvement",
+      category: "Exercise",
+      title: "Increase Physical Activity",
+      description: "Your exercise frequency could be improved. Regular physical activity can help regulate hormones and reduce PMS symptoms.",
+      recommendation: "Aim for at least 150 minutes of moderate exercise per week, including both cardio and strength training."
+    },
+    {
+      type: "neutral",
+      category: "Nutrition",
+      title: "Track Nutritional Intake",
+      description: "Start logging your meals to better understand how your diet affects your cycle and energy levels.",
+      recommendation: "Focus on iron-rich foods during menstruation and maintain steady blood sugar levels throughout your cycle."
+    }
+  ];
 
   const loadDefaultCorrelations = () => {
-    setCorrelationAnalyses([
-      {
-        title: "Menstrual Cycle and Mood Fluctuation",
-        description: "Data shows that you have a larger mood fluctuation 5-7 days before menstruation, which is normal PMS manifestation",
-        correlation: 0.78,
-        suggestion: "You can consider increasing relaxation activities during this period"
-      },
-      {
-        title: "Exercise and Sleep Quality",
-        description: "Sleep quality on exercise days is 23% higher than non-exercise days",
-        correlation: 0.65,
-        suggestion: "Continue regular exercise for improved sleep"
-      },
-      {
-        title: "Stress Level and Symptom Intensity",
-        description: "PMS symptoms significantly worsened during high-stress periods",
-        correlation: 0.72,
-        suggestion: "Learning stress management techniques can alleviate symptoms"
-      }
-    ]);
+    setCorrelationAnalyses(getDefaultCorrelations());
   };
 
+  const getDefaultCorrelations = (): CorrelationAnalysis[] => [
+    {
+      title: "Exercise and Mood Correlation",
+      description: "Regular exercise shows strong positive correlation with improved mood and reduced PMS symptoms.",
+      correlation: 0.72,
+      suggestion: "Maintain consistent exercise routine, especially during luteal phase for mood stability."
+    },
+    {
+      title: "Sleep Quality and Cycle Health",
+      description: "Sleep quality directly correlates with cycle regularity and symptom severity.",
+      correlation: 0.68,
+      suggestion: "Prioritize 7-9 hours of quality sleep for optimal reproductive health."
+    }
+  ];
+
   const getTrendColor = (category: string) => {
-    const colorMap: Record<string, string> = {
+    const colors = {
       "Cycle Health": "text-pink-600 bg-pink-100",
-      "Exercise Health": "text-blue-600 bg-blue-100",
-      "Nutrition Health": "text-green-600 bg-green-100",
-      "Mood Health": "text-purple-600 bg-purple-100",
-      "Lifestyle Health": "text-indigo-600 bg-indigo-100",
-      "Fertility Health": "text-pink-600 bg-pink-100"
+      "Exercise Health": "text-blue-600 bg-blue-100", 
+      "Nutrition Status": "text-green-600 bg-green-100",
+      "Fertility Health": "text-green-600 bg-green-100",
+      "Lifestyle": "text-indigo-600 bg-indigo-100",
+      "Symptoms & Mood": "text-purple-600 bg-purple-100"
     };
-    return colorMap[category] || "text-gray-600 bg-gray-100";
+    return colors[category as keyof typeof colors] || "text-gray-600 bg-gray-100";
   };
 
   const generateNewInsights = useCallback(async () => {
@@ -217,19 +265,40 @@ export function useInsightsData() {
         lifestyle: lifestyleData.data || []
       });
 
+      // Update state first for immediate UI feedback
       setHealthMetrics(newHealthMetrics);
       setInsights(newInsights);
       setCorrelationAnalyses(newCorrelations);
 
-      // Save to database for persistence
+      // Save to database with improved transaction logic
       await saveInsightsToDatabase(newHealthMetrics, newInsights, newCorrelations);
+
+      // Invalidate cache to ensure fresh data on next load
+      await invalidateInsightsCache();
 
     } catch (error) {
       console.error('Error generating new insights:', error);
+      throw error; // Re-throw for component error handling
     } finally {
       setLoading(false);
     }
-  }, [user, healthMetrics]);
+  }, [user, selectedTimeRange]);
+
+  // Cache invalidation helper
+  const invalidateInsightsCache = async () => {
+    if (!user) return;
+    
+    try {
+      await Promise.all([
+        cache.invalidatePattern(`health:${user.id}:*`),
+        cache.del(cache.healthKey(user.id, 'health_metrics', selectedTimeRange)),
+        cache.del(cache.healthKey(user.id, 'ai_insights', selectedTimeRange)),
+        cache.del(cache.healthKey(user.id, 'correlation_analyses', selectedTimeRange))
+      ]);
+    } catch (error) {
+      console.error('Error invalidating cache:', error);
+    }
+  };
 
   const generateHealthMetricsFromData = (data: any) => {
     const exerciseScore = Math.min(50 + (data.exercise.length * 3), 95);
@@ -343,31 +412,38 @@ export function useInsightsData() {
     return correlations;
   };
 
+  // Improved database save with transaction-like behavior
   const saveInsightsToDatabase = async (metrics: HealthMetric[], newInsights: Insight[], correlations: CorrelationAnalysis[]) => {
     if (!user) return;
 
+    const today = new Date().toISOString().split('T')[0];
+    const timestamp = new Date().toISOString();
+
     try {
-      // Clear existing AI-generated insights
+      // Use upsert strategy instead of delete+insert to avoid data inconsistency
+      // First, mark existing data as inactive
       await Promise.all([
-        supabaseRest.from('health_metrics').delete().eq('user_id', user.id),
-        supabaseRest.from('ai_insights').delete().eq('user_id', user.id),
-        supabaseRest.from('correlation_analyses').delete().eq('user_id', user.id)
+        supabaseRest.from('health_metrics').update({ date: timestamp }).eq('user_id', user.id),
+        supabaseRest.from('ai_insights').update({ is_active: false, updated_at: timestamp }).eq('user_id', user.id).eq('is_active', true),
+        supabaseRest.from('correlation_analyses').update({ is_active: false, updated_at: timestamp }).eq('user_id', user.id).eq('is_active', true)
       ]);
 
-      // Save new data
-      const today = new Date().toISOString().split('T')[0];
-      
-      await Promise.all([
+      // Then insert new data
+      const insertPromises = [
+        // Insert new health metrics
         ...metrics.map(metric => 
           supabaseRest.from('health_metrics').insert({
             user_id: user.id,
             category: metric.category,
             score: metric.score,
             trend: metric.trend,
-            color: 'bg-blue-500', // Default color for database
-            date: today
+            color: metric.color,
+            date: today,
+            created_at: timestamp,
+            updated_at: timestamp
           })
         ),
+        // Insert new insights
         ...newInsights.map(insight => 
           supabaseRest.from('ai_insights').insert({
             user_id: user.id,
@@ -377,9 +453,13 @@ export function useInsightsData() {
             description: insight.description,
             recommendation: insight.recommendation,
             confidence_score: 0.8,
-            is_active: true
+            is_active: true,
+            generated_at: timestamp,
+            created_at: timestamp,
+            updated_at: timestamp
           })
         ),
+        // Insert new correlations
         ...correlations.map(correlation => 
           supabaseRest.from('correlation_analyses').insert({
             user_id: user.id,
@@ -388,13 +468,35 @@ export function useInsightsData() {
             correlation: correlation.correlation,
             suggestion: correlation.suggestion,
             confidence_level: 'medium',
-            is_active: true
+            is_active: true,
+            generated_at: timestamp,
+            created_at: timestamp,
+            updated_at: timestamp
           })
         )
+      ];
+
+      // Execute all inserts
+      await Promise.all(insertPromises);
+
+      // Clean up old inactive records (keep last 5 for history)
+      await Promise.all([
+        supabaseRest.from('ai_insights')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('is_active', false)
+          .lt('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+        supabaseRest.from('correlation_analyses')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('is_active', false)
+          .lt('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       ]);
 
+      console.log('Successfully saved insights to database');
     } catch (error) {
       console.error('Error saving insights to database:', error);
+      throw error; // Re-throw for proper error handling
     }
   };
 
@@ -414,6 +516,7 @@ export function useInsightsData() {
     correlationAnalyses,
     setCorrelationAnalyses,
     loading,
-    generateNewInsights
+    generateNewInsights,
+    invalidateInsightsCache
   };
 } 

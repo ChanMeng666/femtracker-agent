@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { supabaseRest } from "@/lib/supabase/restClient";
+import { cache } from "@/lib/redis/client";
 
 interface RecommendationItem {
   icon: string;
@@ -21,6 +22,7 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
   const [shortTermGoals, setShortTermGoals] = useState<RecommendationItem[]>([]);
   const [longTermGoals, setLongTermGoals] = useState<RecommendationItem[]>([]);
   const [resources, setResources] = useState<RecommendationItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     generateRecommendations();
@@ -28,11 +30,37 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
 
   const generateRecommendations = async () => {
     setLoading(true);
+    setError(null);
     
     try {
-      let userHealthData = { exercise: [], nutrition: [], lifestyle: [], symptoms: [] };
+      // Check cache first for user recommendations
+      if (user) {
+        const cacheKey = cache.healthKey(user.id, 'recommendations');
+        const cachedRecommendations = await cache.get<{
+          shortTerm: RecommendationItem[];
+          longTerm: RecommendationItem[];
+          resources: RecommendationItem[];
+        }>(cacheKey);
+
+        if (cachedRecommendations) {
+          console.log('Loading recommendations from cache');
+          setShortTermGoals(cachedRecommendations.shortTerm);
+          setLongTermGoals(cachedRecommendations.longTerm);
+          setResources(cachedRecommendations.resources);
+          setLoading(false);
+          return;
+        }
+      }
+
+      let userHealthData = { 
+        exercise: [] as any[], 
+        nutrition: [] as any[], 
+        lifestyle: [] as any[], 
+        symptoms: [] as any[] 
+      };
       
       if (user) {
+        console.log('Loading recommendations with fresh data');
         // Get recent user data for more personalized recommendations
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -57,16 +85,27 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
       setShortTermGoals(recommendations.shortTerm);
       setLongTermGoals(recommendations.longTerm);
       setResources(recommendations.resources);
+
+      // Cache recommendations for 1 hour
+      if (user) {
+        const cacheKey = cache.healthKey(user.id, 'recommendations');
+        await cache.set(cacheKey, recommendations, 3600);
+      }
       
     } catch (error) {
       console.error('Error generating recommendations:', error);
+      setError('Failed to generate personalized recommendations');
       setDefaultRecommendations();
     } finally {
       setLoading(false);
     }
   };
 
-  const generateSmartRecommendations = (metrics: any[], userInsights: any[], userData: any) => {
+  const generateSmartRecommendations = (
+    metrics: Array<{ category: string; score: number; trend: string }>, 
+    userInsights: Array<{ type: string; category: string; recommendation: string }>, 
+    userData: { exercise: any[]; nutrition: any[]; lifestyle: any[]; symptoms: any[] }
+  ) => {
     const shortTerm: RecommendationItem[] = [];
     const longTerm: RecommendationItem[] = [];
     const resources: RecommendationItem[] = [];
@@ -77,7 +116,7 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
 
     // Exercise recommendations
     const exerciseMetric = metrics.find(m => m.category.includes('Exercise'));
-    const exerciseCount = userData.exercise.length;
+    const exerciseCount = userData.exercise?.length || 0;
     
     if (!exerciseMetric || exerciseMetric.score < 75 || exerciseCount < 8) {
       shortTerm.push({
@@ -107,7 +146,7 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
 
     // Nutrition recommendations
     const nutritionMetric = metrics.find(m => m.category.includes('Nutrition'));
-    const nutritionCount = userData.nutrition.length;
+    const nutritionCount = userData.nutrition?.length || 0;
     
     if (!nutritionMetric || nutritionMetric.score < 75 || nutritionCount < 15) {
       shortTerm.push({
@@ -129,7 +168,7 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
 
     // Lifestyle recommendations
     const lifestyleMetric = metrics.find(m => m.category.includes('Lifestyle'));
-    const avgSleepQuality = userData.lifestyle.length > 0 
+    const avgSleepQuality = userData.lifestyle?.length > 0 
       ? userData.lifestyle.reduce((sum: number, entry: any) => sum + (entry.sleep_quality || 5), 0) / userData.lifestyle.length
       : 5;
     
@@ -160,7 +199,7 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
     }
 
     // Symptom and mood recommendations
-    const symptomCount = userData.symptoms.length;
+    const symptomCount = userData.symptoms?.length || 0;
     const moodMetric = metrics.find(m => m.category.includes('Mood'));
     
     if (symptomCount > 10 || (moodMetric && moodMetric.score < 70)) {
@@ -328,6 +367,26 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
     );
   }
 
+  if (error) {
+    return (
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-sm border border-purple-200 p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-2xl">💝</span>
+          <h2 className="text-xl font-semibold text-gray-800">Personalized Improvement Plan</h2>
+        </div>
+        <div className="text-center py-8">
+          <div className="text-red-600 mb-4">⚠️ {error}</div>
+          <button
+            onClick={() => generateRecommendations()}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-sm border border-purple-200 p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -404,13 +463,22 @@ export function PersonalizedRecommendations({ healthMetrics = [], insights = [] 
               Quick Actions
             </h3>
             <div className="space-y-2">
-              <button className="w-full text-left px-3 py-2 bg-purple-100 text-purple-800 rounded-lg text-sm hover:bg-purple-200 transition-colors">
+              <button 
+                onClick={() => {/* TODO: Implement reminder functionality */}}
+                className="w-full text-left px-3 py-2 bg-purple-100 text-purple-800 rounded-lg text-sm hover:bg-purple-200 transition-colors"
+              >
                 📱 Set Daily Health Check Reminder
               </button>
-              <button className="w-full text-left px-3 py-2 bg-pink-100 text-pink-800 rounded-lg text-sm hover:bg-pink-200 transition-colors">
+              <button 
+                onClick={() => {/* TODO: Implement progress review */}}
+                className="w-full text-left px-3 py-2 bg-pink-100 text-pink-800 rounded-lg text-sm hover:bg-pink-200 transition-colors"
+              >
                 📊 Enable Weekly Progress Review
               </button>
-              <button className="w-full text-left px-3 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm hover:bg-blue-200 transition-colors">
+              <button 
+                onClick={() => {/* TODO: Implement goal setting */}}
+                className="w-full text-left px-3 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm hover:bg-blue-200 transition-colors"
+              >
                 🎯 Create Personal Health Goals
               </button>
             </div>
