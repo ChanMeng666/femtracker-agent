@@ -10,7 +10,14 @@ export const useCycleWithDB = () => {
   const { user } = useAuth();
   const { cycles, addCycle, updateCycle, loading: cyclesLoading } = useCycles();
   const { symptoms, moods, upsertSymptom, upsertMood, deleteSymptom, deleteMood, loading: symptomsLoading } = useSymptomsMoods();
-  const { refreshData } = useQuickRecords();
+  const { 
+    refreshData, 
+    getTodayData, 
+    upsertQuickRecord, 
+    addWaterIntake, 
+    upsertLifestyleEntry,
+    loading: quickRecordsLoading 
+  } = useQuickRecords();
   
   const [currentDay, setCurrentDay] = useState<number>(14);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -539,5 +546,11 @@ export const useCycleWithDB = () => {
     upsertMood,
     deleteSymptom,
     deleteMood,
+    refreshData,
+    getTodayData,
+    upsertQuickRecord,
+    addWaterIntake,
+    upsertLifestyleEntry,
+    quickRecordsLoading,
   };
 }; 

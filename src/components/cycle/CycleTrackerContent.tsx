@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { useCycleWithDB } from '@/hooks/useCycleWithDB';
-import { useQuickRecords } from '@/hooks/useQuickRecords';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useToast } from '@/hooks/useToast';
@@ -34,6 +33,12 @@ export const CycleTrackerContent: React.FC = () => {
     upsertMood,
     deleteSymptom,
     deleteMood,
+    refreshData,
+    getTodayData,
+    upsertQuickRecord,
+    addWaterIntake,
+    upsertLifestyleEntry,
+    quickRecordsLoading
   } = useCycleWithDB();
 
   // Manual refresh function for testing
@@ -67,15 +72,6 @@ export const CycleTrackerContent: React.FC = () => {
       showError('Error during manual refresh');
     }
   }, [user, setCurrentDay, showSuccess, showError]);
-
-  const {
-    getTodayData,
-    upsertQuickRecord,
-    addWaterIntake,
-    upsertLifestyleEntry,
-    refreshData,
-    loading: quickRecordsLoading
-  } = useQuickRecords();
 
   // Local state for editing
   const [editingSymptom, setEditingSymptom] = useState<string | null>(null);
@@ -322,7 +318,7 @@ export const CycleTrackerContent: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || quickRecordsLoading) {
     return (
       <PageLayout
         title="Cycle & Mood Tracker"
