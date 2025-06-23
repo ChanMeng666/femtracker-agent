@@ -135,7 +135,7 @@ export default function ForgotPasswordPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => router.push('/')}
-            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors underline decoration-gray-500 underline-offset-2 hover:decoration-gray-700"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Login

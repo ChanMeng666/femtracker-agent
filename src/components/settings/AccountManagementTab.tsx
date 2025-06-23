@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { simpleAuth } from '@/lib/supabase/authTest';
+// import { simpleAuth } from '@/lib/supabase/authTest';
 import { LogOut, User, Key, TestTube, AlertCircle, CheckCircle } from 'lucide-react';
 
 export const AccountManagementTab: React.FC = () => {
@@ -40,20 +40,21 @@ export const AccountManagementTab: React.FC = () => {
     }
   };
 
-  const handleTestEnvironment = async () => {
-    setLoading(true);
-    setTestResult('Running environment tests...');
-    try {
-      console.log('=== ACCOUNT MANAGEMENT: ENVIRONMENT TEST ===');
-      simpleAuth.testEnvironment();
-      setTestResult('Environment test completed. Check console for details.');
-    } catch (error) {
-      console.error('Environment test error:', error);
-      setTestResult('Environment test failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 注释掉环境测试功能
+  // const handleTestEnvironment = async () => {
+  //   setLoading(true);
+  //   setTestResult('Running environment tests...');
+  //   try {
+  //     console.log('=== ACCOUNT MANAGEMENT: ENVIRONMENT TEST ===');
+  //     simpleAuth.testEnvironment();
+  //     setTestResult('Environment test completed. Check console for details.');
+  //   } catch (error) {
+  //     console.error('Environment test error:', error);
+  //     setTestResult('Environment test failed');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleResetPassword = async () => {
     if (!resetEmail.trim()) {
@@ -189,7 +190,8 @@ export const AccountManagementTab: React.FC = () => {
             )}
           </div>
 
-          {/* Environment Test */}
+          {/* 注释掉Environment Test */}
+          {/* 
           <div className="p-4 bg-gray-50 rounded-xl">
             <div className="flex items-center justify-between">
               <div>
@@ -210,10 +212,11 @@ export const AccountManagementTab: React.FC = () => {
               </button>
             </div>
           </div>
+          */}
         </div>
 
         {/* Instructions */}
-        <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+        {/* <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
           <h3 className="font-medium text-yellow-800 mb-2">🧪 How to Test Authentication</h3>
           <ol className="text-sm text-yellow-700 space-y-1">
             <li>1. Click &quot;Sign Out&quot; to log out of your account</li>
@@ -221,12 +224,11 @@ export const AccountManagementTab: React.FC = () => {
             <li>3. Test login with your existing credentials</li>
             <li>4. Test registration by creating a new account</li>
             <li>5. Test password reset functionality</li>
-            <li>6. Use the debug button on login page for detailed logs</li>
           </ol>
-        </div>
+        </div> */}
 
         {/* Debug Information */}
-        <div className="p-4 bg-gray-100 rounded-xl">
+        {/* <div className="p-4 bg-gray-100 rounded-xl">
           <h3 className="font-medium text-gray-800 mb-2">🔧 Debug Information</h3>
           <div className="text-xs text-gray-600 font-mono space-y-1">
             <p>Auth Status: {user ? 'Authenticated' : 'Not Authenticated'}</p>
@@ -234,7 +236,7 @@ export const AccountManagementTab: React.FC = () => {
             <p>Browser: {typeof window !== 'undefined' ? 'Client' : 'Server'}</p>
             <p>Local Storage Token: {typeof window !== 'undefined' && localStorage.getItem('supabase.auth.token') ? 'Present' : 'Missing'}</p>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -380,7 +380,7 @@ function LifestyleTrackerContent() {
           <div className="max-w-6xl mx-auto space-y-6">
             
             {/* Manual Refresh Button */}
-            <div className="flex justify-end mb-4">
+            {/* <div className="flex justify-end mb-4">
               <button
                 onClick={async () => {
                   console.log('Manual refresh clicked');
@@ -398,10 +398,10 @@ function LifestyleTrackerContent() {
                 </svg>
                 Refresh Data
               </button>
-            </div>
+            </div> */}
             
             {/* Database Connection Status */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+            {/* <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -524,7 +524,7 @@ function LifestyleTrackerContent() {
                   Direct Insert
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Status Message */}
             {submitMessage && (
@@ -923,7 +923,7 @@ function LifestyleTrackerContent() {
             </div>
 
             {/* AI Assistant Instructions */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            {/* <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-purple-800 mb-2">🤖 Ask your AI Assistant</h3>
               <div className="text-xs text-purple-700 space-y-1">
                 <p><strong>New Guided Experience with Full CRUD:</strong></p>
@@ -958,7 +958,7 @@ function LifestyleTrackerContent() {
                   <p><strong>AI:</strong> "Record deleted successfully. All lifestyle data for today has been removed from your database."</p>
                 </div>
               </div>
-            </div>
+            </div> */}
 
           </div>
         </main>

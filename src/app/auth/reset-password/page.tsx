@@ -160,7 +160,7 @@ export default function ResetPasswordPage() {
                 {error.includes('expired') && (
                   <button
                     onClick={handleRequestNewLink}
-                    className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+                    className="mt-2 text-sm text-red-600 hover:text-red-800 underline decoration-red-600 underline-offset-2 hover:decoration-red-800 transition-colors"
                   >
                     Request a new reset link
                   </button>
@@ -241,7 +241,7 @@ export default function ResetPasswordPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => router.push('/')}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-sm text-gray-500 hover:text-gray-700 transition-colors underline decoration-gray-500 underline-offset-2 hover:decoration-gray-700"
           >
             Back to Login
           </button>

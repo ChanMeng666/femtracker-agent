@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/auth/useAuth'
-import { simpleAuth } from '@/lib/supabase/authTest'
+// import { simpleAuth } from '@/lib/supabase/authTest'
 
 export default function LoginForm() {
   const { signIn, signUp } = useAuth()
@@ -42,17 +42,18 @@ export default function LoginForm() {
     setLoading(false)
   }
 
-  const handleTestAuth = async () => {
-    console.log('=== STARTING AUTH TEST ===');
-    simpleAuth.testEnvironment();
-    
-    if (email && password) {
-      const result = await simpleAuth.testLogin(email, password);
-      setMessage(`Test result: ${result.success ? 'SUCCESS' : 'FAILED: ' + result.error}`);
-    } else {
-      setMessage('Please enter email and password for test');
-    }
-  }
+  // 注释掉测试功能代码
+  // const handleTestAuth = async () => {
+  //   console.log('=== STARTING AUTH TEST ===');
+  //   simpleAuth.testEnvironment();
+  //   
+  //   if (email && password) {
+  //     const result = await simpleAuth.testLogin(email, password);
+  //     setMessage(`Test result: ${result.success ? 'SUCCESS' : 'FAILED: ' + result.error}`);
+  //   } else {
+  //     setMessage('Please enter email and password for test');
+  //   }
+  // }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
@@ -154,7 +155,8 @@ export default function LoginForm() {
             )}
           </button>
           
-          {/* Debug Test Button */}
+          {/* 注释掉调试测试按钮 */}
+          {/* 
           <button
             type="button"
             onClick={handleTestAuth}
@@ -162,6 +164,7 @@ export default function LoginForm() {
           >
             🔧 Test Auth (Debug)
           </button>
+          */}
           
           <div className="text-center space-y-2">
             <button
@@ -173,7 +176,7 @@ export default function LoginForm() {
                 setEmail('')
                 setPassword('')
               }}
-              className="text-sm text-pink-600 hover:text-pink-700 font-medium"
+              className="text-sm text-pink-600 hover:text-pink-700 font-medium underline decoration-pink-600 underline-offset-2 hover:decoration-pink-700 transition-colors"
             >
               {isSignUp 
                 ? 'Already have an account? Sign In' 
@@ -185,7 +188,7 @@ export default function LoginForm() {
               <div>
                 <a
                   href="/auth/forgot-password"
-                  className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                  className="text-sm text-gray-500 hover:text-gray-700 font-medium underline decoration-gray-500 underline-offset-2 hover:decoration-gray-700 transition-colors"
                 >
                   Forgot your password?
                 </a>

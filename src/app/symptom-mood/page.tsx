@@ -145,7 +145,7 @@ function SymptomMoodContent() {
         />
 
         {/* Database Connection Status */}
-        <div className="px-6 pt-6">
+        {/* <div className="px-6 pt-6">
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -161,7 +161,7 @@ function SymptomMoodContent() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
 
         {/* Main content */}
         <main className="flex-1 overflow-auto p-6">
