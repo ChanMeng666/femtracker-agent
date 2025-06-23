@@ -1,6 +1,8 @@
 import { useDataExportImport } from '@/hooks/useDataExportImport';
+import { useDataDeletion } from '@/hooks/useDataDeletion';
 import { DataExportSection } from './DataExportSection';
 import { DataImportSection } from './DataImportSection';
+import { DataDeletionSection } from './DataDeletionSection';
 
 export function DataExportImportContent() {
   const {
@@ -21,8 +23,16 @@ export function DataExportImportContent() {
     handleImport
   } = useDataExportImport();
 
+  const {
+    isDeleting,
+    deleteStatus,
+    deleteMessage,
+    handleDeleteData,
+    resetStatus
+  } = useDataDeletion();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <DataExportSection
         selectedOptions={selectedOptions}
         exportFormat={exportFormat}
@@ -42,6 +52,13 @@ export function DataExportImportContent() {
         importMessage={importMessage}
         fileInputRef={fileInputRef}
         onImport={handleImport}
+      />
+
+      <DataDeletionSection
+        onDeleteData={handleDeleteData}
+        isDeleting={isDeleting}
+        deleteStatus={deleteStatus}
+        deleteMessage={deleteMessage}
       />
     </div>
   );
