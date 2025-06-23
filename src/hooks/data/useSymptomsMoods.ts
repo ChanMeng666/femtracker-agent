@@ -40,7 +40,7 @@ export function useSymptomsMoods() {
       {
         name: "symptomType",
         type: "string",
-        description: "Type of symptom (e.g., cramps, headache, bloating)",
+        description: "Type of symptom (e.g., cramps, headache, bloating, acne, fatigue)",
         required: true,
       },
       {
@@ -64,10 +64,13 @@ export function useSymptomsMoods() {
     ],
     handler: async ({ symptomType, severity, date, notes }) => {
       const targetDate = date || new Date().toISOString().split('T')[0]
-      const aiNotes = notes ? `${notes} (Updated via AI assistant)` : 'Updated via AI assistant'
+      const aiNotes = notes ? `${notes} • Updated via AI assistant` : 'Updated via AI assistant'
+      
+      // Standardize symptom type to match constants (capitalize first letter)
+      const standardizedSymptomType = symptomType.toLowerCase().replace(/^\w/, c => c.toUpperCase())
       
       const result = await upsertSymptom({
-        symptom_type: symptomType,
+        symptom_type: standardizedSymptomType,
         severity: Math.min(Math.max(severity, 1), 10), // Ensure 1-10 range
         date: targetDate,
         notes: aiNotes
@@ -75,7 +78,7 @@ export function useSymptomsMoods() {
       if (result && result.error) {
         return `Error: ${typeof result.error === 'string' ? result.error : 'Failed to add symptom'}`
       }
-      return `Symptom "${symptomType}" recorded with severity ${severity} for ${targetDate}`
+      return `Symptom "${standardizedSymptomType}" recorded with severity ${severity} for ${targetDate}`
     },
   })
 
@@ -86,7 +89,7 @@ export function useSymptomsMoods() {
       {
         name: "moodType",
         type: "string",
-        description: "Type of mood (e.g., happy, sad, anxious, irritable)",
+        description: "Type of mood (e.g., happy, sad, anxious, irritable, calm, energetic)",
         required: true,
       },
       {
@@ -110,10 +113,13 @@ export function useSymptomsMoods() {
     ],
     handler: async ({ moodType, intensity, date, notes }) => {
       const targetDate = date || new Date().toISOString().split('T')[0]
-      const aiNotes = notes ? `${notes} (Updated via AI assistant)` : 'Updated via AI assistant'
+      const aiNotes = notes ? `${notes} • Updated via AI assistant` : 'Updated via AI assistant'
+      
+      // Standardize mood type to match constants (capitalize first letter)
+      const standardizedMoodType = moodType.toLowerCase().replace(/^\w/, c => c.toUpperCase())
       
       const result = await upsertMood({
-        mood_type: moodType,
+        mood_type: standardizedMoodType,
         intensity: Math.min(Math.max(intensity, 1), 10), // Ensure 1-10 range
         date: targetDate,
         notes: aiNotes
@@ -121,7 +127,7 @@ export function useSymptomsMoods() {
       if (result && result.error) {
         return `Error: ${typeof result.error === 'string' ? result.error : 'Failed to add mood'}`
       }
-      return `Mood "${moodType}" recorded with intensity ${intensity} for ${targetDate}`
+      return `Mood "${standardizedMoodType}" recorded with intensity ${intensity} for ${targetDate}`
     },
   })
 
@@ -246,13 +252,12 @@ export function useSymptomsMoods() {
     setError(null)
 
     try {
-      // First, check if a symptom of the same type exists for the same date
+      // First, get all symptoms for the same date to find case-insensitive matches
       const { data: existingData, error: selectError } = await supabaseRest
         .from('symptoms')
         .select('*')
         .eq('user_id', user.id)
         .eq('date', symptomData.date)
-        .eq('symptom_type', symptomData.symptom_type)
 
       if (selectError) {
         console.error('Error checking existing symptom:', selectError)
@@ -261,12 +266,19 @@ export function useSymptomsMoods() {
         return { error: errorMessage }
       }
 
-      if (existingData && Array.isArray(existingData) && existingData.length > 0) {
-        // Update existing record
-        const existingSymptom = existingData[0]
+      // Find case-insensitive match
+      const existingSymptom = existingData && Array.isArray(existingData) 
+        ? existingData.find((s: any) => 
+            s.symptom_type.toLowerCase() === symptomData.symptom_type.toLowerCase()
+          )
+        : null;
+
+      if (existingSymptom) {
+        // Update existing record (including symptom_type to standardize format)
         const { data, error } = await supabaseRest
           .from('symptoms')
           .update({
+            symptom_type: symptomData.symptom_type, // Standardize the format
             severity: symptomData.severity,
             notes: symptomData.notes
           })
@@ -281,10 +293,10 @@ export function useSymptomsMoods() {
           // Update local state
           setSymptoms(prev => prev.map(s => 
             s.id === existingSymptom.id 
-              ? { ...s, severity: symptomData.severity, notes: symptomData.notes }
+              ? { ...s, symptom_type: symptomData.symptom_type, severity: symptomData.severity, notes: symptomData.notes }
               : s
           ))
-          return { data: { ...existingSymptom, severity: symptomData.severity, notes: symptomData.notes } }
+          return { data: { ...existingSymptom, symptom_type: symptomData.symptom_type, severity: symptomData.severity, notes: symptomData.notes } }
         }
       } else {
         // Insert new record
@@ -304,13 +316,12 @@ export function useSymptomsMoods() {
     setError(null)
 
     try {
-      // First, check if a mood exists for the same date
+      // First, get all moods for the same date to find case-insensitive matches
       const { data: existingData, error: selectError } = await supabaseRest
         .from('moods')
         .select('*')
         .eq('user_id', user.id)
         .eq('date', moodData.date)
-        .eq('mood_type', moodData.mood_type)
 
       if (selectError) {
         console.error('Error checking existing mood:', selectError)
@@ -319,12 +330,19 @@ export function useSymptomsMoods() {
         return { error: errorMessage }
       }
 
-      if (existingData && Array.isArray(existingData) && existingData.length > 0) {
-        // Update existing record
-        const existingMood = existingData[0]
+      // Find case-insensitive match
+      const existingMood = existingData && Array.isArray(existingData)
+        ? existingData.find((m: any) => 
+            m.mood_type.toLowerCase() === moodData.mood_type.toLowerCase()
+          )
+        : null;
+
+      if (existingMood) {
+        // Update existing record (including mood_type to standardize format)
         const { data, error } = await supabaseRest
           .from('moods')
           .update({
+            mood_type: moodData.mood_type, // Standardize the format
             intensity: moodData.intensity,
             notes: moodData.notes
           })
@@ -339,10 +357,10 @@ export function useSymptomsMoods() {
           // Update local state
           setMoods(prev => prev.map(m => 
             m.id === existingMood.id 
-              ? { ...m, intensity: moodData.intensity, notes: moodData.notes }
+              ? { ...m, mood_type: moodData.mood_type, intensity: moodData.intensity, notes: moodData.notes }
               : m
           ))
-          return { data: { ...existingMood, intensity: moodData.intensity, notes: moodData.notes } }
+          return { data: { ...existingMood, mood_type: moodData.mood_type, intensity: moodData.intensity, notes: moodData.notes } }
         }
       } else {
         // Insert new record

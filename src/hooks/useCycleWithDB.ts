@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useCopilotReadable, useCopilotAction } from "@copilotkit/react-core";
 import { useCycles } from "./data/useCycles";
 import { useSymptomsMoods } from "./data/useSymptomsMoods";
+import { useQuickRecords } from "./useQuickRecords";
 import { useAuth } from "./auth/useAuth";
 import { supabaseRest } from "@/lib/supabase/restClient";
 
@@ -9,6 +10,7 @@ export const useCycleWithDB = () => {
   const { user } = useAuth();
   const { cycles, addCycle, updateCycle, loading: cyclesLoading } = useCycles();
   const { symptoms, moods, upsertSymptom, upsertMood, deleteSymptom, deleteMood, loading: symptomsLoading } = useSymptomsMoods();
+  const { refreshData } = useQuickRecords();
   
   const [currentDay, setCurrentDay] = useState<number>(14);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -31,9 +33,17 @@ export const useCycleWithDB = () => {
     }
   }, [symptoms, moods]);
 
-  // Load current cycle day when cycles data is available
+  // Load current cycle day when user is available
   useEffect(() => {
-    if (cycles.length > 0 && user) {
+    if (user) {
+      loadCurrentCycleDay();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Also load when cycles data becomes available (as a backup)
+  useEffect(() => {
+    if (user && cycles.length >= 0) {  // >= 0 to include empty arrays
       loadCurrentCycleDay();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +129,16 @@ export const useCycleWithDB = () => {
       const today = new Date().toISOString().split('T')[0];
       
       try {
+        // Use upsert logic like manual recording - first delete existing, then insert
         await supabaseRest
+          .from('quick_records')
+          .delete()
+          .eq('user_id', user?.id)
+          .eq('date', today)
+          .eq('record_type', 'period_flow');
+
+        // Insert new record
+        const { data, error } = await supabaseRest
           .from('quick_records')
           .insert([{
             user_id: user?.id,
@@ -127,10 +146,25 @@ export const useCycleWithDB = () => {
             record_type: 'period_flow',
             value: flowIntensity,
             notes: 'Updated via AI assistant'
-          }]);
+          }], { select: '*' });
+
+        if (error) {
+          console.error('AI Period Flow - Error inserting record:', error);
+          return `Error recording period flow: ${error}`;
+        }
+
+        console.log('AI Period Flow - Successfully recorded:', flowIntensity);
+        
+        // Trigger data refresh to update UI immediately
+        // This is the key to real-time updates!
+        if (refreshData) {
+          await refreshData();
+          console.log('AI Period Flow - Data refreshed, UI should update now');
+        }
         
         return `Period flow recorded as ${flowIntensity} for today`;
       } catch (error) {
+        console.error('AI Period Flow - Exception:', error);
         return `Error recording period flow: ${error}`;
       }
     },
@@ -154,16 +188,30 @@ export const useCycleWithDB = () => {
       const today = new Date().toISOString().split('T')[0];
       
       try {
-        await supabaseRest
+        const { data, error } = await supabaseRest
           .from('water_intake')
           .insert([{
             user_id: user?.id,
             date: today,
             amount_ml: amountMl
-          }]);
+          }], { select: '*' });
+
+        if (error) {
+          console.error('AI Water Intake - Error inserting record:', error);
+          return `Error recording water intake: ${error}`;
+        }
+
+        console.log('AI Water Intake - Successfully recorded:', amountMl + 'ml');
+        
+        // Trigger data refresh to update UI immediately
+        if (refreshData) {
+          await refreshData();
+          console.log('AI Water Intake - Data refreshed, UI should update now');
+        }
         
         return `Water intake of ${amountMl}ml recorded for today`;
       } catch (error) {
+        console.error('AI Water Intake - Exception:', error);
         return `Error recording water intake: ${error}`;
       }
     },
@@ -271,6 +319,14 @@ export const useCycleWithDB = () => {
           console.log('Cycle Tracker - Successfully created lifestyle entry');
         }
         
+        console.log('Cycle Tracker - Lifestyle data operation completed');
+        
+        // Trigger data refresh to update UI immediately
+        if (refreshData) {
+          await refreshData();
+          console.log('AI Lifestyle - Data refreshed, UI should update now');
+        }
+        
         const updates = [];
         if (sleepHours !== undefined) updates.push(`sleep: ${sleepHours}h`);
         if (sleepQuality !== undefined) updates.push(`sleep quality: ${sleepQuality}/10`);
@@ -356,22 +412,40 @@ export const useCycleWithDB = () => {
     if (!user) return;
 
     try {
+      console.log('Loading current cycle day for user:', user.id);
+      
       // First, try to get from quick_records (prioritize user-set cycle day)
-      const { data: quickRecord } = await supabaseRest
+      // Look for the most recent record within the last 7 days to handle date mismatches
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+      
+      const { data: quickRecord, error: quickError } = await supabaseRest
         .from('quick_records')
         .select('*')
         .eq('user_id', user.id)
         .eq('record_type', 'current_cycle_day')
+        .gte('date', sevenDaysAgoStr)
         .order('date', { ascending: false })
         .limit(1);
 
+      console.log('Quick records query result:', { quickRecord, quickError });
+
       if (quickRecord && Array.isArray(quickRecord) && quickRecord.length > 0) {
-        const savedDay = parseInt(quickRecord[0].value);
-        if (savedDay >= 1 && savedDay <= 28) {
-          console.log('Loaded cycle day from quick_records:', savedDay);
+        const record = quickRecord[0];
+        const savedDay = parseInt(record.value);
+        console.log('Found quick record:', record);
+        console.log('Parsed day value:', savedDay);
+        
+        if (savedDay >= 1 && savedDay <= 35) {  // Extended range to support longer cycles
+          console.log('Loading cycle day from quick_records:', savedDay);
           setCurrentDay(savedDay);
           return;
+        } else {
+          console.log('Saved day out of range:', savedDay);
         }
+      } else {
+        console.log('No quick records found for current_cycle_day');
       }
 
       // Fallback: calculate from current cycle start date if no manual override exists
@@ -380,7 +454,7 @@ export const useCycleWithDB = () => {
         const today = new Date();
         const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         
-        if (daysDiff >= 1 && daysDiff <= 28) {
+        if (daysDiff >= 1 && daysDiff <= 35) {  // Extended range
           console.log('Calculated cycle day from start date:', daysDiff);
           setCurrentDay(daysDiff);
           // Don't auto-save calculated day to avoid overriding manual settings

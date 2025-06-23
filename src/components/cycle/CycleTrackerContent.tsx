@@ -1,13 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useCycleWithDB } from '@/hooks/useCycleWithDB';
 import { useQuickRecords } from '@/hooks/useQuickRecords';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useToast } from '@/hooks/useToast';
 import { supabaseRest } from '@/lib/supabase/restClient';
 import { symptoms, moods } from '@/constants/cycle';
 import { PageLayout } from '@/components/shared/PageLayout';
+import { Toast } from '@/components/ui/Toast';
+import { 
+  validateWaterAmount, 
+  validateSleepHours, 
+  validateRating,
+  validateFlowIntensity,
+  ValidationResult 
+} from '@/utils/validation';
 
 export const CycleTrackerContent: React.FC = () => {
   const { user } = useAuth();
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const {
     currentDay,
     setCurrentDay,
@@ -24,6 +35,38 @@ export const CycleTrackerContent: React.FC = () => {
     deleteSymptom,
     deleteMood,
   } = useCycleWithDB();
+
+  // Manual refresh function for testing
+  const handleManualRefresh = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      console.log('Manual refresh - checking quick_records for user:', user.id);
+      const { data: records, error } = await supabaseRest
+        .from('quick_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('record_type', 'current_cycle_day')
+        .order('date', { ascending: false });
+      
+      console.log('All current_cycle_day records:', records);
+      console.log('Query error:', error);
+      
+      if (records && Array.isArray(records) && records.length > 0) {
+        const latestRecord = records[0] as any;
+        const savedDay = parseInt(latestRecord.value);
+        console.log('Latest record:', latestRecord);
+        console.log('Setting current day to:', savedDay);
+        setCurrentDay(savedDay);
+        showSuccess(`Refreshed: Found cycle day ${savedDay} from ${latestRecord.date}`);
+      } else {
+        showError('No cycle day records found');
+      }
+    } catch (error) {
+      console.error('Manual refresh error:', error);
+      showError('Error during manual refresh');
+    }
+  }, [user, setCurrentDay, showSuccess, showError]);
 
   const {
     getTodayData,
@@ -53,9 +96,55 @@ export const CycleTrackerContent: React.FC = () => {
   const todaySymptomsData = todaySymptoms.filter(s => s.date === today);
   const todayMoodsData = todayMoods.filter(m => m.date === today);
 
+  // 防抖的周期天数保存函数
+  const saveCycleDayToDatabase = useCallback(async (day: number) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      console.log('Saving cycle day to database:', day, 'for date:', today);
+      
+      // Check for existing record for today first
+      const { data: existingRecord } = await supabaseRest
+        .from('quick_records')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('record_type', 'current_cycle_day')
+        .eq('date', today);
+
+      if (existingRecord && Array.isArray(existingRecord) && existingRecord.length > 0) {
+        console.log('Updating existing record:', existingRecord[0].id);
+        await supabaseRest
+          .from('quick_records')
+          .update({
+            value: day.toString(),
+            notes: 'Updated via manual slider'
+          })
+          .eq('id', existingRecord[0].id);
+      } else {
+        console.log('Creating new record for today');
+        await supabaseRest
+          .from('quick_records')
+          .insert([{
+            user_id: user?.id,
+            date: today,
+            record_type: 'current_cycle_day',
+            value: day.toString(),
+            notes: 'Updated via manual slider'
+          }]);
+      }
+      console.log('Cycle day saved successfully:', day);
+    } catch (error) {
+      console.error('Error saving cycle day:', error);
+    }
+  }, [user?.id]);
+
+  const debouncedSaveCycleDay = useDebounce(saveCycleDayToDatabase, 800);
+
   // Handle symptom editing
   const handleEditSymptom = (symptomType: string) => {
-    const existingSymptom = todaySymptomsData.find(s => s.symptom_type === symptomType);
+    // Enhanced matching logic - case insensitive comparison
+    const existingSymptom = todaySymptomsData.find(s => 
+      s.symptom_type.toLowerCase() === symptomType.toLowerCase()
+    );
     setEditingSymptom(symptomType);
     setTempSeverity(existingSymptom?.severity || 5);
     setTempNotes(existingSymptom?.notes || '');
@@ -72,7 +161,10 @@ export const CycleTrackerContent: React.FC = () => {
   };
 
   const handleDeleteSymptom = async (symptomType: string) => {
-    const existingSymptom = todaySymptomsData.find(s => s.symptom_type === symptomType);
+    // Enhanced matching logic - case insensitive comparison
+    const existingSymptom = todaySymptomsData.find(s => 
+      s.symptom_type.toLowerCase() === symptomType.toLowerCase()
+    );
     if (existingSymptom) {
       await deleteSymptom(existingSymptom.id);
     }
@@ -80,7 +172,10 @@ export const CycleTrackerContent: React.FC = () => {
 
   // Handle mood editing
   const handleEditMood = (moodType: string) => {
-    const existingMood = todayMoodsData.find(m => m.mood_type === moodType);
+    // Enhanced matching logic - case insensitive comparison
+    const existingMood = todayMoodsData.find(m => 
+      m.mood_type.toLowerCase() === moodType.toLowerCase()
+    );
     setEditingMood(moodType);
     setTempIntensity(existingMood?.intensity || 5);
     setTempNotes(existingMood?.notes || '');
@@ -97,7 +192,10 @@ export const CycleTrackerContent: React.FC = () => {
   };
 
   const handleDeleteMood = async (moodType: string) => {
-    const existingMood = todayMoodsData.find(m => m.mood_type === moodType);
+    // Enhanced matching logic - case insensitive comparison
+    const existingMood = todayMoodsData.find(m => 
+      m.mood_type.toLowerCase() === moodType.toLowerCase()
+    );
     if (existingMood) {
       await deleteMood(existingMood.id);
     }
@@ -120,6 +218,13 @@ export const CycleTrackerContent: React.FC = () => {
 
   // Handle quick records
   const handleRecordFlow = async (flow: string) => {
+    // 验证流量强度
+    const validation = validateFlowIntensity(flow);
+    if (!validation.isValid) {
+      showError(validation.error!);
+      return;
+    }
+    
     setSelectedFlow(flow);
     
     const success = await upsertQuickRecord('period_flow', flow, 'Updated manually');
@@ -128,23 +233,38 @@ export const CycleTrackerContent: React.FC = () => {
       const message = existingFlow ? 
         `Period flow updated from ${existingFlow} to ${flow}` : 
         `Period flow recorded as ${flow}`;
-      alert(message);
+      showSuccess(message);
       await refreshData(); // Refresh to show updated data
     } else {
-      alert('Error recording period flow. Please try again.');
+      showError('Error recording period flow. Please try again.');
     }
   };
 
   const handleRecordWater = async () => {
-    if (!waterAmount || Number(waterAmount) <= 0) return;
+    if (!waterAmount) {
+      showError('Please enter water amount');
+      return;
+    }
     
-    const success = await addWaterIntake(Number(waterAmount));
+    const amount = Number(waterAmount);
+    if (isNaN(amount)) {
+      showError('Please enter a valid number');
+      return;
+    }
+    
+    const validation = validateWaterAmount(amount);
+    if (!validation.isValid) {
+      showError(validation.error!);
+      return;
+    }
+    
+    const success = await addWaterIntake(amount);
     if (success) {
-      alert(`Water intake of ${waterAmount}ml recorded`);
+      showSuccess(`Water intake of ${waterAmount}ml recorded`);
       setWaterAmount('');
       await refreshData(); // Refresh to show updated data
     } else {
-      alert('Error recording water intake. Please try again.');
+      showError('Error recording water intake. Please try again.');
     }
   };
 
@@ -155,8 +275,36 @@ export const CycleTrackerContent: React.FC = () => {
       stress_level?: number;
     } = {};
     
-    if (sleepHours) lifestyleData.sleep_hours = Number(sleepHours);
+    // 验证睡眠时间
+    if (sleepHours) {
+      const hours = Number(sleepHours);
+      if (isNaN(hours)) {
+        showError('Please enter a valid number for sleep hours');
+        return;
+      }
+      
+      const sleepValidation = validateSleepHours(hours);
+      if (!sleepValidation.isValid) {
+        showError(sleepValidation.error!);
+        return;
+      }
+      lifestyleData.sleep_hours = hours;
+    }
+    
+    // 验证睡眠质量
+    const qualityValidation = validateRating(sleepQuality, 'quality');
+    if (!qualityValidation.isValid) {
+      showError(qualityValidation.error!);
+      return;
+    }
     lifestyleData.sleep_quality = sleepQuality;
+    
+    // 验证压力水平
+    const stressValidation = validateRating(stressLevel, 'stress');
+    if (!stressValidation.isValid) {
+      showError(stressValidation.error!);
+      return;
+    }
     lifestyleData.stress_level = stressLevel;
     
     const success = await upsertLifestyleEntry(lifestyleData);
@@ -164,13 +312,13 @@ export const CycleTrackerContent: React.FC = () => {
       const message = todayData.lifestyle ? 
         'Lifestyle data updated successfully' : 
         'Lifestyle data saved successfully';
-      alert(message);
+      showSuccess(message);
       setSleepHours('');
       setSleepQuality(5);
       setStressLevel(5);
       await refreshData(); // Refresh to show updated data
     } else {
-      alert('Error recording lifestyle data. Please try again.');
+      showError('Error recording lifestyle data. Please try again.');
     }
   };
 
@@ -251,61 +399,57 @@ export const CycleTrackerContent: React.FC = () => {
           <input
             type="range"
             min="1"
-            max="28"
+            max={currentCycle?.cycle_length || 35}
             value={currentDay}
-            onChange={async (e) => {
+            onChange={(e) => {
               const newDay = Number(e.target.value);
-              setCurrentDay(newDay);
-              // 立即持久化到数据库
-              try {
-                const { data: existingRecord } = await supabaseRest
-                  .from('quick_records')
-                  .select('*')
-                  .eq('user_id', user?.id)
-                  .eq('record_type', 'current_cycle_day')
-                  .eq('date', new Date().toISOString().split('T')[0]);
-
-                if (existingRecord && Array.isArray(existingRecord) && existingRecord.length > 0) {
-                  await supabaseRest
-                    .from('quick_records')
-                    .update({
-                      value: newDay.toString(),
-                      notes: 'Updated via manual slider'
-                    })
-                    .eq('id', existingRecord[0].id);
-                } else {
-                  await supabaseRest
-                    .from('quick_records')
-                    .insert([{
-                      user_id: user?.id,
-                      date: new Date().toISOString().split('T')[0],
-                      record_type: 'current_cycle_day',
-                      value: newDay.toString(),
-                      notes: 'Updated via manual slider'
-                    }]);
-                }
-              } catch (error) {
-                console.error('Error saving cycle day:', error);
+              const maxDay = currentCycle?.cycle_length || 35;
+              if (newDay <= maxDay) {
+                setCurrentDay(newDay); // 立即更新UI
+                debouncedSaveCycleDay(newDay); // 防抖保存到数据库
               }
             }}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
           />
           <div className="flex justify-between text-xs text-gray-500 mt-1">
             <span>Day 1 (Period)</span>
-            <span>Day 14 (Ovulation)</span>
-            <span>Day 28</span>
+            <span>Day {Math.round((currentCycle?.cycle_length || 28) / 2)} (Ovulation)</span>
+            <span>Day {currentCycle?.cycle_length || 28}</span>
           </div>
         </div>
         
-        <div className="mt-4">
-          <button
-            onClick={() => startNewCycle(new Date().toISOString().split('T')[0])}
-            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
-          >
-            Start New Cycle (Day 1)
-          </button>
-          <p className="text-xs text-gray-500 mt-2">
-            Click to mark today as the start of a new menstrual cycle
+        <div className="mt-4 space-y-3">
+          {/* Cycle Length Info */}
+          <div className="bg-gray-50 rounded-lg p-3">
+            <div className="text-sm text-gray-700">
+              <strong>Current Cycle Length:</strong> {currentCycle?.cycle_length || 28} days
+            </div>
+            {currentCycle && (
+              <div className="text-xs text-gray-500 mt-1">
+                Started: {new Date(currentCycle.start_date).toLocaleDateString()}
+                {currentCycle.end_date && (
+                  <span> • Ended: {new Date(currentCycle.end_date).toLocaleDateString()}</span>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="flex space-x-2">
+            <button
+              onClick={() => startNewCycle(new Date().toISOString().split('T')[0])}
+              className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
+            >
+              Start New Cycle (Day 1)
+            </button>
+            <button
+              onClick={handleManualRefresh}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+            >
+              🔄 Refresh Data
+            </button>
+          </div>
+          <p className="text-xs text-gray-500">
+            Click to mark today as the start of a new menstrual cycle or refresh saved data
           </p>
         </div>
       </div>
@@ -323,7 +467,7 @@ export const CycleTrackerContent: React.FC = () => {
                 <div key={symptom.id} className="flex items-center justify-between p-3 bg-pink-50 border border-pink-200 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <span className="text-xl">
-                      {symptoms.find(s => s.name === symptom.symptom_type)?.icon || '🩸'}
+                      {symptoms.find(s => s.name.toLowerCase() === symptom.symptom_type.toLowerCase())?.icon || '🩸'}
                     </span>
                     <div>
                       <div className="font-medium text-gray-800">{symptom.symptom_type}</div>
@@ -358,7 +502,10 @@ export const CycleTrackerContent: React.FC = () => {
         {/* Symptom Selection Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {symptoms.map((symptom) => {
-            const existingSymptom = todaySymptomsData.find(s => s.symptom_type === symptom.name);
+            // Enhanced matching logic - case insensitive comparison
+            const existingSymptom = todaySymptomsData.find(s => 
+              s.symptom_type.toLowerCase() === symptom.name.toLowerCase()
+            );
             const isSelected = !!existingSymptom;
             const isEditing = editingSymptom === symptom.name;
 
@@ -450,7 +597,7 @@ export const CycleTrackerContent: React.FC = () => {
                 <div key={mood.id} className="flex items-center justify-between p-3 bg-purple-50 border border-purple-200 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <span className="text-xl">
-                      {moods.find(m => m.name === mood.mood_type)?.icon || '😊'}
+                      {moods.find(m => m.name.toLowerCase() === mood.mood_type.toLowerCase())?.icon || '😊'}
                     </span>
                     <div>
                       <div className="font-medium text-gray-800">{mood.mood_type}</div>
@@ -485,7 +632,10 @@ export const CycleTrackerContent: React.FC = () => {
         {/* Mood Selection Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {moods.map((mood) => {
-            const existingMood = todayMoodsData.find(m => m.mood_type === mood.name);
+            // Enhanced matching logic - case insensitive comparison
+            const existingMood = todayMoodsData.find(m => 
+              m.mood_type.toLowerCase() === mood.name.toLowerCase()
+            );
             const isSelected = !!existingMood;
             const isEditing = editingMood === mood.name;
 
@@ -537,7 +687,7 @@ export const CycleTrackerContent: React.FC = () => {
                 ) : (
                   // Normal Mode
                   <button
-                    onClick={() => handleEditMood(mood.name)}
+                    onClick={() => isSelected ? handleEditMood(mood.name) : handleEditMood(mood.name)}
                     className={`w-full p-4 rounded-xl border-2 transition-all ${
                       isSelected
                         ? 'border-purple-500 bg-purple-50 shadow-md'
@@ -724,6 +874,14 @@ export const CycleTrackerContent: React.FC = () => {
           <p>• &ldquo;Update my sleep to 7.5 hours with poor quality&rdquo;</p>
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
     </PageLayout>
   );
 }; 
