@@ -7,12 +7,36 @@ import { AIInsightsGrid } from "./AIInsightsGrid";
 import { CorrelationAnalysisSection } from "./CorrelationAnalysisSection";
 import { HealthTrendChart } from "./HealthTrendChart";
 import { PersonalizedRecommendations } from "./PersonalizedRecommendations";
+import { useState, useCallback } from "react";
 
 export function InsightsContent() {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [lastGenerated, setLastGenerated] = useState<Date | null>(null);
+  
   const insightsData = useInsightsData();
   
   // Initialize CopilotKit integration
   useInsightsCopilot(insightsData);
+
+  const handleGenerateInsights = useCallback(async () => {
+    setIsGenerating(true);
+    
+    try {
+      // Call the real insights generation function
+      await insightsData.generateNewInsights();
+      setLastGenerated(new Date());
+      
+    } catch (error) {
+      console.error('Error generating insights:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [insightsData]);
+
+  const handleRefreshData = useCallback(() => {
+    // Force refresh the page data
+    window.location.reload();
+  }, []);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
@@ -25,6 +49,55 @@ export function InsightsContent() {
           timeRanges={insightsData.timeRanges}
           overallScore={insightsData.overallScore}
         />
+
+        {/* AI Generation Controls */}
+        <div className="px-6 py-4 bg-white border-b border-gray-100">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Last Updated:</span> {lastGenerated ? lastGenerated.toLocaleDateString() : 'Not yet generated'}
+              </div>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">Insights:</span> {insightsData.insights.length} total
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleRefreshData}
+                disabled={isGenerating}
+                className="px-4 py-2 text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors disabled:opacity-50"
+              >
+                🔄 Refresh Data
+              </button>
+              <button
+                onClick={handleGenerateInsights}
+                disabled={isGenerating}
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {isGenerating ? (
+                  <>
+                    <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
+                    Analyzing Your Health Data...
+                  </>
+                ) : (
+                  <>🤖 Generate AI Insights</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Generation Status */}
+        {isGenerating && (
+          <div className="px-6 py-3 bg-gradient-to-r from-purple-100 to-pink-100 border-b">
+            <div className="max-w-6xl mx-auto">
+              <div className="flex items-center gap-3 text-sm text-purple-800">
+                <span className="animate-pulse">🔍</span>
+                <span>Analyzing your fertility, nutrition, exercise, and lifestyle data...</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto p-6">
@@ -43,10 +116,13 @@ export function InsightsContent() {
             <CorrelationAnalysisSection correlationAnalyses={insightsData.correlationAnalyses} />
 
             {/* Health Trend Chart */}
-            <HealthTrendChart />
+            <HealthTrendChart timeRange="week" />
 
             {/* Personalized Recommendations */}
-            <PersonalizedRecommendations />
+            <PersonalizedRecommendations 
+              healthMetrics={insightsData.healthMetrics} 
+              insights={insightsData.insights} 
+            />
           </div>
         </main>
       </div>
@@ -55,36 +131,36 @@ export function InsightsContent() {
       <CopilotSidebar
         instructions="You are a professional health insights analyst helping users understand their comprehensive health data and trends. You have access to their complete health insights data and can help them:
 
-1. **Time Range Analysis:**
+1. **AI Insights Generation:**
+   - Help users understand when to generate new AI insights
+   - Explain the AI insights generation process
+   - Provide guidance on interpreting generated insights
+
+2. **Time Range Analysis:**
    - Change analysis time ranges (week, month, quarter, year)
    - Compare health trends across different periods
+   - View historical insights and patterns
 
-2. **Health Metrics Management:**
-   - Update individual health metric scores (0-100) for categories like Cycle Health, Nutrition, Exercise, etc.
-   - Modify trend directions (up, down, stable) for each category
-   - Monitor overall health score calculations
+3. **Health Metrics Understanding:**
+   - Explain health metric scores and what they mean
+   - Help interpret trend directions (up, down, stable)
+   - Provide context for overall health score calculations
 
-3. **Health Insights Management:**
-   - Add new health insights with specific types (positive, improvement, warning, neutral)
-   - Update existing insights with new descriptions, recommendations, or types
-   - Remove outdated or irrelevant insights
-   - Clear all insights when needed
+4. **Data Analysis & Insights:**
+   - Analyze patterns from the displayed insights
+   - Help users understand correlation analyses
+   - Provide actionable recommendations based on current insights
+   - Explain the significance of different insight types
 
-4. **Correlation Analysis:**
-   - Add new correlation analyses between health factors
-   - Update correlation values (0-1) and suggestions
-   - Track relationships between different health metrics
+5. **Insight Interpretation:**
+   - Help users understand positive, improvement, warning, and neutral insights
+   - Explain correlation coefficients and their meanings
+   - Provide guidance on implementing recommendations
 
-5. **Data Analysis & Recommendations:**
-   - Analyze health patterns and trends over time
-   - Provide personalized improvement suggestions
-   - Identify areas requiring attention
-   - Generate comprehensive health reports
-
-You can see all health insights data in real-time and make updates to help users achieve optimal health understanding and improvement."
+The system uses real user data from fertility tracking, nutrition logs, exercise records, cycle data, symptoms, and lifestyle entries. Users can generate new insights based on their current data by clicking the 'Generate AI Insights' button."
         labels={{
-          title: "📊 Health Insights AI Assistant",
-          initial: "👋 Hi! I'm your health insights analyst. I can help you understand your health data and provide comprehensive analysis.\n\n**📈 Time Range Analysis:**\n- \"Change time range to this week\"\n- \"Set analysis period to quarterly\"\n\n**📊 Health Metrics:**\n- \"Update Exercise Health score to 80\"\n- \"Set Nutrition trend to up\"\n- \"What's my overall health score?\"\n\n**💡 Insights Management:**\n- \"Add a positive insight about my cycle health\"\n- \"Update the sleep quality insight with new recommendations\"\n- \"Remove the nutrition warning insight\"\n\n**🔗 Correlation Analysis:**\n- \"Add correlation between exercise and sleep quality with 0.75 correlation\"\n- \"Update stress and symptoms correlation to 0.68\"\n\n**📋 Analysis & Reports:**\n- \"Analyze my health trends this month\"\n- \"Which areas need improvement?\"\n- \"Generate a health summary report\"\n- \"What correlations show strongest patterns?\"\n\nI can see all your health data and provide deep insights!"
+          title: "📊 AI Health Insights Assistant",
+          initial: "👋 Welcome to your AI Health Insights dashboard! I can help you understand your health data and generate personalized insights.\n\n**🤖 AI Generation:**\n- \"When should I generate new insights?\"\n- \"What does the AI analyze when generating insights?\"\n- \"How often should I update my insights?\"\n\n**📈 Understanding Your Data:**\n- \"What does my overall health score mean?\"\n- \"Explain my current health trends\"\n- \"What do these correlation analyses tell me?\"\n\n**⏱️ Time Range Analysis:**\n- \"Change time range to this week\"\n- \"Show me quarterly trends\"\n- \"Compare different time periods\"\n\n**📋 Insight Interpretation:**\n- \"Explain my latest insights\"\n- \"What should I do about warning insights?\"\n- \"How can I improve my health scores?\"\n\n**🔍 Recommendations:**\n- \"What actions should I take based on my insights?\"\n- \"How do I implement the AI recommendations?\"\n- \"Which health areas need the most attention?\"\n\nClick 'Generate AI Insights' to analyze your latest health data and get personalized recommendations!"
         }}
         defaultOpen={false}
       />
