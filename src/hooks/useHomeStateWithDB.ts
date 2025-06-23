@@ -5,6 +5,7 @@ import { useAuth } from './auth/useAuth';
 import { 
   supabaseRest
 } from '@/lib/supabase/restClient';
+import { calculateHealthScores, type HealthData } from '@/utils/shared/healthScoreCalculator';
 
 // 适配器接口 - 将数据库类型转换为前端类型
 interface FrontendHealthOverview {
@@ -163,31 +164,365 @@ export const useHomeStateWithDB = () => {
     }
   };
 
+  // 新增：基于真实数据计算健康分数的函数
+  const calculateHealthScoresFromRealData = async () => {
+    if (!user) return;
+
+    try {
+      // 计算时间范围：最近30天
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 30);
+
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      // 并行获取各模块的数据
+      const [
+        exerciseData,
+        mealData,
+        waterData,
+        symptomsData,
+        moodsData,
+        lifestyleData,
+        fertilityData,
+        cycleData
+      ] = await Promise.all([
+        supabaseRest.from('exercises').select('*').eq('user_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+        supabaseRest.from('meals').select('*').eq('user_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+        supabaseRest.from('water_intake').select('*').eq('user_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+        supabaseRest.from('symptoms').select('*').eq('user_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+        supabaseRest.from('moods').select('*').eq('user_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+        supabaseRest.from('lifestyle_entries').select('*').eq('user_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+        supabaseRest.from('fertility_records').select('*').eq('user_id', user.id).gte('date', startDateStr).lte('date', endDateStr),
+        supabaseRest.from('menstrual_cycles').select('*').eq('user_id', user.id).gte('start_date', startDateStr)
+      ]);
+
+      // 使用共享计算器
+      const healthData: HealthData = {
+        exercises: exerciseData.data || [],
+        meals: mealData.data || [],
+        waterIntake: waterData.data || [],
+        symptoms: symptomsData.data || [],
+        moods: moodsData.data || [],
+        lifestyle: lifestyleData.data || [],
+        fertility: fertilityData.data || [],
+        cycles: cycleData.data || []
+      };
+
+      const calculatedScores = calculateHealthScores(healthData);
+
+      console.log('Calculated health scores:', calculatedScores);
+
+      // 保存到数据库 - 使用简单的查询和更新策略
+      const healthData_db = {
+        user_id: user.id,
+        overall_score: calculatedScores.overallScore,
+        cycle_health: calculatedScores.cycleHealth,
+        nutrition_score: calculatedScores.nutritionScore,
+        exercise_score: calculatedScores.exerciseScore,
+        fertility_score: calculatedScores.fertilityScore,
+        lifestyle_score: calculatedScores.lifestyleScore,
+        symptoms_score: calculatedScores.symptomsScore,
+        last_updated: new Date().toISOString().split('T')[0]
+      };
+
+      console.log('Attempting to save health data:', healthData_db);
+
+      // 先检查记录是否存在
+      const { data: existingData } = await supabaseRest
+        .from('health_overview')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingData) {
+        // 更新现有记录
+        const updateData = { ...healthData_db };
+        delete (updateData as any).user_id;
+        const result = await supabaseRest
+          .from('health_overview')
+          .update(updateData)
+          .eq('user_id', user.id);
+        
+        if (result.error) {
+          console.error('Health overview update failed:', result.error);
+          throw new Error(`Failed to update health overview: ${JSON.stringify(result.error)}`);
+        }
+      } else {
+        // 插入新记录
+        const result = await supabaseRest
+          .from('health_overview')
+          .insert([healthData_db]);
+        
+        if (result.error) {
+          console.error('Health overview insert failed:', result.error);
+          throw new Error(`Failed to insert health overview: ${JSON.stringify(result.error)}`);
+        }
+      }
+
+      console.log('Health overview saved successfully');
+
+      // 更新本地状态
+      setHealthOverview({
+        overallScore: calculatedScores.overallScore,
+        cycleHealth: calculatedScores.cycleHealth,
+        nutritionScore: calculatedScores.nutritionScore,
+        exerciseScore: calculatedScores.exerciseScore,
+        fertilityScore: calculatedScores.fertilityScore,
+        lifestyleScore: calculatedScores.lifestyleScore,
+        symptomsScore: calculatedScores.symptomsScore,
+        lastUpdated: new Date().toISOString().split('T')[0]
+      });
+
+      console.log('Health overview updated with real data:', calculatedScores);
+
+    } catch (error) {
+      console.error('Error calculating health scores from real data:', error);
+      throw error;
+    }
+  };
+
+  // 运动健康分数计算 (0-100)
+  const calculateExerciseScore = (exercises: any[]) => {
+    if (exercises.length === 0) return 50; // 基础分数
+
+    const recentExercises = exercises.slice(0, 14); // 最近14天
+    const totalDays = 14;
+    const exerciseDays = new Set(recentExercises.map(e => e.date)).size;
+    const totalMinutes = recentExercises.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+    const avgIntensity = recentExercises.length > 0 
+      ? recentExercises.reduce((sum, e) => sum + (e.intensity || 5), 0) / recentExercises.length 
+      : 5;
+
+    let score = 50;
+    
+    // 运动频率评分 (0-30分)
+    const exerciseFrequency = exerciseDays / totalDays;
+    if (exerciseFrequency >= 0.5) score += 30; // 每周3.5天以上
+    else if (exerciseFrequency >= 0.35) score += 20; // 每周2.5天
+    else if (exerciseFrequency >= 0.2) score += 10; // 每周1.5天
+    
+    // 运动时长评分 (0-25分)
+    const weeklyMinutes = totalMinutes * (7 / totalDays); // 换算为周平均
+    if (weeklyMinutes >= 150) score += 25; // WHO建议
+    else if (weeklyMinutes >= 100) score += 15;
+    else if (weeklyMinutes >= 50) score += 8;
+    
+    // 运动强度评分 (0-25分)
+    if (avgIntensity >= 7) score += 25;
+    else if (avgIntensity >= 5) score += 15;
+    else if (avgIntensity >= 3) score += 8;
+
+    return Math.min(score, 100);
+  };
+
+  // 营养健康分数计算 (0-100)
+  const calculateNutritionScore = (meals: any[], waterIntake: any[]) => {
+    let score = 50;
+
+    // 饮食规律性评分 (0-30分)
+    const recentMeals = meals.slice(0, 21); // 最近21天
+    const mealDays = new Set(recentMeals.map(m => m.date)).size;
+    const mealsPerDay = recentMeals.length / Math.max(mealDays, 1);
+    
+    if (mealsPerDay >= 3) score += 30; // 一日三餐
+    else if (mealsPerDay >= 2) score += 20;
+    else if (mealsPerDay >= 1) score += 10;
+
+    // 水分摄入评分 (0-35分)
+    const recentWater = waterIntake.slice(0, 14); // 最近14天
+    const waterDays = new Set(recentWater.map(w => w.date)).size;
+    if (waterDays > 0) {
+      const avgDailyWater = recentWater.reduce((sum, w) => sum + (w.amount_ml || 0), 0) / waterDays;
+      if (avgDailyWater >= 2000) score += 35; // 推荐水量
+      else if (avgDailyWater >= 1500) score += 25;
+      else if (avgDailyWater >= 1000) score += 15;
+      else if (avgDailyWater >= 500) score += 8;
+    }
+
+    // 营养记录完整性评分 (0-15分)
+    const recordedDays = new Set([...recentMeals.map(m => m.date), ...recentWater.map(w => w.date)]).size;
+    if (recordedDays >= 10) score += 15;
+    else if (recordedDays >= 5) score += 10;
+    else if (recordedDays >= 2) score += 5;
+
+    return Math.min(score, 100);
+  };
+
+  // 症状和情绪健康分数计算 (0-100)
+  const calculateSymptomsScore = (symptoms: any[], moods: any[]) => {
+    let score = 80; // 起始分数较高，症状越少分数越高
+
+    // 症状严重程度评分 (扣分制)
+    const recentSymptoms = symptoms.slice(0, 30); // 最近30个记录
+    if (recentSymptoms.length > 0) {
+      const avgSeverity = recentSymptoms.reduce((sum, s) => sum + (s.severity || 5), 0) / recentSymptoms.length;
+      const symptomDensity = recentSymptoms.length / 30; // 症状记录密度
+      
+      score -= Math.round(avgSeverity * 3); // 严重程度扣分
+      score -= Math.round(symptomDensity * 20); // 症状频率扣分
+    }
+
+    // 情绪状态评分 (0-40分)
+    const recentMoods = moods.slice(0, 20); // 最近20个记录
+    if (recentMoods.length > 0) {
+      const avgMoodIntensity = recentMoods.reduce((sum, m) => sum + (m.intensity || 5), 0) / recentMoods.length;
+      const moodScore = Math.round(avgMoodIntensity * 4); // 转换为40分制
+      score = Math.max(score - 40, 20) + moodScore; // 重新计算基础分数
+    }
+
+    return Math.max(Math.min(score, 100), 0);
+  };
+
+  // 生活方式健康分数计算 (0-100)
+  const calculateLifestyleScore = (lifestyle: any[]) => {
+    if (lifestyle.length === 0) return 60; // 无数据时的基础分数
+
+    const recentEntries = lifestyle.slice(0, 14); // 最近14天
+    let score = 40;
+
+    // 睡眠质量评分 (0-35分)
+    const sleepEntries = recentEntries.filter(e => e.sleep_quality);
+    if (sleepEntries.length > 0) {
+      const avgSleepQuality = sleepEntries.reduce((sum, e) => sum + e.sleep_quality, 0) / sleepEntries.length;
+      score += Math.round(avgSleepQuality * 3.5); // 转换为35分制
+    }
+
+    // 睡眠时长评分 (0-25分)
+    const sleepHourEntries = recentEntries.filter(e => e.sleep_hours);
+    if (sleepHourEntries.length > 0) {
+      const avgSleepHours = sleepHourEntries.reduce((sum, e) => sum + e.sleep_hours, 0) / sleepHourEntries.length;
+      if (avgSleepHours >= 7 && avgSleepHours <= 9) score += 25; // 理想睡眠时长
+      else if (avgSleepHours >= 6 && avgSleepHours <= 10) score += 15;
+      else if (avgSleepHours >= 5) score += 8;
+    }
+
+    // 压力水平评分 (0-25分，压力越低分数越高)
+    const stressEntries = recentEntries.filter(e => e.stress_level);
+    if (stressEntries.length > 0) {
+      const avgStressLevel = stressEntries.reduce((sum, e) => sum + e.stress_level, 0) / stressEntries.length;
+      score += Math.round((10 - avgStressLevel) * 2.5); // 反向计分
+    }
+
+    // 记录完整性评分 (0-15分)
+    if (recentEntries.length >= 10) score += 15;
+    else if (recentEntries.length >= 5) score += 10;
+    else if (recentEntries.length >= 2) score += 5;
+
+    return Math.min(score, 100);
+  };
+
+  // 生育健康分数计算 (0-100)
+  const calculateFertilityScore = (fertilityRecords: any[]) => {
+    if (fertilityRecords.length === 0) return 70; // 无数据时的基础分数
+
+    let score = 50;
+    const recentRecords = fertilityRecords.slice(0, 30); // 最近30天
+
+    // BBT记录完整性和规律性 (0-25分)
+    const bbtRecords = recentRecords.filter(r => r.bbt_celsius);
+    if (bbtRecords.length >= 20) score += 25;
+    else if (bbtRecords.length >= 10) score += 15;
+    else if (bbtRecords.length >= 5) score += 8;
+
+    // 宫颈粘液观察记录 (0-20分)
+    const mucusRecords = recentRecords.filter(r => r.cervical_mucus);
+    if (mucusRecords.length >= 15) score += 20;
+    else if (mucusRecords.length >= 8) score += 12;
+    else if (mucusRecords.length >= 3) score += 6;
+
+    // 排卵试纸检测记录 (0-20分)
+    const ovulationRecords = recentRecords.filter(r => r.ovulation_test);
+    if (ovulationRecords.length >= 10) score += 20;
+    else if (ovulationRecords.length >= 5) score += 12;
+    else if (ovulationRecords.length >= 2) score += 6;
+
+    // 整体记录一致性 (0-5分)
+    if (recentRecords.length >= 20) score += 5;
+    else if (recentRecords.length >= 10) score += 3;
+
+    return Math.min(score, 100);
+  };
+
+  // 月经周期健康分数计算 (0-100)
+  const calculateCycleHealth = (cycles: any[]) => {
+    if (cycles.length === 0) return 65; // 无数据时的基础分数
+
+    let score = 60;
+    const recentCycles = cycles.slice(0, 3); // 最近3个周期
+
+    // 周期规律性评分 (0-40分)
+    if (recentCycles.length >= 2) {
+      const cycleLengths = recentCycles
+        .filter(c => c.cycle_length)
+        .map(c => c.cycle_length);
+      
+      if (cycleLengths.length >= 2) {
+        const avgLength = cycleLengths.reduce((sum, len) => sum + len, 0) / cycleLengths.length;
+        const lengthVariation = Math.max(...cycleLengths) - Math.min(...cycleLengths);
+        
+        // 理想周期长度评分
+        if (avgLength >= 21 && avgLength <= 35) score += 20;
+        else if (avgLength >= 18 && avgLength <= 40) score += 10;
+        
+        // 周期规律性评分
+        if (lengthVariation <= 3) score += 20; // 非常规律
+        else if (lengthVariation <= 7) score += 15; // 较规律
+        else if (lengthVariation <= 14) score += 8; // 一般
+      }
+    }
+
+    // 记录完整性评分 (0-20分)
+    if (recentCycles.length >= 3) score += 20;
+    else if (recentCycles.length >= 2) score += 15;
+    else if (recentCycles.length >= 1) score += 10;
+
+    return Math.min(score, 100);
+  };
+
   const loadHealthOverview = async () => {
     if (!user) return;
 
+    // 首先尝试从数据库加载现有的健康概览
     const { data, error } = await supabaseRest
       .from('health_overview')
       .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (error && error.message !== 'No rows returned') {
+    if (error && (error as any).message !== 'No rows returned') {
       console.error('Error loading health overview:', error);
       return;
     }
 
     if (data) {
-      setHealthOverview({
-        overallScore: data.overall_score,
-        cycleHealth: data.cycle_health,
-        nutritionScore: data.nutrition_score,
-        exerciseScore: data.exercise_score,
-        fertilityScore: data.fertility_score,
-        lifestyleScore: data.lifestyle_score,
-        symptomsScore: data.symptoms_score,
-        lastUpdated: data.last_updated
-      });
+      // 如果有数据，检查是否需要更新（如果超过1天则重新计算）
+      const lastUpdated = new Date((data as any).last_updated);
+      const now = new Date();
+      const daysDiff = (now.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24);
+
+      if (daysDiff >= 1) {
+        // 数据过期，重新计算
+        console.log('Health overview data is outdated, recalculating...');
+        await calculateHealthScoresFromRealData();
+      } else {
+        // 使用现有数据
+        setHealthOverview({
+          overallScore: (data as any).overall_score,
+          cycleHealth: (data as any).cycle_health,
+          nutritionScore: (data as any).nutrition_score,
+          exerciseScore: (data as any).exercise_score,
+          fertilityScore: (data as any).fertility_score,
+          lifestyleScore: (data as any).lifestyle_score,
+          symptomsScore: (data as any).symptoms_score,
+          lastUpdated: (data as any).last_updated
+        });
+      }
+    } else {
+      // 没有数据，首次计算
+      console.log('No health overview data found, calculating for the first time...');
+      await calculateHealthScoresFromRealData();
     }
   };
 
@@ -235,7 +570,7 @@ export const useHomeStateWithDB = () => {
     if (data) {
       setPersonalizedTips((data as DatabasePersonalizedTip[]).map(tip => ({
         id: tip.id,
-        type: tip.tip_type,
+        type: tip.tip_type as FrontendPersonalizedTip['type'],
         category: tip.category,
         message: tip.message,
         actionText: tip.action_text || undefined,
@@ -519,6 +854,30 @@ export const useHomeStateWithDB = () => {
   };
 
   // CopilotKit Actions
+  
+  // AI Action: Refresh health overview data
+  useCopilotAction({
+    name: "refreshHealthOverview",
+    description: "Refresh and recalculate health overview scores based on current user data from all app modules (exercise, nutrition, lifestyle, etc.)",
+    parameters: [],
+    handler: async () => {
+      if (!user) {
+        return "Please log in to refresh health data";
+      }
+
+      try {
+        setLoading(true);
+        await calculateHealthScoresFromRealData();
+        return "Health overview refreshed successfully! All scores have been recalculated based on your recent activity data including exercise, nutrition, lifestyle, symptoms, fertility, and cycle data.";
+      } catch (error) {
+        console.error('Error refreshing health overview:', error);
+        return "Failed to refresh health overview. Please try again later.";
+      } finally {
+        setLoading(false);
+      }
+    },
+  });
+
   useCopilotAction({
     name: "updateHealthScore",
     description: "Update health score for a specific category",
@@ -634,6 +993,7 @@ export const useHomeStateWithDB = () => {
     removeTip,
     addHealthInsight,
     removeHealthInsight,
-    refetch: loadAllData
+    refetch: loadAllData,
+    calculateHealthScoresFromRealData
   };
 };

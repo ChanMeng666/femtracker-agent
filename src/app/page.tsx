@@ -62,7 +62,8 @@ function HomeContent() {
     error,
     removeTip,
     removeHealthInsight,
-    refetch
+    refetch,
+    calculateHealthScoresFromRealData
   } = useHomeStateWithDB();
 
   // Show loading state
@@ -105,8 +106,10 @@ function HomeContent() {
       healthOverview={healthOverview}
       personalizedTips={personalizedTips}
       healthInsights={healthInsights}
+      loading={loading}
       onRemoveTip={removeTip}
       onRemoveInsight={removeHealthInsight}
+      onRefreshHealthData={calculateHealthScoresFromRealData}
     />
   );
 }

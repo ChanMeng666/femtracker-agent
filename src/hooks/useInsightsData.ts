@@ -301,23 +301,202 @@ export function useInsightsData() {
   };
 
   const generateHealthMetricsFromData = (data: any) => {
-    const exerciseScore = Math.min(50 + (data.exercise.length * 3), 95);
-    const nutritionScore = data.nutrition.length > 0 ? Math.min(60 + (data.nutrition.length * 2), 90) : 65;
-    const moodScore = data.moods.length > 0 
-      ? Math.round((data.moods.reduce((sum: number, mood: any) => sum + mood.intensity, 0) / data.moods.length) * 10)
-      : 75;
-    const lifestyleScore = data.lifestyle.length > 0
-      ? Math.round((data.lifestyle.reduce((sum: number, entry: any) => sum + (entry.sleep_quality || 5), 0) / data.lifestyle.length) * 10)
-      : 70;
+    // 使用与首页相同的高级计算算法
+    const exerciseScore = data.exercise ? calculateExerciseScore(data.exercise) : 50;
+    const nutritionScore = data.nutrition ? calculateNutritionScore(data.nutrition, data.waterIntake || []) : 50;
+    const symptomsScore = data.symptoms ? calculateSymptomsScore(data.symptoms, data.moods || []) : 75;
+    const lifestyleScore = data.lifestyle ? calculateLifestyleScore(data.lifestyle) : 60;
+    const fertilityScore = data.fertility ? calculateFertilityScore(data.fertility) : 70;
+    const cycleHealth = data.cycles ? calculateCycleHealth(data.cycles) : 65;
 
     return [
-      { category: "Cycle Health", score: 85, trend: "stable" as const, color: "text-pink-600 bg-pink-100" },
-      { category: "Exercise Health", score: exerciseScore, trend: exerciseScore > 75 ? "up" as const : "stable" as const, color: "text-blue-600 bg-blue-100" },
-      { category: "Nutrition Status", score: nutritionScore, trend: "stable" as const, color: "text-green-600 bg-green-100" },
-      { category: "Fertility Health", score: 88, trend: "up" as const, color: "text-green-600 bg-green-100" },
-      { category: "Lifestyle", score: lifestyleScore, trend: lifestyleScore > 75 ? "up" as const : "down" as const, color: "text-indigo-600 bg-indigo-100" },
-      { category: "Symptoms & Mood", score: moodScore, trend: moodScore > 75 ? "up" as const : "stable" as const, color: "text-purple-600 bg-purple-100" }
+      { category: "Cycle Health", score: cycleHealth, trend: getTrendFromScore(cycleHealth) as const, color: "text-pink-600 bg-pink-100" },
+      { category: "Exercise Health", score: exerciseScore, trend: getTrendFromScore(exerciseScore) as const, color: "text-blue-600 bg-blue-100" },
+      { category: "Nutrition Status", score: nutritionScore, trend: getTrendFromScore(nutritionScore) as const, color: "text-green-600 bg-green-100" },
+      { category: "Fertility Health", score: fertilityScore, trend: getTrendFromScore(fertilityScore) as const, color: "text-green-600 bg-green-100" },
+      { category: "Lifestyle", score: lifestyleScore, trend: getTrendFromScore(lifestyleScore) as const, color: "text-indigo-600 bg-indigo-100" },
+      { category: "Symptoms & Mood", score: symptomsScore, trend: getTrendFromScore(symptomsScore) as const, color: "text-purple-600 bg-purple-100" }
     ];
+  };
+
+  // 根据分数确定趋势的辅助函数
+  const getTrendFromScore = (score: number): "up" | "down" | "stable" => {
+    if (score >= 80) return "up";
+    if (score <= 50) return "down";
+    return "stable";
+  };
+
+  // 与首页相同的健康分数计算函数
+  const calculateExerciseScore = (exercises: any[]) => {
+    if (exercises.length === 0) return 50;
+
+    const recentExercises = exercises.slice(0, 14);
+    const totalDays = 14;
+    const exerciseDays = new Set(recentExercises.map(e => e.date)).size;
+    const totalMinutes = recentExercises.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+    const avgIntensity = recentExercises.length > 0 
+      ? recentExercises.reduce((sum, e) => sum + (e.intensity || 5), 0) / recentExercises.length 
+      : 5;
+
+    let score = 50;
+    
+    const exerciseFrequency = exerciseDays / totalDays;
+    if (exerciseFrequency >= 0.5) score += 30;
+    else if (exerciseFrequency >= 0.35) score += 20;
+    else if (exerciseFrequency >= 0.2) score += 10;
+    
+    const weeklyMinutes = totalMinutes * (7 / totalDays);
+    if (weeklyMinutes >= 150) score += 25;
+    else if (weeklyMinutes >= 100) score += 15;
+    else if (weeklyMinutes >= 50) score += 8;
+    
+    if (avgIntensity >= 7) score += 25;
+    else if (avgIntensity >= 5) score += 15;
+    else if (avgIntensity >= 3) score += 8;
+
+    return Math.min(score, 100);
+  };
+
+  const calculateNutritionScore = (meals: any[], waterIntake: any[]) => {
+    let score = 50;
+
+    const recentMeals = meals.slice(0, 21);
+    const mealDays = new Set(recentMeals.map(m => m.date)).size;
+    const mealsPerDay = recentMeals.length / Math.max(mealDays, 1);
+    
+    if (mealsPerDay >= 3) score += 30;
+    else if (mealsPerDay >= 2) score += 20;
+    else if (mealsPerDay >= 1) score += 10;
+
+    const recentWater = waterIntake.slice(0, 14);
+    const waterDays = new Set(recentWater.map(w => w.date)).size;
+    if (waterDays > 0) {
+      const avgDailyWater = recentWater.reduce((sum, w) => sum + (w.amount_ml || 0), 0) / waterDays;
+      if (avgDailyWater >= 2000) score += 35;
+      else if (avgDailyWater >= 1500) score += 25;
+      else if (avgDailyWater >= 1000) score += 15;
+      else if (avgDailyWater >= 500) score += 8;
+    }
+
+    const recordedDays = new Set([...recentMeals.map(m => m.date), ...recentWater.map(w => w.date)]).size;
+    if (recordedDays >= 10) score += 15;
+    else if (recordedDays >= 5) score += 10;
+    else if (recordedDays >= 2) score += 5;
+
+    return Math.min(score, 100);
+  };
+
+  const calculateSymptomsScore = (symptoms: any[], moods: any[]) => {
+    let score = 80;
+
+    const recentSymptoms = symptoms.slice(0, 30);
+    if (recentSymptoms.length > 0) {
+      const avgSeverity = recentSymptoms.reduce((sum, s) => sum + (s.severity || 5), 0) / recentSymptoms.length;
+      const symptomDensity = recentSymptoms.length / 30;
+      
+      score -= Math.round(avgSeverity * 3);
+      score -= Math.round(symptomDensity * 20);
+    }
+
+    const recentMoods = moods.slice(0, 20);
+    if (recentMoods.length > 0) {
+      const avgMoodIntensity = recentMoods.reduce((sum, m) => sum + (m.intensity || 5), 0) / recentMoods.length;
+      const moodScore = Math.round(avgMoodIntensity * 4);
+      score = Math.max(score - 40, 20) + moodScore;
+    }
+
+    return Math.max(Math.min(score, 100), 0);
+  };
+
+  const calculateLifestyleScore = (lifestyle: any[]) => {
+    if (lifestyle.length === 0) return 60;
+
+    const recentEntries = lifestyle.slice(0, 14);
+    let score = 40;
+
+    const sleepEntries = recentEntries.filter(e => e.sleep_quality);
+    if (sleepEntries.length > 0) {
+      const avgSleepQuality = sleepEntries.reduce((sum, e) => sum + e.sleep_quality, 0) / sleepEntries.length;
+      score += Math.round(avgSleepQuality * 3.5);
+    }
+
+    const sleepHourEntries = recentEntries.filter(e => e.sleep_hours);
+    if (sleepHourEntries.length > 0) {
+      const avgSleepHours = sleepHourEntries.reduce((sum, e) => sum + e.sleep_hours, 0) / sleepHourEntries.length;
+      if (avgSleepHours >= 7 && avgSleepHours <= 9) score += 25;
+      else if (avgSleepHours >= 6 && avgSleepHours <= 10) score += 15;
+      else if (avgSleepHours >= 5) score += 8;
+    }
+
+    const stressEntries = recentEntries.filter(e => e.stress_level);
+    if (stressEntries.length > 0) {
+      const avgStressLevel = stressEntries.reduce((sum, e) => sum + e.stress_level, 0) / stressEntries.length;
+      score += Math.round((10 - avgStressLevel) * 2.5);
+    }
+
+    if (recentEntries.length >= 10) score += 15;
+    else if (recentEntries.length >= 5) score += 10;
+    else if (recentEntries.length >= 2) score += 5;
+
+    return Math.min(score, 100);
+  };
+
+  const calculateFertilityScore = (fertilityRecords: any[]) => {
+    if (fertilityRecords.length === 0) return 70;
+
+    let score = 50;
+    const recentRecords = fertilityRecords.slice(0, 30);
+
+    const bbtRecords = recentRecords.filter(r => r.bbt_celsius);
+    if (bbtRecords.length >= 20) score += 25;
+    else if (bbtRecords.length >= 10) score += 15;
+    else if (bbtRecords.length >= 5) score += 8;
+
+    const mucusRecords = recentRecords.filter(r => r.cervical_mucus);
+    if (mucusRecords.length >= 15) score += 20;
+    else if (mucusRecords.length >= 8) score += 12;
+    else if (mucusRecords.length >= 3) score += 6;
+
+    const ovulationRecords = recentRecords.filter(r => r.ovulation_test);
+    if (ovulationRecords.length >= 10) score += 20;
+    else if (ovulationRecords.length >= 5) score += 12;
+    else if (ovulationRecords.length >= 2) score += 6;
+
+    if (recentRecords.length >= 20) score += 5;
+    else if (recentRecords.length >= 10) score += 3;
+
+    return Math.min(score, 100);
+  };
+
+  const calculateCycleHealth = (cycles: any[]) => {
+    if (cycles.length === 0) return 65;
+
+    let score = 60;
+    const recentCycles = cycles.slice(0, 3);
+
+    if (recentCycles.length >= 2) {
+      const cycleLengths = recentCycles
+        .filter(c => c.cycle_length)
+        .map(c => c.cycle_length);
+      
+      if (cycleLengths.length >= 2) {
+        const avgLength = cycleLengths.reduce((sum, len) => sum + len, 0) / cycleLengths.length;
+        const lengthVariation = Math.max(...cycleLengths) - Math.min(...cycleLengths);
+        
+        if (avgLength >= 21 && avgLength <= 35) score += 20;
+        else if (avgLength >= 18 && avgLength <= 40) score += 10;
+        
+        if (lengthVariation <= 3) score += 20;
+        else if (lengthVariation <= 7) score += 15;
+        else if (lengthVariation <= 14) score += 8;
+      }
+    }
+
+    if (recentCycles.length >= 3) score += 20;
+    else if (recentCycles.length >= 2) score += 15;
+    else if (recentCycles.length >= 1) score += 10;
+
+    return Math.min(score, 100);
   };
 
   const generateInsightsFromData = (data: any) => {
@@ -429,10 +608,10 @@ export function useInsightsData() {
       ]);
 
       // Then insert new data
-      const insertPromises = [
+      const insertPromises: Promise<any>[] = [
         // Insert new health metrics
-        ...metrics.map(metric => 
-          supabaseRest.from('health_metrics').insert({
+        ...metrics.map((metric: HealthMetric) => 
+          supabaseRest.from('health_metrics').insert([{
             user_id: user.id,
             category: metric.category,
             score: metric.score,
@@ -441,11 +620,11 @@ export function useInsightsData() {
             date: today,
             created_at: timestamp,
             updated_at: timestamp
-          })
+          }])
         ),
         // Insert new insights
-        ...newInsights.map(insight => 
-          supabaseRest.from('ai_insights').insert({
+        ...newInsights.map((insight: Insight) => 
+          supabaseRest.from('ai_insights').insert([{
             user_id: user.id,
             insight_type: insight.type,
             category: insight.category,
@@ -457,22 +636,22 @@ export function useInsightsData() {
             generated_at: timestamp,
             created_at: timestamp,
             updated_at: timestamp
-          })
+          }])
         ),
         // Insert new correlations
-        ...correlations.map(correlation => 
-          supabaseRest.from('correlation_analyses').insert({
+        ...correlations.map((correlation: CorrelationAnalysis) => 
+          supabaseRest.from('correlation_analyses').insert([{
             user_id: user.id,
             title: correlation.title,
             description: correlation.description,
             correlation: correlation.correlation,
             suggestion: correlation.suggestion,
-            confidence_level: 'medium',
+            confidence_level: 'medium' as const,
             is_active: true,
             generated_at: timestamp,
             created_at: timestamp,
             updated_at: timestamp
-          })
+          }])
         )
       ];
 

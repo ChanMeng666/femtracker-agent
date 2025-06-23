@@ -213,6 +213,11 @@ class QueryBuilder {
     return this;
   }
 
+  lt(column: string, value: unknown) {
+    this.conditions.push(`${column}=lt.${encodeURIComponent(String(value))}`);
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }) {
     const direction = options?.ascending === false ? 'desc' : 'asc';
     this.orderBy = `order=${column}.${direction}`;

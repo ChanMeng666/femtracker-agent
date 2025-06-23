@@ -14,16 +14,20 @@ interface HomeLayoutProps {
   healthOverview: HealthOverview;
   personalizedTips: PersonalizedTip[];
   healthInsights: HealthInsight[];
+  loading?: boolean;
   onRemoveTip: (id: string) => void;
   onRemoveInsight: (category: string) => void;
+  onRefreshHealthData?: () => Promise<void>;
 }
 
 export function HomeLayout({
   healthOverview,
   personalizedTips,
   healthInsights,
+  loading = false,
   onRemoveTip,
-  onRemoveInsight
+  onRemoveInsight,
+  onRefreshHealthData
 }: HomeLayoutProps) {
   return (
     <div className="flex h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-red-50">
@@ -40,7 +44,11 @@ export function HomeLayout({
                 <WelcomeSection />
 
                 {/* Health Overview */}
-                <HealthOverviewCard healthOverview={healthOverview} />
+                <HealthOverviewCard 
+                  healthOverview={healthOverview} 
+                  loading={loading}
+                  onRefresh={onRefreshHealthData}
+                />
 
                 {/* Personalized Content Row */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
