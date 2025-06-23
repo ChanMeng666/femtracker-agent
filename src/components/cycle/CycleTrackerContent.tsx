@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useCycleWithDB } from '@/hooks/useCycleWithDB';
 import { useQuickRecords } from '@/hooks/useQuickRecords';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { supabaseRest } from '@/lib/supabase/restClient';
 import { symptoms, moods } from '@/constants/cycle';
 import { PageLayout } from '@/components/shared/PageLayout';
 
 export const CycleTrackerContent: React.FC = () => {
+  const { user } = useAuth();
   const {
     currentDay,
     setCurrentDay,
@@ -251,7 +253,41 @@ export const CycleTrackerContent: React.FC = () => {
             min="1"
             max="28"
             value={currentDay}
-            onChange={(e) => setCurrentDay(Number(e.target.value))}
+            onChange={async (e) => {
+              const newDay = Number(e.target.value);
+              setCurrentDay(newDay);
+              // 立即持久化到数据库
+              try {
+                const { data: existingRecord } = await supabaseRest
+                  .from('quick_records')
+                  .select('*')
+                  .eq('user_id', user?.id)
+                  .eq('record_type', 'current_cycle_day')
+                  .eq('date', new Date().toISOString().split('T')[0]);
+
+                if (existingRecord && Array.isArray(existingRecord) && existingRecord.length > 0) {
+                  await supabaseRest
+                    .from('quick_records')
+                    .update({
+                      value: newDay.toString(),
+                      notes: 'Updated via manual slider'
+                    })
+                    .eq('id', existingRecord[0].id);
+                } else {
+                  await supabaseRest
+                    .from('quick_records')
+                    .insert([{
+                      user_id: user?.id,
+                      date: new Date().toISOString().split('T')[0],
+                      record_type: 'current_cycle_day',
+                      value: newDay.toString(),
+                      notes: 'Updated via manual slider'
+                    }]);
+                }
+              } catch (error) {
+                console.error('Error saving cycle day:', error);
+              }
+            }}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
           />
           <div className="flex justify-between text-xs text-gray-500 mt-1">

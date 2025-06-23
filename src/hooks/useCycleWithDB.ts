@@ -19,17 +19,6 @@ export const useCycleWithDB = () => {
     return cycles.find(cycle => !cycle.end_date) || cycles[0];
   }, [cycles]);
 
-  // Calculate current day based on cycle start date
-  useEffect(() => {
-    if (currentCycle) {
-      const startDate = new Date(currentCycle.start_date);
-      const today = new Date();
-      const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-      const cycleDay = Math.max(1, Math.min(28, daysDiff + 1));
-      setCurrentDay(cycleDay);
-    }
-  }, [currentCycle]);
-
   // Load today's symptoms and mood
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -237,9 +226,9 @@ export const useCycleWithDB = () => {
 
         console.log('Cycle Tracker - Existing lifestyle entry:', existingData);
 
-        if (existingData) {
+        if (existingData && (existingData as any).id) {
           // Update existing entry with only the provided fields
-          console.log('Cycle Tracker - Updating existing lifestyle entry with ID:', existingData.id);
+          console.log('Cycle Tracker - Updating existing lifestyle entry with ID:', (existingData as any).id);
           
           const updateData: Record<string, unknown> = {};
           if (sleepHours !== undefined) updateData.sleep_hours = sleepHours;
@@ -249,12 +238,12 @@ export const useCycleWithDB = () => {
           const { error: updateError } = await supabaseRest
             .from('lifestyle_entries')
             .update(updateData)
-            .eq('id', existingData.id)
+            .eq('id', (existingData as any).id)
             .eq('user_id', user?.id);
 
           if (updateError) {
             console.error('Error updating lifestyle entry:', updateError);
-            return `Error updating lifestyle data: ${updateError.message}`;
+            return `Error updating lifestyle data: ${(updateError as any).message || 'Unknown error'}`;
           }
           
           console.log('Cycle Tracker - Successfully updated lifestyle entry');
@@ -276,7 +265,7 @@ export const useCycleWithDB = () => {
 
           if (insertError) {
             console.error('Error inserting lifestyle entry:', insertError);
-            return `Error creating lifestyle data: ${insertError.message}`;
+            return `Error creating lifestyle data: ${(insertError as any).message || 'Unknown error'}`;
           }
           
           console.log('Cycle Tracker - Successfully created lifestyle entry');
@@ -367,7 +356,7 @@ export const useCycleWithDB = () => {
     if (!user) return;
 
     try {
-      // First, try to get from quick_records
+      // First, try to get from quick_records (prioritize user-set cycle day)
       const { data: quickRecord } = await supabaseRest
         .from('quick_records')
         .select('*')
@@ -379,25 +368,36 @@ export const useCycleWithDB = () => {
       if (quickRecord && Array.isArray(quickRecord) && quickRecord.length > 0) {
         const savedDay = parseInt(quickRecord[0].value);
         if (savedDay >= 1 && savedDay <= 28) {
+          console.log('Loaded cycle day from quick_records:', savedDay);
           setCurrentDay(savedDay);
           return;
         }
       }
 
-      // Fallback: calculate from current cycle start date
+      // Fallback: calculate from current cycle start date if no manual override exists
       if (currentCycle && currentCycle.start_date) {
         const startDate = new Date(currentCycle.start_date);
         const today = new Date();
         const daysDiff = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         
         if (daysDiff >= 1 && daysDiff <= 28) {
+          console.log('Calculated cycle day from start date:', daysDiff);
           setCurrentDay(daysDiff);
-          // Save this calculated day to quick_records for future use
-          await updateCurrentCycleDay(daysDiff);
+          // Don't auto-save calculated day to avoid overriding manual settings
+        } else {
+          // If calculated day is outside valid range, default to day 1
+          console.log('Calculated day outside range, defaulting to day 1');
+          setCurrentDay(1);
         }
+      } else {
+        // No cycle data available, default to day 14
+        console.log('No cycle data available, defaulting to day 14');
+        setCurrentDay(14);
       }
     } catch (error) {
       console.error('Error loading current cycle day:', error);
+      // On error, default to day 14
+      setCurrentDay(14);
     }
   };
 
