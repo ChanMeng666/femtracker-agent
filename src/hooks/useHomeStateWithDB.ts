@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCopilotReadable, useCopilotAction } from '@copilotkit/react-core';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './auth/useAuth';
 import { 
   supabaseRest
@@ -82,6 +83,7 @@ interface DatabaseInsight {
 
 export const useHomeStateWithDB = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,7 +105,7 @@ export const useHomeStateWithDB = () => {
 
   // CopilotKit readable data
   useCopilotReadable({
-    description: "User's complete health dashboard data with real-time database integration",
+    description: "User's complete health dashboard data with real-time database integration and navigation capabilities",
     value: {
       healthOverview,
       quickRecords,
@@ -114,7 +116,19 @@ export const useHomeStateWithDB = () => {
       totalTips: personalizedTips.length,
       activeTips: personalizedTips.length,
       totalInsights: healthInsights.length,
-      recentRecords: quickRecords.slice(0, 5)
+      recentRecords: quickRecords.slice(0, 5),
+      availablePages: [
+        { name: "home", path: "/", description: "Dashboard with health overview" },
+        { name: "cycle tracker", path: "/cycle-tracker", description: "Menstrual cycle tracking" },
+        { name: "symptoms", path: "/symptom-mood", description: "Symptom and mood tracking" },
+        { name: "nutrition", path: "/nutrition", description: "Nutrition and meal tracking" },
+        { name: "fertility", path: "/fertility", description: "Fertility health monitoring" },
+        { name: "exercise", path: "/exercise", description: "Exercise and fitness tracking" },
+        { name: "lifestyle", path: "/lifestyle", description: "Sleep and stress tracking" },
+        { name: "insights", path: "/insights", description: "Health insights and analytics" },
+        { name: "recipe", path: "/recipe", description: "Recipe creation and management" },
+        { name: "settings", path: "/settings", description: "App settings and preferences" }
+      ]
     }
   });
 
@@ -554,6 +568,56 @@ export const useHomeStateWithDB = () => {
     handler: async ({ type, value, notes }) => {
       await addQuickRecord(type, value, notes);
       return `Added ${type} record: ${value}`;
+    },
+  });
+
+  useCopilotAction({
+    name: "navigateToPage",
+    description: "Navigate to a specific page in the app. Available pages: cycle tracker, symptoms, nutrition, fertility, exercise, lifestyle, insights, recipe, settings, home",
+    parameters: [
+      {
+        name: "pageName",
+        type: "string",
+        description: "Name of the page to navigate to. Options: home, cycle, symptoms, nutrition, fertility, exercise, lifestyle, insights, recipe, settings",
+        required: true,
+      }
+    ],
+    handler: async ({ pageName }) => {
+      const pageMap: { [key: string]: string } = {
+        'home': '/',
+        'cycle': '/cycle-tracker',
+        'cycle tracker': '/cycle-tracker',
+        'cycle-tracker': '/cycle-tracker',
+        'symptoms': '/symptom-mood',
+        'symptom': '/symptom-mood',
+        'mood': '/symptom-mood',
+        'symptom-mood': '/symptom-mood',
+        'nutrition': '/nutrition',
+        'fertility': '/fertility',
+        'fertility health': '/fertility',
+        'exercise': '/exercise',
+        'workout': '/exercise',
+        'fitness': '/exercise',
+        'lifestyle': '/lifestyle',
+        'insights': '/insights',
+        'health insights': '/insights',
+        'recipe': '/recipe',
+        'recipes': '/recipe',
+        'cooking': '/recipe',
+        'settings': '/settings',
+        'setting': '/settings'
+      };
+
+      const normalizedPageName = pageName.toLowerCase().trim();
+      const targetPath = pageMap[normalizedPageName];
+
+      if (targetPath) {
+        router.push(targetPath);
+        return `Successfully navigated to ${pageName} page.`;
+      } else {
+        const availablePages = Object.keys(pageMap).filter(key => !key.includes('-')).join(', ');
+        return `Page "${pageName}" not found. Available pages: ${availablePages}`;
+      }
     },
   });
 

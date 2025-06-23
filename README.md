@@ -190,6 +190,42 @@ wait
 - **智能建议**: AI会根据食材和步骤提供改进建议
 - **上下文感知**: AI了解整个食谱的上下文，提供相关建议
 
+### 🤖 AI Navigation Feature
+
+The AI assistant can now help you navigate between different pages in the app! Simply open the AI chat sidebar and use natural language commands:
+
+**Navigation Commands:**
+- "Take me to the cycle tracker"
+- "Show me the nutrition page"
+- "Go to fertility health"
+- "Open exercise section"
+- "Navigate to insights"
+- "Show me settings"
+
+**Available Pages:**
+- Home Dashboard
+- Cycle Tracker
+- Symptoms & Mood
+- Nutrition
+- Fertility Health
+- Exercise
+- Lifestyle
+- Health Insights
+- Recipe Helper
+- Settings
+
+**How to Use:**
+1. Click the AI assistant icon in the sidebar
+2. Type or speak your navigation request
+3. The AI will automatically navigate you to the requested page
+
+**Example Conversations:**
+- User: "I want to track my cycle"
+- AI: "I'll take you to the cycle tracker page" *[navigates to /cycle-tracker]*
+
+- User: "Show me my nutrition data"
+- AI: "Taking you to the nutrition page now" *[navigates to /nutrition]*
+
 ## 开发相关
 
 ### 项目架构
