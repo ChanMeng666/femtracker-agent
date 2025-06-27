@@ -25,7 +25,7 @@ A comprehensive AI-powered women's health tracking platform that leverages advan
 
 <br/>
 
-[![🚀 Live Demo 🚀](https://img.shields.io/badge/🚀-Live%20Demo-blue?style=for-the-badge&color=gradient)](https://your-deployment-url.vercel.app/)
+[![🚀 Visit Live Site 🚀](https://gradient-svg-generator.vercel.app/api/svg?text=%F0%9F%9A%80Visit%20Live%20Site%F0%9F%9A%80&color=000000&height=60&gradientType=radial&duration=6s&color0=ffffff&template=pride-rainbow)](https://femtracker-agent.vercel.app/)
 
 <br/>
 
@@ -272,7 +272,7 @@ femtracker-agent/
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/femtracker-agent.git
+git clone https://github.com/ChanMeng666/femtracker-agent.git
 cd femtracker-agent
 
 # Install frontend dependencies
@@ -623,7 +623,7 @@ We welcome contributions to FemTracker Agent! Here's how you can help:
 
 1. **Fork and Clone:**
 ```bash
-git clone https://github.com/your-username/femtracker-agent.git
+git clone https://github.com/ChanMeng666/femtracker-agent.git
 cd femtracker-agent
 ```
 
@@ -685,7 +685,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <br/><br/>
 ⭐ Star us on GitHub | 📖 Read the Docs | 🐛 Report Issues | 💡 Request Features
 <br/><br/>
-<img src="https://img.shields.io/github/stars/your-username/femtracker-agent?style=social" alt="GitHub stars">
-<img src="https://img.shields.io/github/forks/your-username/femtracker-agent?style=social" alt="GitHub forks">
-<img src="https://img.shields.io/github/watchers/your-username/femtracker-agent?style=social" alt="GitHub watchers">
+<img src="https://img.shields.io/github/stars/ChanMeng666/femtracker-agent?style=social" alt="GitHub stars">
+<img src="https://img.shields.io/github/forks/ChanMeng666/femtracker-agent?style=social" alt="GitHub forks">
+<img src="https://img.shields.io/github/watchers/ChanMeng666/femtracker-agent?style=social" alt="GitHub watchers">
 </div>
