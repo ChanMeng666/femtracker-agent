@@ -31,7 +31,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+
 
 # vercel
 .vercel
@@ -42,7 +42,9 @@ next-env.d.ts
 /agent/.vscode
 
 .vercel
-.env*.local
 /langgraph_shared_state
 FemTracker_Demo_Script.md
 示例README-1.md
+.env
+.env.production
+.env.local
