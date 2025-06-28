@@ -435,7 +435,7 @@ const cacheStrategies = {
 [github-contributors-link]: https://github.com/ChanMeng666/femtracker-agent/contributors
 [github-forks-link]: https://github.com/ChanMeng666/femtracker-agent/forks
 [github-stars-link]: https://github.com/ChanMeng666/femtracker-agent/stargazers
-[github-license-link]: https://github.com/ChanMeng666/femtracker-agent/blob/main/LICENSE
+[github-license-link]: https://github.com/ChanMeng666/femtracker-agent/blob/master/LICENSE
 [github-releasedate-link]: https://github.com/ChanMeng666/femtracker-agent/releases
 [github-action-test-link]: https://github.com/ChanMeng666/femtracker-agent/actions
 [vercel-link]: https://femtracker-agent.vercel.app/
