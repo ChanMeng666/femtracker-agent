@@ -134,6 +134,29 @@ Whether you're tracking your menstrual cycle, fertility journey, or overall well
   </picture>
 </details>
 
+## 🎥 Project Demo Video
+
+> [!TIP]
+> **Watch the complete project walkthrough!** Get a comprehensive overview of FemTracker Agent's AI-powered features and capabilities.
+
+<div align="center">
+
+[![FemTracker Agent - AI-Powered Women's Health Companion Demo](https://img.youtube.com/vi/VVCQKmeEtRs/maxresdefault.jpg)](https://youtu.be/VVCQKmeEtRs?si=j74lzM_UfeACgYKu)
+
+**🎬 [Watch Project Demo on YouTube](https://youtu.be/VVCQKmeEtRs?si=j74lzM_UfeACgYKu)**
+
+*Complete project walkthrough showcasing AI agent system, health tracking features, and real-time analytics*
+
+</div>
+
+**What you'll see in the demo:**
+- 🤖 **AI Agent System**: Live demonstration of 8 specialized health agents
+- 📊 **Health Analytics**: WHO-standard health scoring and insights generation  
+- 🌸 **Health Modules**: Cycle tracking, fertility monitoring, nutrition guidance
+- 💬 **Conversational AI**: Natural language health assistance in action
+- 📱 **User Experience**: Complete user journey from signup to advanced features
+- 🔧 **Technical Architecture**: Behind-the-scenes look at LangGraph coordination
+
 ## ✨ Key Features
 
 ### `1` [Advanced AI Multi-Agent System][docs-ai-agents]
