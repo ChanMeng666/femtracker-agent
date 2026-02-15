@@ -48,3 +48,4 @@ next-env.d.ts
 .vercel
 /langgraph_shared_state
 FemTracker_Demo_Script.md
+.env*.local

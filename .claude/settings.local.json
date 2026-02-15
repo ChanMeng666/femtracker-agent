@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vercel --version:*)",
+      "Bash(vercel link:*)",
+      "Bash(vercel env pull:*)"
+    ]
+  }
+}
