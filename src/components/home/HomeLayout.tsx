@@ -94,6 +94,22 @@ export function HomeLayout({
 
                 {/* Main Navigation - Single comprehensive navigation */}
                 <MainNavigation />
+
+                {/* Developer brand credit — Chan Meng */}
+                <footer className="mt-10 border-t border-gray-200 pt-6 text-center">
+                  <a
+                    href="https://github.com/ChanMeng666"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-xs text-gray-500 transition-colors hover:text-gray-700"
+                  >
+                    <img src="/brand/chan-meng-monkey.svg" alt="Chan Meng" className="h-5 w-5" />
+                    <span className="font-medium">Built by Chan Meng — need a custom app like this one?</span>
+                  </a>
+                  <p className="mt-1 text-xs text-gray-400">
+                    <a href="mailto:chanmeng.dev@gmail.com" className="hover:text-gray-600">chanmeng.dev@gmail.com</a>
+                  </p>
+                </footer>
               </main>
             </div>
           </div>
